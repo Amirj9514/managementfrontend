@@ -1,0 +1,32 @@
+<div class="login">
+  <h1 class="login__title">Welcome back</h1>
+  <p class="login__subtitle">Sign in to continue to Management.</p>
+  <form class="login__form" [formGroup]="form" (ngSubmit)="submit()">
+    <p-fluid>
+      <div class="field">
+        <label for="email">Email</label>
+        <input pInputText id="email" type="email" formControlName="email" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          pInputText
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+      </div>
+      <p-button
+        type="submit"
+        label="Sign in"
+        [loading]="submitting"
+        styleClass="w-full"
+      />
+    </p-fluid>
+  </form>
+  <p class="login__footer">
+    Need an account?
+    <a routerLink="/register">Register</a>
+  </p>
+</div>

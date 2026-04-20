@@ -1,0 +1,21 @@
+<div class="empty-state">
+  <div class="empty-state__icon-container">
+    <ng-icon [name]="icon()" size="3rem" />
+  </div>
+  <h3 class="empty-state__title">{{ title() }}</h3>
+  @if (description(); as d) {
+    <p class="empty-state__desc">{{ d }}</p>
+  }
+  @if (actionLabel()) {
+    <p-button 
+      [label]="actionLabel()!" 
+      [outlined]="true" 
+      size="small" 
+      class="mt-4" 
+      (onClick)="actionClick.emit()" 
+    />
+  }
+  <div class="empty-state__content">
+    <ng-content />
+  </div>
+</div>

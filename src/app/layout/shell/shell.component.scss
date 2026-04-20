@@ -1,0 +1,106 @@
+.app-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 1.25rem;
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.app-sidebar__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--app-accent);
+}
+
+.app-sidebar__name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.app-sidebar__nav {
+  padding: 0.75rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.app-sidebar__group-label {
+  margin: 0 0 0.35rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--app-text-muted);
+}
+
+.app-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  color: var(--app-text-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+  }
+}
+
+.app-sidebar__link--active {
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  color: var(--p-primary-color-text, #0f172a);
+}
+
+.app-sidebar__icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.app-topbar__spacer {
+  flex: 1;
+}
+
+.app-topbar__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-accent) 22%, transparent);
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
+}
+
+.app-topbar__user-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.app-topbar__menu-btn {
+  @media (min-width: 1024px) {
+    display: none !important;
+  }
+}
+
+.app-topbar__collapse {
+  display: none !important;
+  @media (min-width: 1024px) {
+    display: inline-flex !important;
+  }
+}
+
+:host ::ng-deep .app-mobile-drawer {
+  width: min(280px, 88vw);
+}

@@ -1,0 +1,183 @@
+<app-page-header title="Property Structure"
+  subtitle="Manage buildings and floors. Expand a building to see and manage its floors." />
+
+<p-toolbar styleClass="property-toolbar">
+  <ng-template #start>
+    <div style="display: flex; gap: 0.75rem; align-items: center">
+      <p-button type="button" label="New building" icon="pi pi-plus" (onClick)="openCreate()" />
+      <p-select [options]="[
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive / Deleted', value: 'inactive' },
+          { label: 'All', value: 'all' }
+        ]" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" placeholder="Filter by status"
+        styleClass="w-12rem" />
+      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="currentBranchId()"
+        (ngModelChange)="onBranchFilterChange($event)" placeholder="Filter by branch" [showClear]="true"
+        styleClass="w-16rem" />
+    </div>
+  </ng-template>
+</p-toolbar>
+
+<p-card>
+  @if (!loading() && rows().length === 0) {
+  <app-empty-state title="No buildings found" description="Try adjusting your filters or add a new building." />
+  } @else {
+  <p-table [value]="rows()" [loading]="loading()" dataKey="_id" (onRowExpand)="onRowExpand($event)"
+    [tableStyle]="{ 'min-width': '60rem' }">
+    <ng-template #header>
+      <tr>
+        <th style="width: 3rem"></th>
+        <th>Name</th>
+        <th>Code</th>
+        <th>Branch</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th style="width: 4rem"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row let-expanded="expanded">
+      <tr>
+        <td>
+          <p-button type="button" pRipple [pRowToggler]="row" [text]="true" [rounded]="true" [plain]="true"
+            [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" />
+        </td>
+        <td class="font-bold">{{ row.name }}</td>
+        <td><p-tag [value]="row.code" severity="secondary" /></td>
+        <td>{{ getBranchName(row.branchId) }}</td>
+        <td>
+          @if (row.deletedAt || row.status === 'inactive') {
+          <p-tag value="Inactive" severity="danger" />
+          } @else {
+          <p-tag value="Active" severity="success" />
+          }
+        </td>
+        <td>{{ row.createdAt | date: 'short' }}</td>
+        <td style="text-align: right">
+          <p-button type="button" [text]="true" [rounded]="true" (onClick)="prepareActions($event, row, rowMenu)">
+            <ng-icon name="lucideMoreVertical" size="1.25rem" />
+          </p-button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <!-- Row Expansion for Floors -->
+    <ng-template #expandedrow let-row>
+      <tr>
+        <td colspan="7">
+          <div class="expansion-container p-4">
+            <div class="flex justify-content-between align-items-center mb-3">
+              <h4 class="text-lg font-semibold m-0">Floors for {{ row.name }}</h4>
+              <p-button label="Add Floor" icon="pi pi-plus" [text]="true" size="small"
+                (onClick)="openCreateFloor(row)" />
+            </div>
+
+            @if (row.floors && row.floors.length > 0) {
+            <p-table [value]="row.floors" [tableStyle]="{ 'min-width': '40rem' }"
+              styleClass="p-datatable-sm shadow-sm border border-surface-200 rounded-lg overflow-hidden">
+              <ng-template #header>
+      <tr>
+        <th style="width: 4rem">#</th>
+        <th>Label</th>
+        <th>Status</th>
+        <th>Last Updated</th>
+        <th style="width: 4rem"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-floor>
+      <tr>
+        <td>{{ floor.sortOrder }}</td>
+        <td class="font-medium">{{ floor.label }}</td>
+        <td>
+          @if (floor.deletedAt || floor.status === 'inactive') {
+          <p-tag value="Inactive" severity="danger" [rounded]="true" />
+          } @else {
+          <p-tag value="Active" severity="success" [rounded]="true" />
+          }
+        </td>
+        <td>{{ floor.updatedAt | date: 'short' }}</td>
+        <td style="text-align: right">
+          <p-button type="button" [text]="true" [rounded]="true"
+            (onClick)="prepareFloorActions($event, floor, row._id, floorMenu)">
+            <ng-icon name="lucideMoreVertical" size="1.1rem" />
+          </p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+  } @else {
+  <div class="p-4 bg-surface-50 border border-dashed border-surface-300 rounded-lg text-center text-surface-500">
+    No floors added to this building yet.
+  </div>
+  }
+  </div>
+  </td>
+  </tr>
+  </ng-template>
+  </p-table>
+
+  <p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />
+  <p-menu #floorMenu [model]="floorMenuItems()" [popup]="true" appendTo="body" />
+
+  <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
+    [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
+  }
+</p-card>
+
+<!-- Building Forms -->
+<p-drawer [header]="createVisible() ? 'New Building' : 'Edit Building'" [visible]="createVisible() || editVisible()"
+  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)" position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }">
+  <form [formGroup]="buildingForm" (ngSubmit)="createVisible() ? submitCreate() : submitEdit()">
+    <p-fluid>
+      <div class="form-grid">
+        <div class="field">
+          <label for="b-branch">Branch</label>
+          <p-select id="b-branch" [options]="branches()" optionLabel="name" optionValue="_id" formControlName="branchId"
+            placeholder="Select Branch" [readonly]="editVisible()" styleClass="w-full" />
+        </div>
+        <div class="field">
+          <label for="b-name">Building Name</label>
+          <input pInputText id="b-name" formControlName="name" placeholder="e.g. Tower A" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true"
+          (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
+        <p-button type="submit" [label]="createVisible() ? 'Create Building' : 'Save Changes'"
+          [loading]="createVisible() ? savingCreate() : savingEdit()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<!-- Floor Forms -->
+<p-drawer [header]="floorCreateVisible() ? 'Add Floor' : 'Edit Floor'"
+  [visible]="floorCreateVisible() || floorEditVisible()"
+  (visibleChange)="floorCreateVisible() ? floorCreateVisible.set($event) : floorEditVisible.set($event)"
+  position="right" [style]="{ width: 'min(32rem, 100vw)' }">
+  <form [formGroup]="floorForm" (ngSubmit)="floorCreateVisible() ? submitCreateFloor() : submitEditFloor()">
+    <p-fluid>
+      <div class="p-3 bg-surface-50 border border-surface-200 rounded mb-4">
+        <p class="m-0 text-sm text-surface-600">
+          Building: <span class="font-bold text-surface-900">{{ floorTargetBuilding()?.name }}</span>
+        </p>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-label">Floor Label</label>
+          <input pInputText id="f-label" formControlName="label" placeholder="e.g. 1st Floor, Ground Floor"
+            autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true"
+          (onClick)="floorCreateVisible() ? floorCreateVisible.set(false) : floorEditVisible.set(false)" />
+        <p-button type="submit" [label]="floorCreateVisible() ? 'Add Floor' : 'Save Changes'"
+          [loading]="floorCreateVisible() ? savingFloorCreate() : savingFloorEdit()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<p-confirm-dialog />

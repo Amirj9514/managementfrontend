@@ -1,0 +1,61 @@
+.property-toolbar {
+  margin-bottom: 1.5rem;
+  border: none;
+  background: white;
+  padding: 0;
+}
+
+.expansion-container {
+  background-color: var(--surface-50);
+  border-top: 1px solid var(--surface-200);
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-color);
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+// PrimeNG overrides for nicer nested look
+:host ::ng-deep {
+  .p-datatable-sm {
+    .p-datatable-thead > tr > th {
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+    .p-datatable-tbody > tr > td {
+      padding: 0.75rem 1rem;
+    }
+  }
+  
+  .p-row-toggler {
+    transition: transform 0.2s;
+    &:focus {
+      box-shadow: none;
+    }
+  }
+}

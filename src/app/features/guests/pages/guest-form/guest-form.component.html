@@ -1,0 +1,44 @@
+<app-page-header
+  [title]="isCreate() ? 'New guest' : 'Edit guest'"
+  subtitle="Contact details and identification."
+/>
+<p-card>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <p-fluid>
+      <div class="form-grid">
+        <div class="field">
+          <label for="firstName">First name</label>
+          <input pInputText id="firstName" formControlName="firstName" />
+        </div>
+        <div class="field">
+          <label for="lastName">Last name</label>
+          <input pInputText id="lastName" formControlName="lastName" />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input pInputText id="email" type="email" formControlName="email" />
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input pInputText id="phone" formControlName="phone" />
+        </div>
+        <div class="field">
+          <label for="nationality">Nationality</label>
+          <input pInputText id="nationality" formControlName="nationality" />
+        </div>
+        <div class="field">
+          <label for="passportNumber">Passport number</label>
+          <input pInputText id="passportNumber" formControlName="passportNumber" />
+        </div>
+        <div class="field">
+          <label for="branchId">Branch ID</label>
+          <input pInputText id="branchId" formControlName="branchId" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="cancel()" />
+        <p-button type="submit" [label]="isCreate() ? 'Create guest' : 'Save changes'" />
+      </div>
+    </p-fluid>
+  </form>
+</p-card>

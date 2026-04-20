@@ -1,0 +1,25 @@
+<app-page-header title="Audit log" subtitle="Administrative audit trail (API: /audit-logs)." />
+<p-card>
+  @if (!loading() && rows().length === 0) {
+    <app-empty-state title="No entries" description="No audit records returned." />
+  } @else {
+    <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '44rem' }">
+      <ng-template #header>
+        <tr>
+          <th>When</th>
+          <th>Action</th>
+          <th>Resource</th>
+          <th>User</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td>{{ row.createdAt }}</td>
+          <td>{{ row.action }}</td>
+          <td>{{ row.resource ?? '—' }}</td>
+          <td>{{ row.userId ?? '—' }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</p-card>

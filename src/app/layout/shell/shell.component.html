@@ -1,0 +1,105 @@
+@let u = user$ | async;
+<div
+  class="app-shell"
+  [class.app-shell--collapsed]="sidebarCollapsed()"
+>
+  <aside class="app-shell__sidebar app-sidebar">
+    <div class="app-sidebar__brand">
+      <span class="app-sidebar__logo">M</span>
+      @if (!sidebarCollapsed()) {
+        <span class="app-sidebar__name">Management</span>
+      }
+    </div>
+    <nav class="app-sidebar__nav">
+      @for (group of navGroups; track group.label) {
+        <div class="app-sidebar__group">
+          @if (!sidebarCollapsed()) {
+            <p class="app-sidebar__group-label">{{ group.label }}</p>
+          }
+          @for (item of filteredItems(group.items, u); track item.routerLink) {
+            <a
+              class="app-sidebar__link"
+              [routerLink]="item.routerLink"
+              routerLinkActive="app-sidebar__link--active"
+              [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' }"
+            >
+              <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
+              @if (!sidebarCollapsed()) {
+                <span>{{ item.label }}</span>
+              }
+            </a>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <header class="app-shell__topbar">
+    <p-button
+      class="app-topbar__menu-btn"
+      [text]="true"
+      [rounded]="true"
+      aria-label="Open menu"
+      (onClick)="openMobileNav()"
+    >
+      <ng-icon name="lucideMenu" size="1.25rem" />
+    </p-button>
+    <p-button
+      class="app-topbar__collapse"
+      [text]="true"
+      [rounded]="true"
+      aria-label="Toggle sidebar"
+      (onClick)="toggleSidebar()"
+    >
+      @if (sidebarCollapsed()) {
+        <ng-icon name="lucidePanelLeftOpen" size="1.25rem" />
+      } @else {
+        <ng-icon name="lucidePanelLeftClose" size="1.25rem" />
+      }
+    </p-button>
+    <div class="app-topbar__spacer"></div>
+    @if (u; as user) {
+      <p-button [text]="true" (onClick)="userMenuBtn.toggle($event)" class="app-topbar__user">
+        <span class="app-topbar__avatar">{{ user.name.charAt(0).toUpperCase() }}</span>
+        <span class="app-topbar__user-name">{{ user.name }}</span>
+      </p-button>
+      <p-menu #userMenuBtn [model]="menuItems" [popup]="true" appendTo="body" />
+    }
+  </header>
+
+  <main class="app-shell__main">
+    <div class="content-frame">
+      <router-outlet />
+    </div>
+  </main>
+</div>
+
+<p-drawer
+  [visible]="mobileDrawerOpen()"
+  (visibleChange)="mobileDrawerOpen.set($event)"
+  position="left"
+  styleClass="app-mobile-drawer"
+  (onHide)="closeMobileNav()"
+>
+  <ng-template #header>
+    <span class="app-sidebar__name">Management</span>
+  </ng-template>
+  <nav class="app-sidebar__nav">
+    @for (group of navGroups; track group.label) {
+      <div class="app-sidebar__group">
+        <p class="app-sidebar__group-label">{{ group.label }}</p>
+        @for (item of filteredItems(group.items, u); track item.routerLink) {
+          <a
+            class="app-sidebar__link"
+            [routerLink]="item.routerLink"
+            routerLinkActive="app-sidebar__link--active"
+            (click)="closeMobileNav()"
+          >
+            <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </div>
+    }
+  </nav>
+</p-drawer>

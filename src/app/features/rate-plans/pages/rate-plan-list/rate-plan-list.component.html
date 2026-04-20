@@ -1,0 +1,23 @@
+<app-page-header title="Rate plans" subtitle="Pricing (API: /rate-plans)." />
+<p-card>
+  @if (!loading() && rows().length === 0) {
+    <app-empty-state title="No rate plans" description="No rate plans returned." />
+  } @else {
+    <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '36rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Name</th>
+          <th>Currency</th>
+          <th>Base rate</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.currency ?? '—' }}</td>
+          <td>{{ row.baseRate ?? '—' }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</p-card>

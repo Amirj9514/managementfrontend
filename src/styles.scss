@@ -1,1 +1,24 @@
-/* You can add global styles to this file, and also import other style files */
+@use 'styles/variables';
+@use 'styles/layout';
+
+@import "../node_modules/primeicons/primeicons.css";
+@import "../node_modules/primeflex/primeflex.css";
+
+.p-datatable-thead th {
+    background-color: #f3f4f6 !important;
+    color: #1f2937 !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    padding: 0.75rem !important;
+    border-bottom: none !important;
+
+    &:first-child {
+        border-top-left-radius: 0.5rem;
+        border-bottom-left-radius: 0.5rem;
+    }
+
+    &:last-child {
+        border-top-right-radius: 0.5rem;
+        border-bottom-right-radius: 0.5rem;
+    }
+}

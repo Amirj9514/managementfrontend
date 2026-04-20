@@ -1,0 +1,293 @@
+<app-page-header
+  title="Users"
+  subtitle="Staff accounts — list (GET /users), create (POST /users), role & assignment (PATCH /users/:id/assignment)."
+/>
+<p-toolbar styleClass="users-toolbar">
+  <ng-template #start>
+    <div style="display: flex; gap: 0.75rem; align-items: center">
+      <p-button type="button" label="New user" (onClick)="openCreate()" />
+      <p-select
+        [options]="[
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive / Deleted', value: 'inactive' },
+          { label: 'All', value: 'all' }
+        ]"
+        [ngModel]="status()"
+        (ngModelChange)="onStatusChange($event)"
+        placeholder="Filter by status"
+        styleClass="w-12rem"
+      />
+    </div>
+  </ng-template>
+</p-toolbar>
+<p-card>
+  @if (loading()) {
+    <app-table-skeleton [columns]="5" [rows]="10" />
+  } @else if (rows().length === 0 && totalRecords() === 0) {
+    <app-empty-state 
+      title="No users found" 
+      description="There are no staff accounts in the system yet, or none match your current status filter." 
+      icon="lucideUsers"
+      actionLabel="Create User"
+      (actionClick)="openCreate()"
+    />
+  } @else {
+    <p-table [value]="rows()" [loading]="false" [tableStyle]="{ 'min-width': '48rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th style="width: 11rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td>{{ row.name || '—' }}</td>
+          <td>{{ row.email }}</td>
+          <td>{{ row.role }}</td>
+          <td>
+            @if (row.deletedAt || row.status === 'inactive') {
+              <p-tag value="Inactive" severity="danger" />
+            } @else {
+              <p-tag value="Active" severity="success" />
+            }
+          </td>
+          <td>{{ row.createdAt ? (row.createdAt | date: 'medium') : '—' }}</td>
+          <td style="text-align: right">
+            <p-button
+              type="button"
+              [text]="true"
+              [rounded]="true"
+              (onClick)="prepareActions($event, row, rowMenu)"
+            >
+              <ng-icon name="lucideMoreVertical" size="1.25rem" />
+            </p-button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />
+    <p-paginator
+      [rows]="pageSize()"
+      [totalRecords]="totalRecords()"
+      [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50, 100]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}"
+      (onPageChange)="onPaginatorChange($event)"
+    />
+  }
+</p-card>
+
+<p-drawer
+  header="New user"
+  [visible]="createVisible()"
+  (visibleChange)="createVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+>
+  <form [formGroup]="createForm" (ngSubmit)="submitCreate()">
+    <p-fluid>
+      <div class="form-grid">
+        <div class="field">
+          <label for="cu-email">Email</label>
+          <input pInputText id="cu-email" type="email" formControlName="email" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="cu-password">Password</label>
+          <p-password
+            id="cu-password"
+            formControlName="password"
+            [toggleMask]="true"
+            [feedback]="false"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            autocomplete="new-password"
+          />
+        </div>
+        <div class="field">
+          <label for="cu-name">Name</label>
+          <input pInputText id="cu-name" formControlName="name" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="cu-role">Role</label>
+          <p-select
+            inputId="cu-role"
+            formControlName="role"
+            [options]="staffRoleOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Role"
+            styleClass="w-full"
+          />
+        </div>
+        <div class="field field--full">
+          <div class="checkbox-row">
+            <p-checkbox formControlName="withAssignment" inputId="cu-assign" [binary]="true" />
+            <label for="cu-assign">Include branch / building assignment</label>
+          </div>
+        </div>
+        @if (createForm.controls.withAssignment.value) {
+          <div class="field field--full">
+            <label for="cu-branches">Branches</label>
+            <p-multiselect
+              inputId="cu-branches"
+              formControlName="branchIds"
+              [options]="branchSelectOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select branches"
+              display="chip"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="field field--full">
+            <label for="cu-buildings">Building IDs</label>
+            <input
+              pInputText
+              id="cu-buildings"
+              formControlName="buildingIdsText"
+              placeholder="Comma-separated 24-char hex IDs"
+              autocomplete="off"
+            />
+          </div>
+        }
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="createVisible.set(false)" />
+        <p-button type="submit" label="Create user" [loading]="savingCreate()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<p-drawer
+  header="Edit user"
+  [visible]="editVisible()"
+  (visibleChange)="editVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+>
+  @if (editTarget(); as target) {
+    <p class="assign-user-hint">Update basic details for {{ target.email }}</p>
+  }
+  <form [formGroup]="editForm" (ngSubmit)="submitEdit()">
+    <p-fluid>
+      <div class="form-grid">
+        <div class="field">
+          <label for="eu-email">Email</label>
+          <input pInputText id="eu-email" type="email" formControlName="email" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="eu-name">Name</label>
+          <input pInputText id="eu-name" formControlName="name" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="eu-password">New password (optional)</label>
+          <p-password
+            id="eu-password"
+            formControlName="password"
+            [toggleMask]="true"
+            [feedback]="false"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            autocomplete="new-password"
+          />
+        </div>
+        <div class="field">
+          <label for="eu-status">Status</label>
+          <p-select
+            inputId="eu-status"
+            formControlName="status"
+            [options]="[
+              { label: 'Active', value: 'active' },
+              { label: 'Inactive / Deleted', value: 'inactive' }
+            ]"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Status"
+            styleClass="w-full"
+          />
+        </div>
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="editVisible.set(false)" />
+        <p-button type="submit" label="Save changes" [loading]="savingEdit()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<p-drawer
+  header="Role & assignment"
+  [visible]="assignVisible()"
+  (visibleChange)="assignVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+>
+  @if (assignTarget(); as target) {
+    <p class="assign-user-hint">{{ target.email }}</p>
+  }
+  <form [formGroup]="assignForm" (ngSubmit)="submitAssign()">
+    <p-fluid>
+      <div class="form-grid">
+        <div class="field field--full">
+          <label for="as-role">Role</label>
+          <p-select
+            inputId="as-role"
+            formControlName="role"
+            [options]="staffRoleOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Role"
+            styleClass="w-full"
+          />
+        </div>
+        <div class="field field--full">
+          <div class="checkbox-row">
+            <p-checkbox formControlName="updateScopes" inputId="as-scopes" [binary]="true" />
+            <label for="as-scopes">Update branch & building assignment</label>
+          </div>
+          <p class="field-hint">
+            When enabled, branch and building lists are sent to the server (empty clears scoped assignment per API rules).
+          </p>
+        </div>
+        @if (assignForm.controls.updateScopes.value) {
+          <div class="field field--full">
+            <label for="as-branches">Branches</label>
+            <p-multiselect
+              inputId="as-branches"
+              formControlName="branchIds"
+              [options]="branchSelectOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select branches"
+              display="chip"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="field field--full">
+            <label for="as-buildings">Building IDs</label>
+            <input
+              pInputText
+              id="as-buildings"
+              formControlName="buildingIdsText"
+              placeholder="Comma-separated 24-char hex IDs"
+              autocomplete="off"
+            />
+          </div>
+        }
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="assignVisible.set(false)" />
+        <p-button type="submit" label="Save" [loading]="savingAssign()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<p-confirm-dialog />

@@ -1,0 +1,72 @@
+<app-page-header title="Guests" subtitle="Search, create, and manage guest profiles." />
+<p-card>
+  <p-toolbar styleClass="guest-toolbar">
+    <ng-template #start>
+      <div class="guest-toolbar__search">
+        <input
+          pInputText
+          type="search"
+          [(ngModel)]="search"
+          placeholder="Search by name or email"
+          (keyup.enter)="applySearch()"
+        />
+        <p-button label="Search" (onClick)="applySearch()" />
+      </div>
+    </ng-template>
+    <ng-template #end>
+      @if (canWrite()) {
+        <p-button label="Add guest" (onClick)="goNew()">
+          <ng-icon name="lucidePlus" size="1rem" />
+        </p-button>
+      }
+    </ng-template>
+  </p-toolbar>
+
+  @if (!loading() && guests().length === 0) {
+    <app-empty-state
+      title="No guests yet"
+      description="Create a guest or adjust your search filters."
+    />
+  } @else {
+    <p-table
+      [value]="guests()"
+      [loading]="loading()"
+      [tableStyle]="{ 'min-width': '48rem' }"
+      styleClass="p-datatable-sm"
+      [stripedRows]="true"
+    >
+      <ng-template #header>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Nationality</th>
+          <th style="width: 10rem">Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-guest>
+        <tr>
+          <td>{{ guest.firstName }} {{ guest.lastName }}</td>
+          <td>{{ guest.email ?? '—' }}</td>
+          <td>{{ guest.phone ?? '—' }}</td>
+          <td>{{ guest.nationality ?? '—' }}</td>
+          <td>
+            <p-button label="View" [text]="true" size="small" (onClick)="goView(guest.id)" />
+            @if (canWrite()) {
+              <p-button label="Edit" [text]="true" size="small" (onClick)="goEdit(guest.id)" />
+            }
+            @if (canDelete()) {
+              <p-button
+                label="Delete"
+                [text]="true"
+                size="small"
+                severity="danger"
+                (onClick)="confirmDelete(guest)"
+              />
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</p-card>

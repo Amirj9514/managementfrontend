@@ -1,0 +1,115 @@
+<app-page-header
+  [title]="building()?.name ? 'Floors — ' + building()?.name : 'Floors'"
+  subtitle="Manage levels within this building. Sort order is handled automatically."
+>
+  <p-button label="Back to Branches" icon="pi pi-arrow-left" [outlined]="true" size="small" (onClick)="goBack()" />
+</app-page-header>
+
+<p-toolbar styleClass="floors-toolbar">
+  <ng-template #start>
+    <div style="display: flex; gap: 0.75rem; align-items: center">
+      <p-button type="button" label="New Floor" icon="pi pi-plus" (onClick)="openCreate()" />
+      <p-select
+        [options]="[
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive / Deleted', value: 'inactive' },
+          { label: 'All', value: 'all' }
+        ]"
+        [ngModel]="status()"
+        (ngModelChange)="onStatusChange($event)"
+        placeholder="Filter by status"
+        styleClass="w-12rem"
+      />
+    </div>
+  </ng-template>
+</p-toolbar>
+
+<p-card>
+  @if (loading()) {
+    <app-table-skeleton [columns]="4" [rows]="6" />
+  } @else if (floors().length === 0) {
+    <app-empty-state 
+      title="No floors found" 
+      description="It look like this building doesn't have any floors registered yet. Click the button below to add the first level." 
+      icon="lucideLayers"
+      actionLabel="Add First Floor"
+      (actionClick)="openCreate()"
+    />
+  } @else {
+    <p-table 
+      [value]="floors()" 
+      [loading]="false" 
+      styleClass="p-datatable-lg"
+    >
+      <ng-template #header>
+        <tr>
+          <th style="width: 4rem">#</th>
+          <th>Label</th>
+          <th>Status</th>
+          <th>Last Updated</th>
+          <th style="width: 4rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td><span class="font-mono text-surface-500">{{ row.sortOrder }}</span></td>
+          <td class="font-bold text-surface-900 text-lg">{{ row.label }}</td>
+          <td>
+            @if (row.deletedAt || row.status === 'inactive') {
+              <p-tag value="Inactive" severity="danger" [rounded]="true" />
+            } @else {
+              <p-tag value="Active" severity="success" [rounded]="true" />
+            }
+          </td>
+          <td>{{ row.updatedAt | date: 'medium' }}</td>
+          <td style="text-align: right">
+            <p-button
+              type="button"
+              [text]="true"
+              [rounded]="true"
+              (onClick)="prepareActions($event, row, rowMenu)"
+            >
+              <ng-icon name="lucideMoreVertical" size="1.25rem" />
+            </p-button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />
+  }
+</p-card>
+
+<p-drawer
+  [header]="createVisible() ? 'Add Floor' : 'Edit Floor'"
+  [visible]="createVisible() || editVisible()"
+  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(32rem, 100vw)' }"
+>
+  <form [formGroup]="floorForm" (ngSubmit)="createVisible() ? submitCreate() : submitEdit()">
+    <p-fluid>
+      <div class="field">
+        <label for="f-label">Floor Label</label>
+        <input pInputText id="f-label" formControlName="label" placeholder="e.g. Ground Floor, 1st Floor" autocomplete="off" />
+        <small class="text-surface-500 block mt-1">Provide a clear name that guests and staff will recognize.</small>
+      </div>
+
+      <div class="form-actions mt-6">
+        <p-button
+          type="button"
+          label="Cancel"
+          [outlined]="true"
+          (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)"
+        />
+        <p-button
+          type="submit"
+          [label]="createVisible() ? 'Add Floor' : 'Save Changes'"
+          [loading]="saving()"
+        />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<p-confirm-dialog />

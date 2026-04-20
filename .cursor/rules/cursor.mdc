@@ -12,11 +12,19 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Prefer type inference when the type is obvious
 - Avoid the `any` type; use `unknown` when type is uncertain
 
+## File structure and naming (Angular 16/17 style)
+
+- Use the `name.type.ts` pattern for filenames: the descriptive name, then a dot, then the Angular artifact type, then `.ts`.
+  - Examples: `user-list.component.ts`, `auth.service.ts`, `app.routes.ts`, `dashboard.component.ts`
+- Match related files with the same base name and correct suffix:
+  - Components: `feature.component.ts`, `feature.component.html`, `feature.component.scss`
+- Every component MUST use exactly three sibling files: **`.component.ts`**, **`.component.html`**, **`.component.scss`**. Reference them with `templateUrl` and `styleUrl` (or `styleUrls` if the project already uses it consistently).
+- Do **not** add `*.spec.ts` files for components (or elsewhere) unless the user explicitly asks for tests.
+
 ## Angular Best Practices
 
 - Always use standalone components over NgModules
 - Must NOT set `standalone: true` inside Angular decorators. It's the default.
-- Use signals for state management
 - Implement lazy loading for feature routes
 - Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
 - Use `NgOptimizedImage` for all static images.
@@ -26,19 +34,18 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 - Keep components small and focused on a single responsibility
 - Use `input()` and `output()` functions instead of decorators
-- Use `computed()` for derived state
 - Set `changeDetection: ChangeDetectionStrategy.OnPush` in `@Component` decorator
-- Prefer inline templates for small components
+- Use external templates and styles only (no inline `template` / `styles` for components)
 - Prefer Reactive forms instead of Template-driven ones
 - Do NOT use `ngClass`, use `class` bindings instead
 - Do NOT use `ngStyle`, use `style` bindings instead
 
 ## State Management
 
-- Use signals for local component state
-- Use `computed()` for derived state
-- Keep state transformations pure and predictable
-- Do NOT use `mutate` on signals, use `update` or `set` instead
+- Use **services** for state management: hold shared and feature state in injectable services (`providedIn: 'root'` or appropriate scope), not in ad-hoc component fields for cross-cutting data
+- Expose state from services with **Observables** (e.g. `BehaviorSubject`, `Subject`, streams combined with RxJS operators) or clear imperative APIs; components consume state via `inject()` and the **async pipe** where possible
+- Keep state updates centralized in the service (single place for mutations/side effects)
+- Prefer immutable or predictable update patterns so OnPush components stay correct
 
 ## Templates
 

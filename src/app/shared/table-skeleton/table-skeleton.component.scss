@@ -1,0 +1,12 @@
+:host {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+::ng-deep {
+  .p-datatable-header,
+  .p-datatable-footer {
+    display: none;
+  }
+}

@@ -1,0 +1,8 @@
+@let u = user$ | async;
+<app-page-header title="Dashboard" subtitle="Overview and quick access to your property operations." />
+@if (u; as user) {
+  <p-card header="Signed in">
+    <p class="dash__greeting">Hello, {{ user.name }} ({{ user.role.replaceAll('_', ' ') }})</p>
+    <p class="dash__hint">Use the sidebar to open guests, stays, property, and admin tools.</p>
+  </p-card>
+}

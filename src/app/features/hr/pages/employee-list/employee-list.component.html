@@ -1,0 +1,23 @@
+<app-page-header title="Employees" subtitle="HR — employees (API: /employees)." />
+<p-card>
+  @if (!loading() && rows().length === 0) {
+    <app-empty-state title="No employees" description="No employee records returned." />
+  } @else {
+    <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '36rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ row.email ?? '—' }}</td>
+          <td>{{ row.role ?? '—' }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+</p-card>
