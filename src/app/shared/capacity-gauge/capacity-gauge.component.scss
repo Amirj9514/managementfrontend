@@ -1,0 +1,23 @@
+.capacity-gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  &__label {
+    font-weight: 600;
+    color: var(--p-text-color);
+  }
+
+  &__figures {
+    color: var(--p-text-muted-color);
+  }
+}

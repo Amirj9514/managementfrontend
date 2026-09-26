@@ -1,0 +1,630 @@
+.wizard-steps {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: var(--app-surface-elevated);
+  border: 1px solid var(--app-border-subtle);
+  color: var(--app-text-muted);
+  white-space: nowrap;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--app-surface-sidebar);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  &--active {
+    border-color: var(--app-accent);
+    color: var(--app-text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 12%, transparent);
+
+    .wizard-step__dot {
+      background: var(--app-accent);
+      color: #fff;
+    }
+  }
+
+  &--done {
+    color: var(--app-text-primary);
+
+    .wizard-step__dot {
+      background: var(--p-green-500);
+      color: #fff;
+    }
+  }
+}
+
+.wizard-card {
+  border-radius: var(--app-radius-card);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/**
+ * Force label-above-control stacking for every field, regardless of which PrimeNG
+ * component sits inside it. The app's global .field class (from PrimeFlex) only sets
+ * `label { display: inline-block }` — components that don't separately claim
+ * `width: 100%` (p-select, p-selectbutton) then sit on the same line as a short label
+ * instead of wrapping, while input/p-datepicker/p-inputnumber happen to wrap anyway.
+ * flex-column blockifies every child unconditionally, so this can't happen here.
+ */
+:host ::ng-deep .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0;
+
+  > label {
+    display: block;
+    margin-bottom: 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--p-text-color);
+  }
+
+  > input,
+  > textarea,
+  > p-select,
+  > p-multiselect,
+  > p-datepicker,
+  > p-inputnumber,
+  > p-autocomplete,
+  > p-password {
+    width: 100%;
+  }
+}
+
+.step1-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wizard-section {
+  min-width: 0;
+  padding: 1.25rem;
+  border-radius: var(--app-radius-card);
+  background: var(--app-surface-page);
+  border: 1px solid var(--app-border-subtle);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.1rem;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex-shrink: 0;
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    color: var(--app-accent);
+    font-size: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--app-text-primary);
+  }
+
+  &__subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--app-text-muted);
+  }
+
+  &--notes {
+    margin-top: 1.75rem;
+  }
+}
+
+.walkin-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.6rem;
+  background: var(--app-surface-elevated);
+  border: 1px solid var(--app-border-subtle);
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--app-text-primary);
+      cursor: pointer;
+    }
+
+    small {
+      font-size: 0.78rem;
+      color: var(--app-text-muted);
+    }
+  }
+
+  &--disabled {
+    opacity: 0.7;
+
+    label {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.step1-hint {
+  display: block;
+  margin-top: 1rem;
+  color: var(--p-red-500);
+  font-size: 0.8rem;
+}
+
+.guest-detail-card {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.5rem;
+  /* Explicit hex, not theme vars: --p-green-700/900 resolve too close to the
+     background in this theme, which is what made the text hard to read. */
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  &__label {
+    color: #065f46;
+    font-weight: 600;
+  }
+
+  &__value {
+    color: #064e3b;
+    font-weight: 700;
+    text-align: right;
+  }
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 16rem));
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: var(--app-radius-card);
+  background: var(--app-surface-page);
+  border: 1px solid var(--app-border-subtle);
+}
+
+.status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  color: var(--app-text-muted);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--success {
+      background: var(--p-green-500);
+    }
+
+    &--info {
+      background: var(--p-blue-500);
+    }
+
+    &--warn {
+      background: #f59e0b;
+    }
+
+    &--danger {
+      background: var(--p-red-500);
+    }
+
+    &--capacity {
+      background: #f59e0b;
+      box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 25%, transparent);
+    }
+  }
+}
+
+.availability-summary {
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+
+  strong {
+    color: var(--p-green-600);
+    font-size: 0.95rem;
+  }
+}
+
+.unit-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+  align-items: stretch;
+}
+
+.unit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 11.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid var(--app-border-subtle);
+  border-left: 4px solid var(--app-border-subtle);
+  background: var(--app-surface-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &--selected {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 25%, transparent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Each real unit status gets its own left-border + tinted background so staff can scan a
+     whole grid of cards at a glance — muted via explicit, still-legible colors on each
+     child (not `opacity`, which fades text into low-contrast mush on a light background). */
+  &--status-available {
+    border-left-color: var(--p-green-500);
+  }
+
+  &--status-occupied {
+    border-left-color: var(--p-blue-500);
+    background: color-mix(in srgb, var(--p-blue-500) 5%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--status-cleaning {
+    border-left-color: #f59e0b;
+    background: color-mix(in srgb, #f59e0b 6%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--status-maintenance {
+    border-left-color: var(--p-red-500);
+    background: color-mix(in srgb, var(--p-red-500) 6%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--warning {
+    border-left-color: #f59e0b;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #f59e0b 45%, transparent);
+  }
+
+  &--skeleton {
+    min-height: 11.5rem;
+    cursor: default;
+    border-left-width: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--p-surface-100) 25%,
+      var(--p-surface-200) 37%,
+      var(--p-surface-100) 63%
+    );
+    background-size: 400% 100%;
+    animation: unit-card-shimmer 1.4s ease infinite;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &__code {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--app-text-primary);
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &--success {
+      background: var(--p-green-50);
+      color: var(--p-green-700);
+    }
+
+    &--info {
+      background: color-mix(in srgb, var(--p-blue-500) 12%, transparent);
+      color: var(--p-blue-700);
+    }
+
+    &--warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--danger {
+      background: var(--p-red-50);
+      color: var(--p-red-700);
+    }
+  }
+
+  &__type {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--app-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__location {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--app-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__detail {
+    font-size: 0.82rem;
+    color: var(--p-text-muted-color);
+  }
+
+  &__amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.15rem;
+  }
+
+  &__amenity {
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--app-surface-page);
+    border: 1px solid var(--app-border-subtle);
+    color: var(--app-text-muted);
+    white-space: nowrap;
+
+    &--more {
+      font-weight: 600;
+    }
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  &__reason {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #b91c1c;
+
+    &--warning {
+      color: #92400e;
+    }
+  }
+}
+
+@keyframes unit-card-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--p-content-border-color);
+}
+
+.confirmation {
+  text-align: center;
+  padding: 2rem 0;
+
+  &__icon {
+    font-size: 3rem;
+    color: var(--p-green-500);
+  }
+
+  &__number {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+}
+
+.booking-documents {
+  margin: 1.5rem auto 0;
+  max-width: 32rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid var(--app-border-subtle);
+  background: var(--app-surface-page);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--app-text-primary);
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--app-text-muted);
+    text-align: left;
+  }
+}
+
+.doc-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 15rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  background: var(--app-surface-elevated);
+  border: 1px solid var(--app-border-subtle);
+  font-size: 0.78rem;
+
+  &__icon {
+    color: var(--app-accent);
+    flex-shrink: 0;
+  }
+
+  &__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+  }
+
+  &__size {
+    color: var(--app-text-muted);
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--app-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:hover {
+      background: var(--app-surface-sidebar);
+      color: var(--app-text-primary);
+    }
+
+    &--remove:hover {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .doc-chip__action--remove:hover {
+    background: color-mix(in srgb, #ef4444 25%, transparent);
+    color: #fca5a5;
+  }
+}

@@ -1,0 +1,46 @@
+.hall-board {
+  display: grid;
+  grid-template-columns: 18rem 1fr;
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hall-board__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hall-card {
+  cursor: pointer;
+  border-radius: 0.75rem;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &--active {
+    border: 1px solid var(--p-primary-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color) 20%, transparent);
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+
+  &__code {
+    font-weight: 700;
+  }
+}
+
+.hall-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}

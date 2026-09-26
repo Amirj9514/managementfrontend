@@ -10,6 +10,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { NAV_GROUPS } from '../../core/config/nav-items';
 import type { NavItem } from '../../core/config/nav-items';
 import type { AuthUser } from '../../core/models/user.model';
+import { BookingDetailDrawerComponent } from '../../shared/booking-detail-drawer/booking-detail-drawer.component';
+import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.component';
 
 @Component({
   selector: 'app-shell',
@@ -22,6 +24,8 @@ import type { AuthUser } from '../../core/models/user.model';
     Button,
     Drawer,
     Menu,
+    BookingDetailDrawerComponent,
+    BreadcrumbComponent,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',

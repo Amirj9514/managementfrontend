@@ -35,6 +35,7 @@ import { BuildingsApiService } from '../../../property/services/buildings-api.se
 import { Router } from '@angular/router';
 import { Ripple } from 'primeng/ripple';
 import { BuildingListRow, buildingRowId } from '../../../../core/models/building-admin.model';
+import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
 
 @Component({
@@ -61,6 +62,7 @@ import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-
     Ripple,
     Select,
     TableSkeletonComponent,
+    FieldErrorComponent,
   ],
   templateUrl: './branch-list.component.html',
   styleUrl: './branch-list.component.scss',

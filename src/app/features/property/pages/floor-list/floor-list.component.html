@@ -92,6 +92,7 @@
       <div class="field">
         <label for="f-label">Floor Label</label>
         <input pInputText id="f-label" formControlName="label" placeholder="e.g. Ground Floor, 1st Floor" autocomplete="off" />
+        <app-field-error [control]="floorForm.controls.label" label="Floor label" />
         <small class="text-surface-500 block mt-1">Provide a clear name that guests and staff will recognize.</small>
       </div>
 

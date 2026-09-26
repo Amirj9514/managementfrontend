@@ -1,0 +1,171 @@
+<app-page-header title="Halls" subtitle="Shared accommodation — track live capacity and manage group check-in/check-out." />
+
+<p-toolbar styleClass="mb-4 flex-wrap gap-3">
+  <ng-template #start>
+    <div class="flex flex-wrap align-items-center gap-2">
+      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+        (ngModelChange)="onBranchChange($event)" placeholder="Select branch" [showClear]="true" styleClass="w-14rem" />
+      <p-select [options]="buildings()" optionLabel="name" optionValue="_id" [ngModel]="buildingId()"
+        (ngModelChange)="onBuildingChange($event)" placeholder="Building" [showClear]="true"
+        [disabled]="!branchId()" styleClass="w-12rem" />
+      <p-select [options]="floors()" optionLabel="label" optionValue="_id" [ngModel]="floorId()"
+        (ngModelChange)="onFloorChange($event)" placeholder="Floor" [showClear]="true"
+        [disabled]="!buildingId()" styleClass="w-12rem" />
+    </div>
+  </ng-template>
+  <ng-template #end>
+    <p-button label="New hall" icon="pi pi-plus" [disabled]="!canCreate()" (onClick)="openCreate()" />
+  </ng-template>
+</p-toolbar>
+
+@if (!branchId()) {
+  <app-empty-state title="Select a branch to get started" description="Choose a branch above to see its halls." icon="lucideBuilding2" />
+} @else if (!loading() && halls().length === 0) {
+  <app-empty-state title="No halls found" description="Add a public hall / dormitory to this floor." actionLabel="New hall"
+    (actionClick)="openCreate()" />
+} @else {
+  <div class="hall-board">
+    <div class="hall-board__list">
+      @for (hall of halls(); track hall._id) {
+        <p-card styleClass="hall-card" [class.hall-card--active]="hall._id === selectedHallId()" (click)="selectHall(hall)">
+          <div class="hall-card__header">
+            <span class="hall-card__code">{{ hall.code }}</span>
+            <app-status-badge [status]="hall.status" />
+          </div>
+          <app-capacity-gauge [capacity]="hall.occupancy?.maxCapacity ?? hall.maxCapacity" [occupied]="hall.occupancy?.occupied ?? 0" />
+        </p-card>
+      }
+    </div>
+
+    <div class="hall-board__detail">
+      @if (selectedHall(); as hall) {
+        <p-card>
+          <div class="hall-detail__header">
+            <div>
+              <h3 class="m-0">{{ hall.code }}</h3>
+              <p class="text-sm text-color-secondary m-0">{{ amenityNames(hall.amenityIds) }}</p>
+            </div>
+            <div class="flex gap-2">
+              <p-button label="Group check-in" icon="pi pi-users" (onClick)="openGroupCheckIn()" />
+              <p-button icon="pi pi-pencil" [outlined]="true" (onClick)="openEdit(hall)" />
+              <p-button icon="pi pi-trash" severity="danger" [outlined]="true" (onClick)="remove(hall)" />
+            </div>
+          </div>
+
+          <app-capacity-gauge label="Live occupancy" [capacity]="hall.occupancy?.maxCapacity ?? hall.maxCapacity"
+            [occupied]="hall.occupancy?.occupied ?? 0" />
+
+          <h4 class="mt-4 mb-2">Current parties</h4>
+          @if (!loadingParties() && parties().current.length === 0) {
+            <p class="text-color-secondary">No one currently checked in.</p>
+          } @else {
+            <p-table [value]="parties().current" [loading]="loadingParties()">
+              <ng-template #header>
+                <tr>
+                  <th>Party size</th>
+                  <th>Checked in</th>
+                  <th>Expected checkout</th>
+                  <th style="width: 8rem"></th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-line>
+                <tr>
+                  <td>{{ line.occupancy.partySize }}</td>
+                  <td>{{ line.actualCheckIn | date: 'short' }}</td>
+                  <td>{{ line.expectedCheckOut | date: 'short' }}</td>
+                  <td><p-button label="Check out" size="small" [outlined]="true" (onClick)="checkOutParty(line)" /></td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+
+          <h4 class="mt-4 mb-2">Upcoming reservations</h4>
+          @if (parties().upcoming.length === 0) {
+            <p class="text-color-secondary">No upcoming reservations.</p>
+          } @else {
+            <p-table [value]="parties().upcoming">
+              <ng-template #header>
+                <tr>
+                  <th>Party size</th>
+                  <th>Arrival</th>
+                  <th>Departure</th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-line>
+                <tr>
+                  <td>{{ line.occupancy.partySize }}</td>
+                  <td>{{ line.checkInDate | date: 'short' }}</td>
+                  <td>{{ line.expectedCheckOut | date: 'short' }}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </p-card>
+      }
+    </div>
+  </div>
+}
+
+<p-dialog [header]="isEdit() ? 'Edit hall' : 'New hall'" [(visible)]="formVisible" [modal]="true"
+  [style]="{ width: 'min(32rem, 100vw)' }">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <p-fluid>
+      <div class="field mb-3">
+        <label for="h-code">Hall name / code</label>
+        <input pInputText id="h-code" formControlName="code" placeholder="e.g. Dormitory A" autocomplete="off" />
+        <app-field-error [control]="form.controls.code" label="Hall name" />
+      </div>
+      <div class="field mb-3">
+        <label for="h-capacity">Max capacity</label>
+        <p-inputnumber id="h-capacity" formControlName="maxCapacity" [min]="1" />
+        <app-field-error [control]="form.controls.maxCapacity" label="Max capacity" />
+      </div>
+      <div class="field mb-3">
+        <label for="h-amenities">Amenities</label>
+        <p-multiselect id="h-amenities" [options]="amenities()" optionLabel="name" optionValue="_id"
+          formControlName="amenityIds" placeholder="Select amenities" [filter]="true" appendTo="body" />
+      </div>
+      <div class="field mb-3">
+        <label for="h-status">Status</label>
+        <p-select id="h-status" [options]="statusOptions" optionLabel="label" optionValue="value" formControlName="status"
+          appendTo="body" />
+      </div>
+      <div class="flex justify-content-end gap-2">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="formVisible.set(false)" />
+        <p-button type="submit" [label]="isEdit() ? 'Save changes' : 'Create hall'" [loading]="saving()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-dialog>
+
+<p-dialog header="Group check-in" [(visible)]="checkInVisible" [modal]="true" [style]="{ width: 'min(32rem, 100vw)' }">
+  <div [formGroup]="checkInForm">
+    <p-fluid>
+      <div class="field mb-3">
+        <label>Primary guest</label>
+        <app-guest-picker [(selected)]="checkInGuest" />
+      </div>
+      <div class="field mb-3">
+        <label for="ci-party">Party size</label>
+        <p-inputnumber id="ci-party" formControlName="partySize" [min]="1" />
+        <app-field-error [control]="checkInForm.controls.partySize" label="Party size" />
+      </div>
+      <div class="field mb-3">
+        <label for="ci-checkout">Expected checkout</label>
+        <p-datepicker id="ci-checkout" formControlName="expectedCheckOut" [showIcon]="true" dateFormat="yy-mm-dd"
+          appendTo="body" />
+        <app-field-error [control]="checkInForm.controls.expectedCheckOut" label="Expected checkout" />
+      </div>
+      <div class="field mb-3">
+        <label for="ci-notes">Notes (optional)</label>
+        <input pInputText id="ci-notes" formControlName="notes" autocomplete="off" />
+      </div>
+      <div class="flex justify-content-end gap-2">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="checkInVisible.set(false)" />
+        <p-button type="button" label="Check in" [loading]="checkInSaving()" (onClick)="submitGroupCheckIn()" />
+      </div>
+    </p-fluid>
+  </div>
+</p-dialog>
+
+<p-confirm-dialog />

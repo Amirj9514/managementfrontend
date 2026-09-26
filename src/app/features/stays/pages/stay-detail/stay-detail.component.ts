@@ -41,8 +41,4 @@ export class StayDetailComponent {
   back(): void {
     void this.router.navigate(['/stays']);
   }
-
-  folio(id: string): void {
-    void this.router.navigate(['/stays', id, 'folio']);
-  }
 }

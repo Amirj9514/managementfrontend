@@ -45,10 +45,3 @@ export interface AuditLogEntry {
   userId?: string;
   createdAt: string;
 }
-
-export interface RatePlan {
-  id: string;
-  name: string;
-  currency?: string;
-  baseRate?: number;
-}

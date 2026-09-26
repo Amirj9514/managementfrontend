@@ -21,7 +21,8 @@ body {
   grid-template-areas:
     'sidebar topbar'
     'sidebar main';
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   transition: grid-template-columns 0.2s ease;
 
   &.app-shell--collapsed {
@@ -43,8 +44,12 @@ body {
 
 .app-shell__sidebar {
   grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: var(--app-surface-sidebar);
   border-right: 1px solid var(--app-border-subtle);
+  overflow: hidden;
 
   @media (max-width: 1023px) {
     display: none;
@@ -59,14 +64,13 @@ body {
   padding: 0 var(--app-space-2);
   background: var(--app-surface-elevated);
   border-bottom: 1px solid var(--app-border-subtle);
-  position: sticky;
-  top: 0;
   z-index: 10;
 }
 
 .app-shell__main {
   grid-area: main;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
   padding: var(--app-space-2) var(--app-space-3);
 }
 

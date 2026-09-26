@@ -35,8 +35,4 @@ export class StayListComponent {
   open(id: string): void {
     void this.router.navigate(['/stays', id]);
   }
-
-  openFolio(id: string): void {
-    void this.router.navigate(['/stays', id, 'folio']);
-  }
 }

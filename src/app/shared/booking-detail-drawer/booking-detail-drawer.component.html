@@ -1,0 +1,13 @@
+<p-drawer
+  [visible]="drawerSvc.bookingId() !== null"
+  (visibleChange)="onVisibleChange($event)"
+  position="right"
+  [style]="{ width: 'min(48rem, 100vw)' }"
+>
+  <ng-template #header>
+    <span class="font-semibold">Booking details</span>
+  </ng-template>
+  @if (drawerSvc.bookingId(); as id) {
+    <app-booking-detail-body [bookingId]="id" />
+  }
+</p-drawer>

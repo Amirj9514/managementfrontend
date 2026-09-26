@@ -6,10 +6,11 @@ import { Button } from 'primeng/button';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { AuthService } from '../../../core/services/auth.service';
+import { FieldErrorComponent } from '../../../shared/field-error/field-error.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText],
+  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText, FieldErrorComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

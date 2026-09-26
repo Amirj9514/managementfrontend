@@ -1,0 +1,223 @@
+<app-page-header title="Rooms" subtitle="Manage private rooms across your branches — capacity, amenities and status." />
+
+<p-toolbar styleClass="mb-4 flex-wrap gap-3">
+  <ng-template #start>
+    <div class="flex flex-wrap align-items-center gap-2">
+      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+        (ngModelChange)="onBranchChange($event)" placeholder="Select branch" [showClear]="true" styleClass="w-14rem" />
+      <p-select [options]="buildings()" optionLabel="name" optionValue="_id" [ngModel]="buildingId()"
+        (ngModelChange)="onBuildingChange($event)" placeholder="Building" [showClear]="true"
+        [disabled]="!branchId()" styleClass="w-12rem" />
+      <p-select [options]="floors()" optionLabel="label" optionValue="_id" [ngModel]="floorId()"
+        (ngModelChange)="onFloorChange($event)" placeholder="Floor" [showClear]="true"
+        [disabled]="!buildingId()" styleClass="w-12rem" />
+      <p-select [options]="statusOptions" optionLabel="label" optionValue="value" [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusFilterChange($event)" placeholder="Any status" [showClear]="true" styleClass="w-12rem" />
+    </div>
+  </ng-template>
+  <ng-template #end>
+    <div class="flex align-items-center gap-2">
+      <p-selectbutton [options]="viewOptions" optionLabel="label" optionValue="value" [ngModel]="view()"
+        (ngModelChange)="view.set($event)">
+        <ng-template let-item #item>
+          <i [class]="item.icon"></i>
+        </ng-template>
+      </p-selectbutton>
+      <p-button label="Room types" icon="pi pi-tags" [outlined]="true" [disabled]="!branchId()" (onClick)="openTypeMgmt()" />
+      <p-button label="New room" icon="pi pi-plus" [disabled]="!canCreate()" (onClick)="openCreate()" />
+    </div>
+  </ng-template>
+</p-toolbar>
+
+@if (!branchId()) {
+  <app-empty-state title="Select a branch to get started" description="Choose a branch above to see its rooms." icon="lucideBuilding2" />
+} @else if (!loading() && rows().length === 0) {
+  <app-empty-state title="No rooms found" description="Try a different floor/status filter, or add a new room."
+    actionLabel="New room" (actionClick)="openCreate()" />
+} @else if (view() === 'grid') {
+  <div class="room-grid">
+    @for (row of rows(); track row._id) {
+      <p-card styleClass="room-card">
+        <div class="room-card__header">
+          <span class="room-card__code">{{ row.code }}</span>
+          <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+        </div>
+        <div class="room-card__meta">
+          <span>{{ roomTypeName(row.roomTypeId) }}</span>
+          <span>{{ row.capacity.total }} guests max ({{ row.capacity.adults }}A / {{ row.capacity.children }}C)</span>
+          <span class="room-card__amenities">{{ amenityNames(row.amenityIds) }}</span>
+        </div>
+        <div class="room-card__actions">
+          <p-select [options]="statusOptions" optionLabel="label" optionValue="value" [ngModel]="row.status"
+            (ngModelChange)="quickSetStatus(row, $event)" styleClass="w-full" />
+          <div class="flex gap-2 mt-2">
+            <p-button label="Edit" icon="pi pi-pencil" [outlined]="true" size="small" styleClass="flex-1" (onClick)="openEdit(row)" />
+            <p-button icon="pi pi-trash" severity="danger" [outlined]="true" size="small" (onClick)="remove(row)" />
+          </div>
+        </div>
+      </p-card>
+    }
+  </div>
+} @else {
+  <p-card>
+    <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
+      <ng-template #header>
+        <tr>
+          <th>Code</th>
+          <th>Room type</th>
+          <th>Capacity</th>
+          <th>Status</th>
+          <th style="width: 8rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td class="font-medium">{{ row.code }}</td>
+          <td>{{ roomTypeName(row.roomTypeId) }}</td>
+          <td>{{ row.capacity.total }} ({{ row.capacity.adults }}A / {{ row.capacity.children }}C)</td>
+          <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
+          <td style="text-align: right">
+            <p-button icon="pi pi-pencil" [text]="true" [rounded]="true" (onClick)="openEdit(row)" />
+            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" (onClick)="remove(row)" />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+}
+
+<p-dialog header="Room details" [(visible)]="viewVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
+  @if (viewTarget(); as row) {
+    <div class="room-view">
+      <div class="room-view__header">
+        <span class="room-view__code">{{ row.code }}</span>
+        <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+      </div>
+      <div class="room-view__row">
+        <span class="room-view__label">Room type</span>
+        <span class="room-view__value">{{ roomTypeName(row.roomTypeId) }}</span>
+      </div>
+      <div class="room-view__row">
+        <span class="room-view__label">Location</span>
+        <span class="room-view__value">{{ buildingName(row.buildingId) }} · {{ floorLabel(row.floorId) }}</span>
+      </div>
+      <div class="room-view__row">
+        <span class="room-view__label">Capacity</span>
+        <span class="room-view__value">{{ row.capacity.total }} guests max ({{ row.capacity.adults }} adults / {{ row.capacity.children }} children)</span>
+      </div>
+      <div class="room-view__row">
+        <span class="room-view__label">Amenities</span>
+        <span class="room-view__value">{{ amenityNames(row.amenityIds) }}</span>
+      </div>
+    </div>
+  }
+  <div class="flex justify-content-end gap-2 mt-3">
+    <p-button label="Close" [outlined]="true" (onClick)="viewVisible.set(false)" />
+    <p-button label="Edit room" icon="pi pi-pencil" (onClick)="editFromView()" />
+  </div>
+</p-dialog>
+
+<p-dialog [header]="isEdit() ? 'Edit room' : 'New room'" [(visible)]="formVisible" [modal]="true"
+  [style]="{ width: 'min(34rem, 100vw)' }">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <p-fluid>
+      <div class="field mb-3">
+        <label for="r-type">Room type</label>
+        <p-select id="r-type" [options]="roomTypes()" optionLabel="name" optionValue="_id" formControlName="roomTypeId"
+          placeholder="Select room type" appendTo="body" />
+        <app-field-error [control]="form.controls.roomTypeId" label="Room type" />
+      </div>
+      <div class="field mb-3">
+        <label for="r-code">Room number</label>
+        <input pInputText id="r-code" formControlName="code" placeholder="e.g. 101" autocomplete="off" />
+        <app-field-error [control]="form.controls.code" label="Room number" />
+      </div>
+      <div class="grid-3 mb-3">
+        <div class="field">
+          <label for="r-adults">Adults</label>
+          <p-inputnumber id="r-adults" formControlName="capacityAdults" [min]="1" />
+          <app-field-error [control]="form.controls.capacityAdults" label="Adults" />
+        </div>
+        <div class="field">
+          <label for="r-children">Children</label>
+          <p-inputnumber id="r-children" formControlName="capacityChildren" [min]="0" />
+          <app-field-error [control]="form.controls.capacityChildren" label="Children" />
+        </div>
+        <div class="field">
+          <label for="r-total">Total capacity</label>
+          <p-inputnumber id="r-total" formControlName="capacityTotal" [min]="1" />
+          <app-field-error [control]="form.controls.capacityTotal" label="Total capacity" />
+        </div>
+      </div>
+      <div class="field mb-3">
+        <label for="r-amenities">Amenities</label>
+        <p-multiselect id="r-amenities" [options]="amenities()" optionLabel="name" optionValue="_id"
+          formControlName="amenityIds" placeholder="Select amenities" [filter]="true" appendTo="body" />
+      </div>
+      <div class="field mb-3">
+        <label for="r-status">Status</label>
+        <p-select id="r-status" [options]="statusOptions" optionLabel="label" optionValue="value" formControlName="status"
+          appendTo="body" />
+      </div>
+      <div class="flex justify-content-end gap-2">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="formVisible.set(false)" />
+        <p-button type="submit" [label]="isEdit() ? 'Save changes' : 'Create room'" [loading]="saving()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-dialog>
+
+<p-dialog header="Room types" [(visible)]="typeMgmtVisible" [modal]="true" [style]="{ width: 'min(36rem, 100vw)' }">
+  <p-table [value]="roomTypes()" dataKey="_id" styleClass="mb-4">
+    <ng-template #header>
+      <tr>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Max occupancy</th>
+        <th style="width: 6rem"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-t>
+      <tr>
+        <td>{{ t.name }}</td>
+        <td>{{ t.category }}</td>
+        <td>{{ t.maxOccupancy }}</td>
+        <td>
+          <p-button [label]="t.deletedAt ? 'Enable' : 'Disable'" size="small" [text]="true" (onClick)="toggleTypeEnabled(t)" />
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <form [formGroup]="typeForm" (ngSubmit)="submitType()">
+    <p-fluid>
+      <div class="field mb-2">
+        <label for="t-name">New room type name</label>
+        <input pInputText id="t-name" formControlName="name" placeholder="e.g. Deluxe Double" autocomplete="off" />
+        <app-field-error [control]="typeForm.controls.name" label="Room type name" />
+      </div>
+      <div class="grid-3 mb-2">
+        <div class="field">
+          <label for="t-category">Category</label>
+          <p-select id="t-category" [options]="categoryOptions" optionLabel="label" optionValue="value" formControlName="category"
+            appendTo="body" />
+        </div>
+        <div class="field">
+          <label for="t-max-adults">Max adults</label>
+          <p-inputnumber id="t-max-adults" formControlName="maxAdults" [min]="1" />
+          <app-field-error [control]="typeForm.controls.maxAdults" label="Max adults" />
+        </div>
+        <div class="field">
+          <label for="t-max-occupancy">Max occupancy</label>
+          <p-inputnumber id="t-max-occupancy" formControlName="maxOccupancy" [min]="1" />
+          <app-field-error [control]="typeForm.controls.maxOccupancy" label="Max occupancy" />
+        </div>
+      </div>
+      <div class="flex justify-content-end">
+        <p-button type="submit" label="Add room type" icon="pi pi-plus" [loading]="savingType()" size="small" />
+      </div>
+    </p-fluid>
+  </form>
+</p-dialog>
+
+<p-confirm-dialog />

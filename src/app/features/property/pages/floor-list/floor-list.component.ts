@@ -33,6 +33,7 @@ import {
 } from '../../../../core/models/floor-admin.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
+import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
 import { BuildingsApiService } from '../../services/buildings-api.service';
@@ -62,6 +63,7 @@ import { FloorsApiService } from '../../services/floors-api.service';
     Ripple,
     Select,
     TableSkeletonComponent,
+    FieldErrorComponent,
   ],
   templateUrl: './floor-list.component.html',
   styleUrl: './floor-list.component.scss',

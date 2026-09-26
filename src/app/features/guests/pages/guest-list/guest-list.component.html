@@ -1,72 +1,175 @@
 <app-page-header title="Guests" subtitle="Search, create, and manage guest profiles." />
-<p-card>
-  <p-toolbar styleClass="guest-toolbar">
-    <ng-template #start>
-      <div class="guest-toolbar__search">
-        <input
-          pInputText
-          type="search"
-          [(ngModel)]="search"
-          placeholder="Search by name or email"
-          (keyup.enter)="applySearch()"
-        />
-        <p-button label="Search" (onClick)="applySearch()" />
-      </div>
-    </ng-template>
-    <ng-template #end>
-      @if (canWrite()) {
-        <p-button label="Add guest" (onClick)="goNew()">
-          <ng-icon name="lucidePlus" size="1rem" />
-        </p-button>
-      }
-    </ng-template>
-  </p-toolbar>
 
-  @if (!loading() && guests().length === 0) {
-    <app-empty-state
-      title="No guests yet"
-      description="Create a guest or adjust your search filters."
-    />
+<p-toolbar styleClass="guest-toolbar mb-4">
+  <ng-template #start>
+    <div class="flex flex-wrap align-items-center gap-2">
+      <input
+        pInputText
+        type="search"
+        class="guest-toolbar__search-input"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        placeholder="Search by name, email, phone or CNIC"
+        (keyup.enter)="applySearch()"
+      />
+      <p-button label="Search" [outlined]="true" (onClick)="applySearch()" />
+      <p-select [options]="statusOptions" optionLabel="label" optionValue="value" [ngModel]="status()"
+        (ngModelChange)="onStatusChange($event)" styleClass="w-14rem" />
+    </div>
+  </ng-template>
+  <ng-template #end>
+    @if (canWrite()) {
+      <p-button label="Add guest" icon="pi pi-plus" (onClick)="openCreate()" />
+    }
+  </ng-template>
+</p-toolbar>
+
+<p-card>
+  @if (!loading() && rows().length === 0) {
+    <app-empty-state title="No guests yet" description="Create a guest or adjust your search filters."
+      [actionLabel]="canWrite() ? 'Add guest' : undefined" (actionClick)="openCreate()" />
   } @else {
-    <p-table
-      [value]="guests()"
-      [loading]="loading()"
-      [tableStyle]="{ 'min-width': '48rem' }"
-      styleClass="p-datatable-sm"
-      [stripedRows]="true"
-    >
+    <p-table [value]="rows()" [loading]="loading()" dataKey="_id" [tableStyle]="{ 'min-width': '48rem' }"
+      styleClass="p-datatable-sm" [stripedRows]="true">
       <ng-template #header>
         <tr>
-          <th>Name</th>
+          <th>Full name</th>
           <th>Email</th>
           <th>Phone</th>
-          <th>Nationality</th>
-          <th style="width: 10rem">Actions</th>
+          <th>CNIC / Passport</th>
+          <th>Bookings</th>
+          <th>Status</th>
+          <th style="width: 14rem">Actions</th>
         </tr>
       </ng-template>
       <ng-template #body let-guest>
         <tr>
-          <td>{{ guest.firstName }} {{ guest.lastName }}</td>
+          <td class="font-medium">
+            <a class="guest-name-link" [routerLink]="['/guests', guest._id]">{{ guest.fullName }}</a>
+          </td>
           <td>{{ guest.email ?? '—' }}</td>
           <td>{{ guest.phone ?? '—' }}</td>
-          <td>{{ guest.nationality ?? '—' }}</td>
+          <td>{{ guest.cnic ?? '—' }}</td>
+          <td>{{ guest.bookingCount ?? 0 }}</td>
           <td>
-            <p-button label="View" [text]="true" size="small" (onClick)="goView(guest.id)" />
-            @if (canWrite()) {
-              <p-button label="Edit" [text]="true" size="small" (onClick)="goEdit(guest.id)" />
+            @if (guest.deletedAt) {
+              <p-tag value="Inactive" severity="danger" [rounded]="true" />
+            } @else {
+              <p-tag value="Active" severity="success" [rounded]="true" />
             }
-            @if (canDelete()) {
-              <p-button
-                label="Delete"
-                [text]="true"
-                size="small"
-                severity="danger"
-                (onClick)="confirmDelete(guest)"
-              />
+          </td>
+          <td>
+            <p-button label="View" [text]="true" size="small" (onClick)="openView(guest)" />
+            @if (canWrite()) {
+              <p-button label="Edit" [text]="true" size="small" (onClick)="openEdit(guest)" />
+            }
+            @if (guest.deletedAt) {
+              @if (canWrite()) {
+                <p-button label="Restore" [text]="true" size="small" (onClick)="onRestore(guest)" />
+              }
+            } @else if (canDelete()) {
+              <p-button label="Deactivate" [text]="true" size="small" severity="danger" (onClick)="onDelete(guest)" />
             }
           </td>
         </tr>
       </ng-template>
     </p-table>
+
+    <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
   }
 </p-card>
+
+<!-- Create / Edit drawer -->
+<p-drawer [header]="editVisible() ? 'Edit guest' : 'New guest'" [visible]="createVisible() || editVisible()"
+  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)" position="right"
+  [style]="{ width: 'min(30rem, 100vw)' }">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <p-fluid>
+      <div class="field mb-3">
+        <label for="g-fullname">Full name</label>
+        <input pInputText id="g-fullname" formControlName="fullName" autocomplete="off" />
+        <app-field-error [control]="form.controls.fullName" label="Full name" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-email">Email</label>
+        <input pInputText id="g-email" type="email" formControlName="email" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-phone">Phone</label>
+        <input pInputText id="g-phone" formControlName="phone" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-cnic">CNIC / Passport</label>
+        <input pInputText id="g-cnic" formControlName="cnic" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-address">Address</label>
+        <input pInputText id="g-address" formControlName="address" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-dob">Date of birth</label>
+        <p-datepicker id="g-dob" formControlName="dateOfBirth" [showIcon]="true" dateFormat="yy-mm-dd" [maxDate]="today"
+          appendTo="body" />
+      </div>
+      <div class="field mb-3">
+        <label for="g-notes">Notes</label>
+        <textarea pTextarea id="g-notes" formControlName="notes" rows="3" style="width: 100%"></textarea>
+      </div>
+      <div class="form-actions">
+        <p-button type="button" label="Cancel" [outlined]="true"
+          (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
+        <p-button type="submit" [label]="editVisible() ? 'Save changes' : 'Create guest'" [loading]="saving()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>
+
+<!-- View drawer -->
+<p-drawer header="Guest profile" [(visible)]="viewVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
+  @if (viewTarget(); as g) {
+    <div class="view-grid">
+      <div>
+        <span class="detail-label">Full name</span>
+        <p>{{ g.fullName }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Email</span>
+        <p>{{ g.email ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Phone</span>
+        <p>{{ g.phone ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">CNIC / Passport</span>
+        <p>{{ g.cnic ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Address</span>
+        <p>{{ g.address ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Date of birth</span>
+        <p>{{ g.dateOfBirth ? (g.dateOfBirth | date: 'mediumDate') : '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Notes</span>
+        <p>{{ g.notes ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Guest since</span>
+        <p>{{ g.createdAt ? (g.createdAt | date: 'medium') : '—' }}</p>
+      </div>
+    </div>
+    <div class="form-actions">
+      <p-button label="Close" [outlined]="true" (onClick)="viewVisible.set(false)" />
+      @if (canWrite()) {
+        <p-button label="Edit" (onClick)="editFromView()" />
+      }
+    </div>
+  }
+</p-drawer>
+
+<p-confirm-dialog />

@@ -1,8 +1,58 @@
 @let u = user$ | async;
-<app-page-header title="Dashboard" subtitle="Overview and quick access to your property operations." />
+<app-page-header title="Dashboard" subtitle="Live overview of occupancy and arrivals." />
+
 @if (u; as user) {
-  <p-card header="Signed in">
-    <p class="dash__greeting">Hello, {{ user.name }} ({{ user.role.replaceAll('_', ' ') }})</p>
-    <p class="dash__hint">Use the sidebar to open guests, stays, property, and admin tools.</p>
-  </p-card>
+  <p class="dash__greeting mb-4">Hello, {{ user.name }} ({{ user.role.replaceAll('_', ' ') }})</p>
+}
+
+<div class="mb-4">
+  <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+    (ngModelChange)="onBranchChange($event)" placeholder="Select branch" styleClass="w-14rem" />
+</div>
+
+@if (branchId()) {
+  <div class="stat-grid mb-4">
+    <app-stat-card label="Occupancy today" [value]="occupancyPct() + '%'" icon="lucideBedDouble" />
+    <app-stat-card label="Today's check-ins" [value]="arrivals().length" icon="lucideLogIn" tone="success" />
+    <app-stat-card label="Today's check-outs" [value]="departures().length" icon="lucideLogOut" tone="warn" />
+    <app-stat-card label="Available rooms" [value]="availableRooms()" icon="lucideDoorOpen" />
+    <app-stat-card label="Available hall capacity" [value]="hallRemaining() + ' / ' + hallCapacity().total" icon="lucideUsers" />
+  </div>
+
+  <div class="dash-grid mb-4">
+    <p-card header="Occupancy trend (30 days)">
+      <div class="chart-wrap"><p-chart type="line" [data]="occupancyChartData()" [options]="chartOptions" /></div>
+    </p-card>
+
+    <div class="dash-grid__side">
+      <p-card header="Arrivals today">
+        @if (arrivals().length === 0) {
+          <p class="text-color-secondary">No arrivals today.</p>
+        } @else {
+          <p-table [value]="arrivals().slice(0, 6)">
+            <ng-template #body let-line>
+              <tr>
+                <td>{{ line.unitType === 'private_room' ? 'Room' : 'Hall' }}</td>
+                <td>{{ line.checkInDate | date: 'shortTime' }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </p-card>
+      <p-card header="Departures today">
+        @if (departures().length === 0) {
+          <p class="text-color-secondary">No departures today.</p>
+        } @else {
+          <p-table [value]="departures().slice(0, 6)">
+            <ng-template #body let-line>
+              <tr>
+                <td>{{ line.unitType === 'private_room' ? 'Room' : 'Hall' }}</td>
+                <td>{{ line.expectedCheckOut | date: 'shortTime' }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </p-card>
+    </div>
+  </div>
 }

@@ -146,6 +146,7 @@
         <div class="field">
           <label for="b-name">Name</label>
           <input pInputText id="b-name" formControlName="name" autocomplete="off" />
+          <app-field-error [control]="branchForm.controls.name" label="Name" />
         </div>
         @if (editVisible()) {
         <div class="field">
@@ -156,14 +157,17 @@
         <div class="field">
           <label for="b-city">City</label>
           <input pInputText id="b-city" formControlName="city" autocomplete="off" />
+          <app-field-error [control]="branchForm.controls.city" label="City" />
         </div>
         <div class="field">
           <label for="b-country">Country</label>
           <input pInputText id="b-country" formControlName="country" autocomplete="off" />
+          <app-field-error [control]="branchForm.controls.country" label="Country" />
         </div>
         <div class="field field--full disabledSections">
           <label for="b-timezone">Timezone</label>
           <input pInputText id="b-timezone" formControlName="timezone" autocomplete="off" />
+          <app-field-error [control]="branchForm.controls.timezone" label="Timezone" />
         </div>
       </div>
       <div class="form-actions">
@@ -192,6 +196,7 @@
         <div class="field">
           <label for="bu-name">Building Name</label>
           <input pInputText id="bu-name" formControlName="name" placeholder="e.g. Tower A" autocomplete="off" />
+          <app-field-error [control]="buildingForm.controls.name" label="Building name" />
         </div>
       </div>
       <div class="form-actions">

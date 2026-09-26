@@ -1,0 +1,102 @@
+<div class="guest-picker">
+  <div class="guest-picker__row">
+    <div class="guest-picker__input-wrap">
+      <p-autocomplete [ngModel]="selected()" (ngModelChange)="onModelChange($event)" [suggestions]="suggestions()"
+        (completeMethod)="search($event)" (onSelect)="onGuestSelect($event)" [optionLabel]="displayGuest"
+        placeholder="Search by name, email, phone, or CNIC/passport" styleClass="w-full" inputStyleClass="w-full"
+        [dropdown]="false" [showEmptyMessage]="true" emptyMessage="No matching guests" />
+      @if (searching()) {
+        <i class="pi pi-spin pi-spinner guest-picker__spinner" aria-hidden="true"></i>
+      }
+    </div>
+    <p-button label="New guest" icon="pi pi-user-plus" [text]="true" size="small" (onClick)="openNewGuest()" />
+  </div>
+
+  @if (noResults()) {
+    <div class="guest-picker__no-results">
+      <span>No guest matches &ldquo;{{ lastQuery() }}&rdquo;.</span>
+      <p-button label="Add as new guest" icon="pi pi-user-plus" size="small" (onClick)="openNewGuest(lastQuery())" />
+    </div>
+  }
+
+  @if (selected()) {
+    <div class="guest-glance">
+      <div class="guest-glance__section">
+        <div class="guest-glance__header">
+          <span class="guest-glance__title"><i class="pi pi-history"></i> Last booking</span>
+          <span class="guest-glance__count">{{ historyTotal() }} total</span>
+        </div>
+        @if (historyLoading()) {
+          <p class="guest-glance__empty">Loading…</p>
+        } @else if (lastBooking(); as b) {
+          <div class="guest-glance__item">
+            <span class="guest-glance__item-main">{{ b.bookingNumber }} · {{ b.bookingType === 'room' ? 'Room' : 'Hall' }}</span>
+            <span class="guest-glance__item-status">{{ b.status }}</span>
+          </div>
+        } @else {
+          <p class="guest-glance__empty">No previous bookings.</p>
+        }
+      </div>
+
+      <div class="guest-glance__section">
+        <div class="guest-glance__header">
+          <span class="guest-glance__title"><i class="pi pi-comment"></i> Last note</span>
+        </div>
+        @if (lastNote(); as n) {
+          <div class="guest-glance__item guest-glance__item--note">
+            <span class="guest-glance__note-text">{{ n.text }}</span>
+            <span class="guest-glance__note-meta">{{ n.authorName }} · {{ n.createdAt | date: 'short' }}</span>
+          </div>
+        } @else {
+          <p class="guest-glance__empty">No notes logged.</p>
+        }
+      </div>
+
+      <button type="button" class="guest-glance__profile-link" (click)="viewProfile()">
+        View all details <i class="pi pi-arrow-right"></i>
+      </button>
+    </div>
+  }
+</div>
+
+<p-drawer header="New guest" [(visible)]="newGuestVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
+  <form [formGroup]="newGuestForm" (ngSubmit)="submitNewGuest()">
+    <p-fluid>
+      <div class="field mb-3">
+        <label for="gp-fullname">Full name</label>
+        <input pInputText id="gp-fullname" formControlName="fullName" autocomplete="off" />
+        <app-field-error [control]="newGuestForm.controls.fullName" label="Full name" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-email">Email</label>
+        <input pInputText id="gp-email" type="email" formControlName="email" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-phone">Phone</label>
+        <input pInputText id="gp-phone" formControlName="phone" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-cnic">CNIC / Passport</label>
+        <input pInputText id="gp-cnic" formControlName="cnic" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-address">Address</label>
+        <input pInputText id="gp-address" formControlName="address" autocomplete="off" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-dob">Date of birth</label>
+        <p-datepicker id="gp-dob" formControlName="dateOfBirth" [showIcon]="true" dateFormat="yy-mm-dd" [maxDate]="today"
+          appendTo="body" />
+      </div>
+      <div class="field mb-3">
+        <label for="gp-notes">Notes</label>
+        <textarea pTextarea id="gp-notes" formControlName="notes" rows="3" style="width: 100%"></textarea>
+      </div>
+
+      <div class="flex justify-content-end gap-2">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="newGuestVisible.set(false)" />
+        <p-button type="submit" label="Create guest" [loading]="saving()" />
+      </div>
+    </p-fluid>
+  </form>
+</p-drawer>

@@ -34,6 +34,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
+        data: { breadcrumb: 'Dashboard' },
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
@@ -51,6 +52,29 @@ export const routes: Routes = [
           import('./features/property/property.routes').then((m) => m.propertyRoutes),
       },
       {
+        path: 'rooms',
+        loadChildren: () => import('./features/rooms/rooms.routes').then((m) => m.roomsRoutes),
+      },
+      {
+        path: 'halls',
+        loadChildren: () => import('./features/halls/halls.routes').then((m) => m.hallsRoutes),
+      },
+      {
+        path: 'bookings',
+        loadChildren: () =>
+          import('./features/bookings/bookings.routes').then((m) => m.bookingsRoutes),
+      },
+      {
+        path: 'amenities',
+        loadChildren: () =>
+          import('./features/amenities/amenities.routes').then((m) => m.amenitiesRoutes),
+      },
+      {
+        path: 'reports',
+        loadChildren: () =>
+          import('./features/reports/reports.routes').then((m) => m.reportsRoutes),
+      },
+      {
         path: 'stays',
         loadChildren: () => import('./features/stays/stays.routes').then((m) => m.staysRoutes),
       },
@@ -63,17 +87,13 @@ export const routes: Routes = [
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.auditRoutes),
       },
       {
-        path: 'rate-plans',
-        loadChildren: () =>
-          import('./features/rate-plans/rate-plans.routes').then((m) => m.ratePlansRoutes),
-      },
-      {
         path: 'branches',
         loadChildren: () =>
           import('./features/branches/branches.routes').then((m) => m.branchesRoutes),
       },
       {
         path: 'forbidden',
+        data: { breadcrumb: 'Forbidden' },
         loadComponent: () =>
           import('./features/forbidden/forbidden.component').then((m) => m.ForbiddenComponent),
       },

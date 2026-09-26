@@ -134,11 +134,13 @@
         <div class="field">
           <label for="b-branch">Branch</label>
           <p-select id="b-branch" [options]="branches()" optionLabel="name" optionValue="_id" formControlName="branchId"
-            placeholder="Select Branch" [readonly]="editVisible()" styleClass="w-full" />
+            placeholder="Select Branch" [readonly]="editVisible()" styleClass="w-full" appendTo="body" />
+          <app-field-error [control]="buildingForm.controls.branchId" label="Branch" />
         </div>
         <div class="field">
           <label for="b-name">Building Name</label>
           <input pInputText id="b-name" formControlName="name" placeholder="e.g. Tower A" autocomplete="off" />
+          <app-field-error [control]="buildingForm.controls.name" label="Building name" />
         </div>
       </div>
       <div class="form-actions">
@@ -168,6 +170,7 @@
           <label for="f-label">Floor Label</label>
           <input pInputText id="f-label" formControlName="label" placeholder="e.g. 1st Floor, Ground Floor"
             autocomplete="off" />
+          <app-field-error [control]="floorForm.controls.label" label="Floor label" />
         </div>
       </div>
       <div class="form-actions">

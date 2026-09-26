@@ -1,0 +1,28 @@
+.app-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--app-space-1);
+  font-size: 0.8125rem;
+
+  &__link {
+    color: var(--app-text-muted);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--app-accent);
+      text-decoration: underline;
+    }
+  }
+
+  &__current {
+    color: var(--app-text-primary);
+    font-weight: 600;
+  }
+
+  &__sep {
+    font-size: 0.625rem;
+    color: var(--app-text-muted);
+  }
+}

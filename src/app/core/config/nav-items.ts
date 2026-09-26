@@ -39,6 +39,12 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: 'Operations',
     items: [
       {
+        label: 'Bookings',
+        routerLink: '/bookings',
+        icon: 'lucideCalendarCheck',
+        roles: GUEST_READ_ROLES,
+      },
+      {
         label: 'Guests',
         routerLink: '/guests',
         icon: 'lucideUsers',
@@ -61,6 +67,24 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         icon: 'lucideBuilding2',
         roles: ['super_admin', 'admin', 'branch_admin', 'building_admin'],
       },
+      {
+        label: 'Rooms',
+        routerLink: '/rooms',
+        icon: 'lucideDoorOpen',
+        roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
+      },
+      {
+        label: 'Halls',
+        routerLink: '/halls',
+        icon: 'lucideUsers',
+        roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
+      },
+      {
+        label: 'Amenities',
+        routerLink: '/amenities',
+        icon: 'lucideTag',
+        roles: ['super_admin', 'admin', 'branch_admin'],
+      },
     ],
   },
   {
@@ -81,12 +105,12 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Finance',
+    label: 'Insights',
     items: [
       {
-        label: 'Rate plans',
-        routerLink: '/rate-plans',
-        icon: 'lucideBadgeDollarSign',
+        label: 'Reports',
+        routerLink: '/reports',
+        icon: 'lucideChartBar',
         roles: ['super_admin', 'admin', 'branch_admin', 'booking_admin'],
       },
     ],

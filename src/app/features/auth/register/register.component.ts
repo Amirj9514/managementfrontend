@@ -6,10 +6,11 @@ import { Button } from 'primeng/button';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { AuthService } from '../../../core/services/auth.service';
+import { FieldErrorComponent } from '../../../shared/field-error/field-error.component';
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText],
+  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText, FieldErrorComponent],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

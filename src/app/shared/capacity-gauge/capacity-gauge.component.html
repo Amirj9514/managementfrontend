@@ -1,0 +1,7 @@
+<div class="capacity-gauge">
+  <div class="capacity-gauge__row">
+    <span class="capacity-gauge__label">{{ label() }}</span>
+    <span class="capacity-gauge__figures">{{ occupied() }} / {{ capacity() }} · {{ remaining() }} remaining</span>
+  </div>
+  <p-progressbar [value]="pct()" [showValue]="false" [style]="{ height: '0.6rem' }" />
+</div>

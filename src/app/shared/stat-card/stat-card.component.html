@@ -1,0 +1,14 @@
+<p-card styleClass="stat-card" [class]="'stat-card--' + tone()">
+  <div class="stat-card__body">
+    <div class="stat-card__icon">
+      <ng-icon [name]="icon()" size="1.4rem" />
+    </div>
+    <div class="stat-card__text">
+      <span class="stat-card__value">{{ value() }}</span>
+      <span class="stat-card__label">{{ label() }}</span>
+      @if (hint()) {
+        <span class="stat-card__hint">{{ hint() }}</span>
+      }
+    </div>
+  </div>
+</p-card>

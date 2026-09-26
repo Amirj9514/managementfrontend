@@ -37,6 +37,7 @@ import {
   type UserUpdateRequest,
 } from '../../../../core/models/user-admin.model';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
+import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
@@ -69,6 +70,7 @@ import { UsersApiService } from '../../services/users-api.service';
     Menu,
     NgIcon,
     TableSkeletonComponent,
+    FieldErrorComponent,
   ],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss',

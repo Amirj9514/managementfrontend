@@ -1,0 +1,93 @@
+<app-page-header title="Reports" subtitle="Occupancy and arrivals/departures." />
+
+<p-card styleClass="mb-4">
+  <div class="flex flex-wrap align-items-center gap-3">
+    <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+      (ngModelChange)="onBranchChange($event)" placeholder="Select branch" styleClass="w-14rem" />
+    <p-selectbutton [options]="viewOptions" optionLabel="label" optionValue="value" [ngModel]="view()"
+      (ngModelChange)="onViewChange($event)" />
+    @if (view() === 'occupancy') {
+      <p-datepicker [ngModel]="from()" (ngModelChange)="from.set($event); onDateChange()" dateFormat="yy-mm-dd" />
+      <span>to</span>
+      <p-datepicker [ngModel]="to()" (ngModelChange)="to.set($event); onDateChange()" dateFormat="yy-mm-dd" />
+    }
+    <p-button label="Export CSV" icon="pi pi-download" [outlined]="true" (onClick)="exportCsv()" class="ml-auto" />
+  </div>
+</p-card>
+
+@if (!branchId()) {
+  <app-empty-state title="Select a branch" description="Choose a branch to view its reports." />
+} @else {
+  @switch (view()) {
+    @case ('occupancy') {
+      <div class="stat-row mb-4">
+        <app-stat-card label="Avg occupancy" [value]="avgOccupancyPct() + '%'" icon="lucideBedDouble" />
+        @if (utilization(); as u) {
+          <app-stat-card label="Avg length of stay" [value]="u.averageLengthOfStayNights + ' nights'" icon="lucideCalendarDays" />
+        }
+      </div>
+      <p-card header="Occupancy trend" styleClass="mb-4">
+        <div class="chart-wrap"><p-chart type="line" [data]="occupancyChartData()" [options]="chartOptions" /></div>
+      </p-card>
+      <p-card header="Hall occupancy">
+        @for (hall of hallOccupancy(); track hall.hallId) {
+          <h4>{{ hall.code }} (capacity {{ hall.maxCapacity }})</h4>
+          <p-table [value]="hall.perDay" styleClass="mb-3">
+            <ng-template #header>
+              <tr><th>Date</th><th>Occupied</th><th>Remaining</th></tr>
+            </ng-template>
+            <ng-template #body let-d>
+              <tr><td>{{ d.date }}</td><td>{{ d.occupied }}</td><td>{{ d.remaining }}</td></tr>
+            </ng-template>
+          </p-table>
+        } @empty {
+          <p class="text-color-secondary">No halls in this branch.</p>
+        }
+      </p-card>
+    }
+
+    @case ('arrivals') {
+      <p-card header="Today's arrivals">
+        @if (arrivals().length === 0) {
+          <app-empty-state title="No arrivals" description="No guests are due to check in today." />
+        } @else {
+          <p-table [value]="arrivals()">
+            <ng-template #header>
+              <tr><th>Unit</th><th>Type</th><th>Check-in</th><th>Status</th></tr>
+            </ng-template>
+            <ng-template #body let-line>
+              <tr>
+                <td>{{ line.unitId }}</td>
+                <td class="capitalize">{{ line.unitType === 'private_room' ? 'Room' : 'Hall' }}</td>
+                <td>{{ line.checkInDate | date: 'short' }}</td>
+                <td class="capitalize">{{ line.status }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </p-card>
+    }
+
+    @case ('departures') {
+      <p-card header="Today's departures">
+        @if (departures().length === 0) {
+          <app-empty-state title="No departures" description="No guests are due to check out today." />
+        } @else {
+          <p-table [value]="departures()">
+            <ng-template #header>
+              <tr><th>Unit</th><th>Type</th><th>Checkout</th><th>Status</th></tr>
+            </ng-template>
+            <ng-template #body let-line>
+              <tr>
+                <td>{{ line.unitId }}</td>
+                <td class="capitalize">{{ line.unitType === 'private_room' ? 'Room' : 'Hall' }}</td>
+                <td>{{ line.expectedCheckOut | date: 'short' }}</td>
+                <td class="capitalize">{{ line.status }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </p-card>
+    }
+  }
+}

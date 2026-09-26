@@ -1,32 +1,106 @@
-@if (loading()) {
-  <p-skeleton width="12rem" height="2rem" class="mb-3" />
-  <p-skeleton width="100%" height="8rem" />
-} @else if (guest(); as g) {
-  <app-page-header [title]="g.firstName + ' ' + g.lastName" subtitle="Guest profile" />
-  <p-card>
-    <div class="detail-grid">
+@if (guest(); as g) {
+  <app-page-header [title]="g.fullName" subtitle="Guest profile" />
+
+  <p-button label="Back to guests" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" styleClass="mb-4" />
+
+  <p-card header="Guest details" styleClass="mb-4">
+    <div class="view-grid">
       <div>
-        <span class="detail-label">Email</span>
-        <p>{{ g.email ?? '—' }}</p>
+        <span class="detail-label">Full name</span>
+        <p>{{ g.fullName }}</p>
       </div>
       <div>
         <span class="detail-label">Phone</span>
         <p>{{ g.phone ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Nationality</span>
-        <p>{{ g.nationality ?? '—' }}</p>
+        <span class="detail-label">Email</span>
+        <p>{{ g.email ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Passport</span>
-        <p>{{ g.passportNumber ?? '—' }}</p>
+        <span class="detail-label">CNIC / Passport</span>
+        <p>{{ g.cnic ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Address</span>
+        <p>{{ g.address ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Date of birth</span>
+        <p>{{ g.dateOfBirth ? (g.dateOfBirth | date: 'mediumDate') : '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Notes (creation)</span>
+        <p>{{ g.notes ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">Guest since</span>
+        <p>{{ g.createdAt ? (g.createdAt | date: 'medium') : '—' }}</p>
       </div>
     </div>
-    <div class="detail-actions">
-      <p-button label="Back to list" [outlined]="true" (onClick)="back()" />
-      @if (canWrite()) {
-        <p-button label="Edit" (onClick)="edit(g.id)" />
-      }
-    </div>
   </p-card>
+
+  <p-tabs value="bookings">
+    <p-tablist>
+      <p-tab value="bookings"><i class="pi pi-history"></i> Previous bookings</p-tab>
+      <p-tab value="notes"><i class="pi pi-comment"></i> Notes</p-tab>
+    </p-tablist>
+    <p-tabpanels>
+      <p-tabpanel value="bookings">
+        @if (!bookingsLoading() && bookings().length === 0) {
+          <app-empty-state title="No bookings yet" description="This guest hasn't made any bookings." />
+        } @else {
+          <div class="booking-cards">
+            @for (row of bookings(); track row._id) {
+              <button type="button" class="booking-card" (click)="openBooking(row)">
+                <div class="booking-card__header">
+                  <span class="booking-card__number">{{ row.bookingNumber }}</span>
+                  <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+                </div>
+                <div class="booking-card__meta">
+                  <span class="capitalize"><i class="pi" [class.pi-home]="row.bookingType === 'room'"
+                    [class.pi-building]="row.bookingType === 'hall'"></i> {{ row.bookingType }}</span>
+                  <span><i class="pi pi-calendar"></i> {{ row.createdAt | date: 'medium' }}</span>
+                </div>
+                <span class="booking-card__view"><i class="pi pi-eye"></i> View details</span>
+              </button>
+            }
+          </div>
+
+          <p-paginator [rows]="pageSize()" [totalRecords]="bookingsTotal()" [first]="first()"
+            [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
+            currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
+        }
+      </p-tabpanel>
+
+      <p-tabpanel value="notes">
+        <div class="notes-add">
+          <textarea pTextarea rows="2" class="w-full" placeholder="Log a note about this guest…"
+            [ngModel]="newNoteText()" (ngModelChange)="newNoteText.set($event)"></textarea>
+          <p-button label="Add note" icon="pi pi-plus" size="small" [loading]="addingNote()"
+            [disabled]="!newNoteText().trim()" (onClick)="addNote()" />
+        </div>
+
+        @if (!g.notesLog || g.notesLog.length === 0) {
+          <p class="notes-empty">No notes logged yet.</p>
+        } @else {
+          <ul class="notes-list">
+            @for (n of g.notesLog; track n._id) {
+              <li class="notes-list__item">
+                <div class="notes-list__body">
+                  <p class="notes-list__text">{{ n.text }}</p>
+                  <span class="notes-list__meta">{{ n.authorName }} · {{ n.createdAt | date: 'medium' }}</span>
+                </div>
+                <button type="button" class="notes-list__remove" title="Delete note" (click)="removeNote(n._id)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
 }
+
+<p-confirm-dialog />

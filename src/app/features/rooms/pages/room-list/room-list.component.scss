@@ -1,0 +1,81 @@
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+:host ::ng-deep .room-card {
+  border-radius: 0.75rem;
+  height: 100%;
+}
+
+.room-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.room-card__code {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.room-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+  margin-bottom: 0.75rem;
+}
+
+.room-card__amenities {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--app-border-subtle);
+  }
+
+  &__code {
+    font-weight: 700;
+    font-size: 1.15rem;
+  }
+
+  &__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-text-muted);
+  }
+
+  &__value {
+    font-size: 0.9rem;
+    color: var(--app-text-primary);
+  }
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}

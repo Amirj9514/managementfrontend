@@ -1,0 +1,147 @@
+@if (data(); as d) {
+  <div class="flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+    <div>
+      <h3 class="m-0">{{ d.booking.bookingNumber }}</h3>
+      <p class="m-0 text-color-secondary">Booking · {{ d.booking.bookingType }}</p>
+    </div>
+    <div class="flex gap-2 align-items-center">
+      <app-status-badge [status]="d.booking.status" [severityMap]="statusSeverityMap" />
+      <p-button label="Cancel booking" severity="danger" [outlined]="true" size="small" (onClick)="cancelWholeBooking()" />
+    </div>
+  </div>
+
+  @if (d.booking.notes) {
+    <p-card header="Booking notes" styleClass="mb-3">
+      <p class="booking-notes-text">{{ d.booking.notes }}</p>
+    </p-card>
+  }
+
+  <p-card header="Guests" styleClass="mb-3">
+    <div class="guest-list">
+      @for (guest of orderedGuests(); track guest._id) {
+        <div class="guest-row">
+          <div class="guest-row__name">
+            <i class="pi pi-user"></i>
+            <button type="button" class="entity-link" (click)="openGuest(guest._id)">{{ guest.fullName }}</button>
+            @if (guest.isPrimary) {
+              <span class="guest-row__primary">Primary</span>
+            }
+          </div>
+          <div class="guest-row__contact">
+            @if (guest.phone) {
+              <span><i class="pi pi-phone"></i> {{ guest.phone }}</span>
+            }
+            @if (guest.email) {
+              <span><i class="pi pi-envelope"></i> {{ guest.email }}</span>
+            }
+            @if (guest.cnic) {
+              <span><i class="pi pi-id-card"></i> {{ guest.cnic }}</span>
+            }
+          </div>
+        </div>
+      } @empty {
+        <p class="text-color-secondary m-0">No guest information available.</p>
+      }
+    </div>
+  </p-card>
+
+  <p-card header="Booking lines">
+    <div class="booking-lines">
+      @for (line of d.lines; track line._id) {
+        @let unit = unitById().get(line.unitId);
+        <div class="line-card">
+          <div class="line-card__header">
+            <div class="line-card__unit">
+              <i class="pi" [class.pi-home]="line.unitType === 'private_room'" [class.pi-building]="line.unitType === 'public_hall'"></i>
+              @if (unit) {
+                <button type="button" class="entity-link line-card__code" (click)="openUnit(unit)">{{ unit.code }}</button>
+              } @else {
+                <span class="line-card__code">{{ line.unitId }}</span>
+              }
+              <span class="line-card__type">{{ unit ? roomTypeName(unit) : (line.unitType === 'private_room' ? 'Room' : 'Hall') }}</span>
+            </div>
+            <app-status-badge [status]="line.status" [severityMap]="statusSeverityMap" />
+          </div>
+
+          @if (unit) {
+            <span class="line-card__location"><i class="pi pi-map-marker"></i> {{ locationLabel(unit) }}</span>
+          }
+
+          <div class="line-card__meta">
+            <div class="line-card__meta-item">
+              <span class="line-card__meta-label"><i class="pi pi-calendar"></i> Dates</span>
+              <span class="line-card__meta-value">{{ line.checkInDate | date: 'short' }} → {{ line.expectedCheckOut | date: 'short' }}</span>
+            </div>
+            <div class="line-card__meta-item">
+              <span class="line-card__meta-label"><i class="pi pi-users"></i> Occupancy</span>
+              <span class="line-card__meta-value">
+                @if (line.unitType === 'private_room') {
+                  {{ line.occupancy.totalGuests }} guests
+                } @else {
+                  Party of {{ line.occupancy.partySize }}
+                }
+                @if (unit) {
+                  <span class="text-color-secondary"> ({{ capacityText(unit) }} capacity)</span>
+                }
+              </span>
+            </div>
+          </div>
+
+          <div class="line-card__actions">
+            @if (line.status === 'reserved') {
+              <p-button label="Check in" size="small" (onClick)="checkIn(line)" />
+              <p-button label="Cancel" size="small" severity="danger" [outlined]="true" (onClick)="cancelLine(line)" />
+            }
+            @if (line.status === 'checked_in') {
+              <p-button label="Check out" size="small" (onClick)="checkOut(line)" />
+              @if (line.unitType === 'private_room') {
+                <p-button label="Transfer" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
+              }
+            }
+            @if (line.status === 'reserved' || line.status === 'checked_in') {
+              <p-button label="Extend" size="small" [outlined]="true" (onClick)="openExtend(line)" />
+            }
+            @if (line.status !== 'reserved' && line.status !== 'checked_in') {
+              <span class="line-card__no-actions text-color-secondary">No actions available</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </p-card>
+}
+
+<p-dialog header="Extend stay" [(visible)]="extendVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
+  <p-fluid>
+    <div class="field mb-3">
+      <label for="ext-date">New expected checkout</label>
+      <p-datepicker id="ext-date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [showIcon]="true"
+        dateFormat="yy-mm-dd" appendTo="body" />
+    </div>
+    <div class="flex justify-content-end gap-2">
+      <p-button type="button" label="Cancel" [outlined]="true" (onClick)="extendVisible.set(false)" />
+      <p-button type="button" label="Save" [loading]="extendSaving()" (onClick)="submitExtend()" />
+    </div>
+  </p-fluid>
+</p-dialog>
+
+<p-dialog header="Transfer room" [(visible)]="transferVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
+  <div [formGroup]="transferForm">
+    <p-fluid>
+      <div class="field mb-3">
+        <label for="tr-room">Target room</label>
+        <p-select id="tr-room" [options]="transferRooms()" optionLabel="code" optionValue="_id" formControlName="toUnitId"
+          placeholder="Select an available room" appendTo="body" />
+        <app-field-error [control]="transferForm.controls.toUnitId" label="Target room" />
+      </div>
+      <div class="field mb-3">
+        <label for="tr-reason">Reason (optional)</label>
+        <input pInputText id="tr-reason" formControlName="reason" autocomplete="off" />
+      </div>
+      <div class="flex justify-content-end gap-2">
+        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="transferVisible.set(false)" />
+        <p-button type="button" label="Transfer" [loading]="transferSaving()" (onClick)="submitTransfer()" />
+      </div>
+    </p-fluid>
+  </div>
+</p-dialog>

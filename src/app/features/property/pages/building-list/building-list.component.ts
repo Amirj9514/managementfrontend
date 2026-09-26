@@ -35,6 +35,7 @@ import {
 } from '../../../../core/models/floor-admin.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
+import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { BuildingsApiService } from '../../services/buildings-api.service';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
@@ -62,6 +63,7 @@ import type { BranchListRow } from '../../../../core/models/branch-admin.model';
     Tag,
     Menu,
     NgIcon,
+    FieldErrorComponent,
   ],
   templateUrl: './building-list.component.html',
   styleUrl: './building-list.component.scss',

@@ -1,0 +1,54 @@
+<app-page-header title="Bookings" subtitle="Reservations, walk-ins, and stays across rooms and halls." />
+
+<p-toolbar styleClass="mb-4 flex-wrap gap-3">
+  <ng-template #start>
+    <div class="flex flex-wrap align-items-center gap-2">
+      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+        (ngModelChange)="onBranchChange($event)" placeholder="Select branch" styleClass="w-14rem" />
+      <p-select [options]="statusOptions" optionLabel="label" optionValue="value" [ngModel]="status()"
+        (ngModelChange)="onStatusChange($event)" placeholder="Any status" [showClear]="true" styleClass="w-12rem" />
+      <p-select [options]="typeOptions" optionLabel="label" optionValue="value" [ngModel]="bookingType()"
+        (ngModelChange)="onTypeChange($event)" placeholder="Any type" [showClear]="true" styleClass="w-10rem" />
+    </div>
+  </ng-template>
+  <ng-template #end>
+    <p-button label="New booking" icon="pi pi-plus" (onClick)="goNew()" />
+  </ng-template>
+</p-toolbar>
+
+<p-card>
+  @if (!loading() && rows().length === 0) {
+    <app-empty-state title="No bookings found" description="Try a different filter, or create a new booking."
+      actionLabel="New booking" (actionClick)="goNew()" />
+  } @else {
+    <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
+      <ng-template #header>
+        <tr>
+          <th>Booking #</th>
+          <th>Type</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th style="width: 4rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr class="cursor-pointer" (click)="open(row._id)">
+          <td class="font-medium">{{ row.bookingNumber }}</td>
+          <td class="capitalize">{{ row.bookingType }}</td>
+          <td class="capitalize">{{ row.source.replace('_', ' ') }}</td>
+          <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
+          <td>{{ row.createdAt | date: 'short' }}</td>
+          <td>
+            <p-button icon="pi pi-eye" [text]="true" [rounded]="true" ariaLabel="View booking"
+              title="View booking" (onClick)="open(row._id); $event.stopPropagation()" />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
+  }
+</p-card>
