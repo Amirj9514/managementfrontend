@@ -1,54 +1,179 @@
-<app-page-header title="Bookings" subtitle="Reservations, walk-ins, and stays across rooms and halls." />
+<app-page-header [title]="'nav.bookings' | translate" [subtitle]="'bookings.list.subtitle' | translate" />
 
 <p-toolbar styleClass="mb-4 flex-wrap gap-3">
   <ng-template #start>
     <div class="flex flex-wrap align-items-center gap-2">
-      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
-        (ngModelChange)="onBranchChange($event)" placeholder="Select branch" styleClass="w-14rem" />
-      <p-select [options]="statusOptions" optionLabel="label" optionValue="value" [ngModel]="status()"
-        (ngModelChange)="onStatusChange($event)" placeholder="Any status" [showClear]="true" styleClass="w-12rem" />
-      <p-select [options]="typeOptions" optionLabel="label" optionValue="value" [ngModel]="bookingType()"
-        (ngModelChange)="onTypeChange($event)" placeholder="Any type" [showClear]="true" styleClass="w-10rem" />
+      @if (branches().length > 1) {
+        <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+          (ngModelChange)="onBranchChange($event)" [placeholder]="'bookings.selectBranch' | translate" styleClass="w-14rem" />
+      }
+      <p-select [options]="statusOptions()" optionLabel="label" optionValue="value" [ngModel]="status()"
+        (ngModelChange)="onStatusChange($event)" [placeholder]="'bookings.anyStatus' | translate" [showClear]="true" styleClass="w-12rem" />
+      <p-select [options]="typeOptions()" optionLabel="label" optionValue="value" [ngModel]="bookingType()"
+        (ngModelChange)="onTypeChange($event)" [placeholder]="'bookings.anyType' | translate" [showClear]="true" styleClass="w-10rem" />
     </div>
   </ng-template>
   <ng-template #end>
-    <p-button label="New booking" icon="pi pi-plus" (onClick)="goNew()" />
+    <div class="flex align-items-center gap-2">
+      <p-selectbutton [options]="viewOptions()" optionLabel="label" optionValue="value" [ngModel]="view()"
+        (ngModelChange)="onViewChange($event)" [allowEmpty]="false">
+        <ng-template let-item #item>
+          <i [class]="item.icon" [pTooltip]="item.label" tooltipPosition="bottom" [attr.aria-label]="item.label"></i>
+        </ng-template>
+      </p-selectbutton>
+      <p-button [label]="'nav.newBooking' | translate" icon="pi pi-plus" (onClick)="goNew()" />
+    </div>
   </ng-template>
 </p-toolbar>
 
-<p-card>
-  @if (!loading() && rows().length === 0) {
-    <app-empty-state title="No bookings found" description="Try a different filter, or create a new booking."
-      actionLabel="New booking" (actionClick)="goNew()" />
-  } @else {
-    <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
+@if (!loading() && rows().length === 0) {
+  <p-card>
+    <app-empty-state [title]="'bookings.emptyTitle' | translate" [description]="'bookings.emptyDescription' | translate"
+      [actionLabel]="'nav.newBooking' | translate" (actionClick)="goNew()" />
+  </p-card>
+} @else if (view() === 'cards') {
+  <div class="checkin-grid">
+    @if (loading()) {
+      @for (i of skeletonCards; track i) {
+        <div class="checkin-card checkin-card--skeleton">
+          <div class="flex align-items-center gap-2">
+            <p-skeleton shape="circle" size="2.5rem" />
+            <div class="flex-1">
+              <p-skeleton width="60%" height="0.9rem" styleClass="mb-2" />
+              <p-skeleton width="40%" height="0.75rem" />
+            </div>
+          </div>
+          <p-skeleton height="3.5rem" />
+          <p-skeleton width="70%" height="0.8rem" />
+        </div>
+      }
+    } @else {
+      @for (row of rows(); track row._id) {
+        <button type="button" class="checkin-card" [class]="'checkin-card--' + row.status" (click)="open(row._id)">
+          <div class="checkin-card__top">
+            <span class="checkin-card__number"><i class="pi pi-hashtag"></i>{{ row.bookingNumber }}</span>
+            <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+          </div>
+
+          <div class="checkin-card__guest">
+            <span class="checkin-card__avatar">{{ initials(row.primaryGuestName) }}</span>
+            <div class="checkin-card__guest-text">
+              <span class="checkin-card__guest-name">{{ row.primaryGuestName ?? ('bookings.unknownGuest' | translate) }}</span>
+              @if (row.primaryGuestPhone) {
+                <span class="checkin-card__guest-phone"><i class="pi pi-phone"></i> {{ row.primaryGuestPhone }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="checkin-card__stay">
+            <div class="checkin-card__date">
+              <span class="checkin-card__date-label">{{ 'bookings.action.checkIn' | translate }}</span>
+              <span class="checkin-card__date-value">{{ row.checkInDate ? (row.checkInDate | date: 'EEE, d MMM') : '—' }}</span>
+            </div>
+            <div class="checkin-card__nights">
+              <i class="pi pi-arrow-right"></i>
+              @if (nights(row); as n) {
+                <span>{{ 'bookings.nightsCount' | translate: { count: n } }}</span>
+              }
+            </div>
+            <div class="checkin-card__date checkin-card__date--end">
+              <span class="checkin-card__date-label">{{ 'bookings.action.checkOut' | translate }}</span>
+              <span class="checkin-card__date-value">{{ row.expectedCheckOut ? (row.expectedCheckOut | date: 'EEE, d MMM') : '—' }}</span>
+            </div>
+          </div>
+
+          <div class="checkin-card__meta">
+            <span class="checkin-card__chip">
+              <i class="pi" [class.pi-home]="row.bookingType === 'room'" [class.pi-building]="row.bookingType === 'hall'"></i>
+              {{ row.unitCodes?.length ? row.unitCodes!.join(', ') : typeLabel(row.bookingType) }}
+            </span>
+            @if (row.guestCount) {
+              <span class="checkin-card__chip"><i class="pi pi-users"></i> {{ row.guestCount }}</span>
+            }
+            <span class="checkin-card__chip" [class.checkin-card__chip--walkin]="row.source === 'walk_in'">
+              <i class="pi" [class.pi-bolt]="row.source === 'walk_in'" [class.pi-calendar]="row.source !== 'walk_in'"></i>
+              {{ sourceLabel(row.source) }}
+            </span>
+            @if (row.documents?.length) {
+              <span class="checkin-card__chip"><i class="pi pi-paperclip"></i> {{ row.documents!.length }}</span>
+            }
+          </div>
+
+          <div class="checkin-card__footer">
+            <span>{{ 'common.created' | translate }} {{ row.createdAt | date: 'd MMM, h:mm a' }}</span>
+            <i class="pi pi-chevron-right"></i>
+          </div>
+        </button>
+      }
+    }
+  </div>
+
+  @if (!loading()) {
+    <p-paginator styleClass="checkin-paginator" [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
+      [rowsPerPageOptions]="[12, 24, 48, 96]" [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="pageReportTemplate()" (onPageChange)="onPaginatorChange($event)" />
+  }
+} @else {
+  <p-card styleClass="checkin-table-card">
+    <p-table [value]="rows()" [loading]="loading()" dataKey="_id" [rowHover]="true" styleClass="p-datatable-sm"
+      [tableStyle]="{ 'min-width': '56rem' }">
       <ng-template #header>
         <tr>
-          <th>Booking #</th>
-          <th>Type</th>
-          <th>Source</th>
-          <th>Status</th>
-          <th>Created</th>
+          <th>{{ 'bookings.bookingNumber' | translate }}</th>
+          <th>{{ 'bookings.guestColumn' | translate }}</th>
+          <th>{{ 'bookings.unitColumn' | translate }}</th>
+          <th>{{ 'bookings.stayColumn' | translate }}</th>
+          <th>{{ 'bookings.source' | translate }}</th>
+          <th>{{ 'common.status' | translate }}</th>
+          <th>{{ 'common.created' | translate }}</th>
           <th style="width: 4rem"></th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
         <tr class="cursor-pointer" (click)="open(row._id)">
-          <td class="font-medium">{{ row.bookingNumber }}</td>
-          <td class="capitalize">{{ row.bookingType }}</td>
-          <td class="capitalize">{{ row.source.replace('_', ' ') }}</td>
+          <td class="font-semibold">{{ row.bookingNumber }}</td>
+          <td>
+            <div class="table-guest">
+              <span class="checkin-card__avatar checkin-card__avatar--sm">{{ initials(row.primaryGuestName) }}</span>
+              <div class="flex flex-column">
+                <span class="font-medium">{{ row.primaryGuestName ?? ('bookings.unknownGuest' | translate) }}</span>
+                @if (row.primaryGuestPhone) {
+                  <small class="text-color-secondary">{{ row.primaryGuestPhone }}</small>
+                }
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="flex flex-column">
+              <span class="font-medium">{{ row.unitCodes?.length ? row.unitCodes.join(', ') : '—' }}</span>
+              <small class="text-color-secondary">{{ typeLabel(row.bookingType) }}@if (row.guestCount) { · {{ row.guestCount }} <i class="pi pi-users text-xs"></i>}</small>
+            </div>
+          </td>
+          <td>
+            @if (row.checkInDate) {
+              <div class="flex flex-column">
+                <span>{{ row.checkInDate | date: 'd MMM' }} → {{ row.expectedCheckOut | date: 'd MMM y' }}</span>
+                @if (nights(row); as n) {
+                  <small class="text-color-secondary">{{ 'bookings.nightsCount' | translate: { count: n } }}</small>
+                }
+              </div>
+            } @else {
+              —
+            }
+          </td>
+          <td>{{ sourceLabel(row.source) }}</td>
           <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
           <td>{{ row.createdAt | date: 'short' }}</td>
           <td>
-            <p-button icon="pi pi-eye" [text]="true" [rounded]="true" ariaLabel="View booking"
-              title="View booking" (onClick)="open(row._id); $event.stopPropagation()" />
+            <p-button icon="pi pi-eye" [text]="true" [rounded]="true" [ariaLabel]="'bookings.viewBooking' | translate"
+              [title]="'bookings.viewBooking' | translate" (onClick)="open(row._id); $event.stopPropagation()" />
           </td>
         </tr>
       </ng-template>
     </p-table>
 
     <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
-      [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
-      currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
-  }
-</p-card>
+      [rowsPerPageOptions]="[12, 24, 48, 96]" [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="pageReportTemplate()" (onPageChange)="onPaginatorChange($event)" />
+  </p-card>
+}

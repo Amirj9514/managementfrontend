@@ -7,10 +7,13 @@ import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { AuthService } from '../../../core/services/auth.service';
 import { FieldErrorComponent } from '../../../shared/field-error/field-error.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../core/i18n/translation.service';
+import { AUTH_DICTIONARY } from '../auth.dictionary';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText, FieldErrorComponent],
+  imports: [ReactiveFormsModule, RouterLink, Button, Fluid, InputText, FieldErrorComponent, TranslatePipe],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,6 +24,11 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly messages = inject(MessageService);
+  readonly i18n = inject(TranslationService);
+
+  constructor() {
+    this.i18n.register(AUTH_DICTIONARY);
+  }
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -46,8 +54,8 @@ export class LoginComponent {
         this.submitting = false;
         this.messages.add({
           severity: 'error',
-          summary: 'Sign in failed',
-          detail: 'Check your email and password.',
+          summary: this.i18n.t('auth.login.failedSummary'),
+          detail: this.i18n.t('auth.login.failedDetail'),
         });
       },
     });

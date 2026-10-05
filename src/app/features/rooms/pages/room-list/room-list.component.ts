@@ -36,6 +36,9 @@ import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { ROOMS_DICTIONARY } from '../../rooms.dictionary';
 import { RoomTypesApiService } from '../../services/room-types-api.service';
 import { RoomsApiService } from '../../services/rooms-api.service';
 
@@ -60,6 +63,7 @@ import { RoomsApiService } from '../../services/rooms-api.service';
     Dialog,
     ConfirmDialog,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './room-list.component.html',
   styleUrl: './room-list.component.scss',
@@ -76,6 +80,7 @@ export class RoomListComponent {
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly route = inject(ActivatedRoute);
+  readonly i18n = inject(TranslationService);
 
   readonly statusOptions = UNIT_STATUS_OPTIONS;
   readonly categoryOptions = ROOM_TYPE_CATEGORY_OPTIONS;
@@ -83,6 +88,22 @@ export class RoomListComponent {
     { label: 'Grid', value: 'grid', icon: 'pi pi-th-large' },
     { label: 'Table', value: 'table', icon: 'pi pi-list' },
   ];
+
+  /** Translated copies of the static option lists above — recomputed whenever the
+   *  active language changes so the dropdown labels switch without reloading. */
+  readonly statusOptionsT = computed(() => {
+    this.i18n.currentLang();
+    return this.statusOptions.map((o) => ({ ...o, label: this.i18n.t(`status.${o.value}`) }));
+  });
+  readonly categoryOptionsT = computed(() => {
+    this.i18n.currentLang();
+    return this.categoryOptions.map((o) => ({ ...o, label: this.i18n.t(`roomCategory.${o.value}`) }));
+  });
+  readonly viewOptionsT = computed(() => {
+    this.i18n.currentLang();
+    return this.viewOptions.map((o) => ({ ...o, label: this.i18n.t(`rooms.view.${o.value}`) }));
+  });
+
   readonly statusSeverityMap = {
     available: 'success' as const,
     occupied: 'info' as const,
@@ -146,7 +167,14 @@ export class RoomListComponent {
   });
 
   constructor() {
-    this.branchesApi.list(1, 100, 'active').subscribe({ next: ({ items }) => this.branches.set(items) });
+    this.i18n.register(ROOMS_DICTIONARY);
+    this.branchesApi.list(1, 100, 'active').subscribe({
+      next: ({ items }) => {
+        this.branches.set(items);
+        // Single-branch setup: there's nothing to choose, so start on it straight away.
+        if (!this.branchId() && items.length) this.onBranchChange(items[0]._id);
+      },
+    });
     this.amenitiesApi.list().subscribe({ next: ({ items }) => this.amenities.set(items) });
 
     // Deep link support: booking detail's "view room" link passes the room's own
@@ -305,11 +333,16 @@ export class RoomListComponent {
     const req = target ? this.roomsApi.update(target._id, payload) : this.roomsApi.create(payload);
     req.subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: target ? 'Updated' : 'Created', detail: v.code ?? '' });
+        this.messages.add({
+          severity: 'success',
+          summary: this.i18n.t(target ? 'common.updated' : 'common.created'),
+          detail: v.code ?? '',
+        });
         this.formVisible.set(false);
         this.reload();
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Save failed' }),
+      error: (err) =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.saveFailed') }),
       complete: () => this.saving.set(false),
     });
   }
@@ -317,25 +350,35 @@ export class RoomListComponent {
   quickSetStatus(row: PrivateRoomRow, status: UnitStatus): void {
     this.roomsApi.setStatus(row._id, status).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Status updated', detail: `${row.code} is now ${status}` });
+        this.messages.add({
+          severity: 'success',
+          summary: this.i18n.t('rooms.statusUpdated'),
+          detail: this.i18n.t('rooms.statusUpdatedDetail', { code: row.code, status: this.i18n.t(`status.${status}`) }),
+        });
         this.reload();
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Update failed' }),
+      error: (err) =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.updateFailed') }),
     });
   }
 
   remove(row: PrivateRoomRow): void {
     this.confirmation.confirm({
-      message: `Deactivate room "${row.code}"?`,
-      header: 'Confirm deactivation',
+      message: this.i18n.t('rooms.confirmDeactivate', { code: row.code }),
+      header: this.i18n.t('rooms.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.roomsApi.delete(row._id).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: row.code });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: row.code });
             this.reload();
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Deactivation failed' }),
+          error: (err) =>
+            this.messages.add({
+              severity: 'error',
+              summary: this.i18n.t('common.error'),
+              detail: err.message || this.i18n.t('rooms.deactivationFailed'),
+            }),
         });
       },
     });
@@ -366,11 +409,12 @@ export class RoomListComponent {
       })
       .subscribe({
         next: (created) => {
-          this.messages.add({ severity: 'success', summary: 'Room type created', detail: created.name });
+          this.messages.add({ severity: 'success', summary: this.i18n.t('rooms.roomTypeCreated'), detail: created.name });
           this.roomTypes.update((rows) => [...rows, created]);
           this.typeForm.reset({ name: '', category: 'single', maxAdults: 2, maxChildren: 0, maxOccupancy: 2, allowsShared: false });
         },
-        error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Save failed' }),
+        error: (err) =>
+          this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.saveFailed') }),
         complete: () => this.savingType.set(false),
       });
   }
@@ -384,7 +428,8 @@ export class RoomListComponent {
           rows.map((r) => (r._id === type._id ? { ...r, deletedAt: isActive ? new Date().toISOString() : null } : r)),
         );
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Update failed' }),
+      error: (err) =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.updateFailed') }),
     });
   }
 

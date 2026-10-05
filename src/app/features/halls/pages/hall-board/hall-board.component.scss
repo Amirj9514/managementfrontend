@@ -44,3 +44,22 @@
   margin-bottom: 1rem;
   flex-wrap: wrap;
 }
+
+.hall-audience {
+  margin-inline-start: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+
+  &--gents {
+    background: color-mix(in srgb, var(--p-blue-500) 15%, transparent);
+    color: var(--p-blue-600, #2563eb);
+  }
+
+  &--ladies {
+    background: color-mix(in srgb, #ec4899 15%, transparent);
+    color: #db2777;
+  }
+}

@@ -1,22 +1,22 @@
-<app-page-header title="Amenities" subtitle="Manage the amenity catalog used by room and hall listings." />
+<app-page-header [title]="'nav.amenities' | translate" [subtitle]="'amenities.subtitle' | translate" />
 
 <p-toolbar styleClass="mb-4">
   <ng-template #start>
-    <p-button label="New amenity" icon="pi pi-plus" (onClick)="openCreate()" />
+    <p-button [label]="'amenities.newAmenity' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
   </ng-template>
 </p-toolbar>
 
 <p-card>
   @if (!loading() && rows().length === 0) {
-    <app-empty-state title="No amenities yet" description="Add amenities like Wi-Fi, AC, or a private bathroom."
-      actionLabel="New amenity" (actionClick)="openCreate()" />
+    <app-empty-state [title]="'amenities.empty.title' | translate" [description]="'amenities.empty.description' | translate"
+      [actionLabel]="'amenities.newAmenity' | translate" (actionClick)="openCreate()" />
   } @else {
     <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
       <ng-template #header>
         <tr>
-          <th>Name</th>
-          <th>Category</th>
-          <th>Status</th>
+          <th>{{ 'common.name' | translate }}</th>
+          <th>{{ 'amenities.category' | translate }}</th>
+          <th>{{ 'common.status' | translate }}</th>
           <th style="width: 6rem"></th>
         </tr>
       </ng-template>
@@ -26,9 +26,9 @@
           <td>{{ row.category || '—' }}</td>
           <td>
             @if (row.active) {
-              <p-tag value="Active" severity="success" [rounded]="true" />
+              <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
             } @else {
-              <p-tag value="Inactive" severity="secondary" [rounded]="true" />
+              <p-tag [value]="'status.inactive' | translate" severity="secondary" [rounded]="true" />
             }
           </td>
           <td style="text-align: right">
@@ -41,30 +41,30 @@
   }
 </p-card>
 
-<p-dialog [header]="isEdit() ? 'Edit amenity' : 'New amenity'" [(visible)]="formVisible" [modal]="true"
+<p-dialog [header]="(isEdit() ? 'amenities.formHeaderEdit' : 'amenities.formHeaderNew') | translate" [(visible)]="formVisible" [modal]="true"
   [style]="{ width: 'min(28rem, 100vw)' }">
   <form [formGroup]="form" (ngSubmit)="submit()">
     <p-fluid>
       <div class="field mb-3">
-        <label for="a-name">Name</label>
-        <input pInputText id="a-name" formControlName="name" placeholder="e.g. Free Wi-Fi" autocomplete="off" />
-        <app-field-error [control]="form.controls.name" label="Name" />
+        <label for="a-name">{{ 'common.name' | translate }}</label>
+        <input pInputText id="a-name" formControlName="name" [placeholder]="'amenities.namePlaceholder' | translate" autocomplete="off" />
+        <app-field-error [control]="form.controls.name" [label]="'common.name' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="a-icon">Icon (optional)</label>
+        <label for="a-icon">{{ 'amenities.icon' | translate }}</label>
         <input pInputText id="a-icon" formControlName="icon" placeholder="pi pi-wifi" autocomplete="off" />
       </div>
       <div class="field mb-3">
-        <label for="a-category">Category (optional)</label>
-        <input pInputText id="a-category" formControlName="category" placeholder="e.g. Connectivity" autocomplete="off" />
+        <label for="a-category">{{ 'amenities.categoryOptional' | translate }}</label>
+        <input pInputText id="a-category" formControlName="category" [placeholder]="'amenities.categoryPlaceholder' | translate" autocomplete="off" />
       </div>
       <div class="field mb-3 flex align-items-center gap-2">
         <p-toggleswitch formControlName="active" inputId="a-active" />
-        <label for="a-active">Active</label>
+        <label for="a-active">{{ 'status.active' | translate }}</label>
       </div>
       <div class="flex justify-content-end gap-2">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="formVisible.set(false)" />
-        <p-button type="submit" [label]="isEdit() ? 'Save changes' : 'Create amenity'" [loading]="saving()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="formVisible.set(false)" />
+        <p-button type="submit" [label]="(isEdit() ? 'common.saveChanges' : 'amenities.createAmenity') | translate" [loading]="saving()" />
       </div>
     </p-fluid>
   </form>

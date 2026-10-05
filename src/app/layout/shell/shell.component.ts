@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { MenuItem } from 'primeng/api';
@@ -10,6 +10,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { NAV_GROUPS } from '../../core/config/nav-items';
 import type { NavItem } from '../../core/config/nav-items';
 import type { AuthUser } from '../../core/models/user.model';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { TranslationService } from '../../core/i18n/translation.service';
 import { BookingDetailDrawerComponent } from '../../shared/booking-detail-drawer/booking-detail-drawer.component';
 import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.component';
 
@@ -26,6 +28,7 @@ import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.componen
     Menu,
     BookingDetailDrawerComponent,
     BreadcrumbComponent,
+    TranslatePipe,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
@@ -33,17 +36,21 @@ import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.componen
 })
 export class ShellComponent {
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(TranslationService);
 
   readonly user$ = this.auth.user$;
   readonly navGroups = NAV_GROUPS;
   readonly sidebarCollapsed = signal(false);
   readonly mobileDrawerOpen = signal(false);
-  menuItems: MenuItem[] = [
+
+  /** Computed (not a plain field) so it recomputes — and PrimeNG's [model] input sees a new
+   *  array reference — whenever the language changes. */
+  readonly menuItems = computed<MenuItem[]>(() => [
     {
-      label: 'Log out',
+      label: this.i18n.t('shell.logout'),
       command: () => this.auth.logout(),
     },
-  ];
+  ]);
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update((c) => !c);

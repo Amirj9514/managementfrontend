@@ -43,6 +43,9 @@ import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { UsersApiService } from '../../services/users-api.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { USERS_DICTIONARY } from '../../users.dictionary';
 
 @Component({
   selector: 'app-users-list',
@@ -71,6 +74,7 @@ import { UsersApiService } from '../../services/users-api.service';
     NgIcon,
     TableSkeletonComponent,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss',
@@ -84,8 +88,12 @@ export class UsersListComponent {
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly cdr = inject(ChangeDetectorRef);
+  readonly i18n = inject(TranslationService);
 
-  readonly staffRoleOptions = STAFF_ROLE_OPTIONS;
+  readonly staffRoleOptions = computed(() => {
+    this.i18n.currentLang();
+    return STAFF_ROLE_OPTIONS.map((o) => ({ ...o, label: this.i18n.t('role.' + o.value) }));
+  });
 
   readonly rows = signal<AdminUserListRow[]>([]);
   readonly loading = signal(true);
@@ -139,6 +147,7 @@ export class UsersListComponent {
   });
 
   constructor() {
+    this.i18n.register(USERS_DICTIONARY);
     this.createForm.controls.withAssignment.valueChanges.subscribe(() => this.cdr.markForCheck());
     this.assignForm.controls.updateScopes.valueChanges.subscribe(() => this.cdr.markForCheck());
     this.branchesApi.list(1, 10).subscribe({
@@ -213,7 +222,7 @@ export class UsersListComponent {
     this.savingCreate.set(true);
     this.api.create(body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'User created', detail: body.email });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('users.toast.userCreated'), detail: body.email });
         this.createVisible.set(false);
         this.reload();
       },
@@ -250,7 +259,7 @@ export class UsersListComponent {
     this.savingEdit.set(true);
     this.api.update(adminUserRowId(row), body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'User details saved.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('users.toast.userDetailsSaved') });
         this.editVisible.set(false);
         this.editTarget.set(null);
         this.reload();
@@ -286,7 +295,7 @@ export class UsersListComponent {
     this.savingAssign.set(true);
     this.api.patchAssignment(adminUserRowId(row), patch).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Role and assignment saved.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('users.toast.roleAssignmentSaved') });
         this.assignVisible.set(false);
         this.assignTarget.set(null);
         this.reload();
@@ -297,13 +306,13 @@ export class UsersListComponent {
 
   onDelete(row: AdminUserListRow): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate ${row.name || row.email}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('users.confirmDeactivateMessage', { name: row.name || row.email }),
+      header: this.i18n.t('users.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.api.delete(adminUserRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'User marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('users.deactivate'), detail: this.i18n.t('users.toast.userDeactivated') });
             this.reload();
           },
         });
@@ -314,7 +323,7 @@ export class UsersListComponent {
   onRestore(row: AdminUserListRow): void {
     this.api.restore(adminUserRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'User is now active again.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('users.restore'), detail: this.i18n.t('users.toast.userRestored') });
         this.reload();
       },
     });
@@ -322,14 +331,14 @@ export class UsersListComponent {
 
   onPermanentDelete(row: AdminUserListRow): void {
     this.confirmation.confirm({
-      message: `PERMANENT DELETE: This will completely remove ${row.name || row.email} from the database. This action cannot be undone. Proceed?`,
-      header: 'PERMANENT DELETE',
+      message: this.i18n.t('users.confirmPermanentDeleteMessage', { name: row.name || row.email }),
+      header: this.i18n.t('users.confirmPermanentDeleteHeader'),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deletePermanent(adminUserRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Permanently Deleted', detail: 'User removed from system.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('users.toast.permanentlyDeleted'), detail: this.i18n.t('users.toast.userPermanentlyDeleted') });
             this.reload();
           },
         });
@@ -344,12 +353,12 @@ export class UsersListComponent {
   prepareActions(event: Event, row: AdminUserListRow, menu: any): void {
     const items: import('primeng/api').MenuItem[] = [
       {
-        label: 'Edit',
+        label: this.i18n.t('common.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
       },
       {
-        label: 'Role & assignment',
+        label: this.i18n.t('users.roleAssignment'),
         icon: 'pi pi-id-card',
         command: () => this.openAssign(row),
       },
@@ -357,21 +366,21 @@ export class UsersListComponent {
 
     if (row.deletedAt || row.status === 'inactive') {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('users.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestore(row),
       });
 
       if (this.isAuthorizedForPermanentDelete()) {
         items.push({
-          label: 'Delete Forever',
+          label: this.i18n.t('users.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDelete(row),
         });
       }
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('users.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });

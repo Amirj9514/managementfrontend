@@ -2,13 +2,14 @@
   <p-skeleton width="14rem" height="2rem" class="mb-3" />
   <p-skeleton width="100%" height="6rem" />
 } @else if (stay(); as s) {
-  <app-page-header title="Stay" [subtitle]="'Status: ' + s.status" />
+  <app-page-header [title]="'stays.detailTitle' | translate" />
   <p-card>
-    <p>Guest: {{ s.guestId ?? '—' }}</p>
-    <p>Check-in: {{ s.checkIn ?? '—' }}</p>
-    <p>Check-out: {{ s.checkOut ?? '—' }}</p>
+    <p>{{ 'common.status' | translate }}: <app-status-badge [status]="s.status" /></p>
+    <p>{{ 'common.guest' | translate }}: {{ s.guestId ?? '—' }}</p>
+    <p>{{ 'stays.checkIn' | translate }}: {{ s.checkIn ?? '—' }}</p>
+    <p>{{ 'stays.checkOut' | translate }}: {{ s.checkOut ?? '—' }}</p>
     <div class="stay-detail__actions">
-      <p-button label="Back" [outlined]="true" (onClick)="back()" />
+      <p-button [label]="'common.back' | translate" [outlined]="true" (onClick)="back()" />
     </div>
   </p-card>
 }

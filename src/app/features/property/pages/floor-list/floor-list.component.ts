@@ -36,6 +36,9 @@ import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { PROPERTY_DICTIONARY } from '../../property.dictionary';
 import { BuildingsApiService } from '../../services/buildings-api.service';
 import { FloorsApiService } from '../../services/floors-api.service';
 
@@ -64,6 +67,7 @@ import { FloorsApiService } from '../../services/floors-api.service';
     Select,
     TableSkeletonComponent,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './floor-list.component.html',
   styleUrl: './floor-list.component.scss',
@@ -78,6 +82,7 @@ export class FloorListComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
+  readonly i18n = inject(TranslationService);
 
   readonly buildingId = signal<string | null>(null);
   readonly building = signal<BuildingListRow | null>(null);
@@ -96,6 +101,19 @@ export class FloorListComponent implements OnInit {
     label: ['', Validators.required],
   });
 
+  readonly statusFilterOptions = computed(() => {
+    this.i18n.currentLang();
+    return [
+      { label: this.i18n.t('property.filter.active'), value: 'active' },
+      { label: this.i18n.t('property.filter.inactive'), value: 'inactive' },
+      { label: this.i18n.t('property.filter.all'), value: 'all' },
+    ];
+  });
+
+  constructor() {
+    this.i18n.register(PROPERTY_DICTIONARY);
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('buildingId');
     if (id) {
@@ -110,7 +128,8 @@ export class FloorListComponent implements OnInit {
   loadBuilding(id: string): void {
     this.buildingsApi.getById(id).subscribe({
       next: (res) => this.building.set(res),
-      error: () => this.messages.add({ severity: 'error', summary: 'Error', detail: 'Could not load building details.' }),
+      error: () =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: this.i18n.t('property.couldNotLoadBuilding') }),
     });
   }
 
@@ -151,7 +170,7 @@ export class FloorListComponent implements OnInit {
 
     this.floorsApi.create(body).subscribe({
       next: (res) => {
-        this.messages.add({ severity: 'success', summary: 'Floor added', detail: res.label });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('property.floorAdded'), detail: res.label });
         this.createVisible.set(false);
         this.loadFloors(bId);
       },
@@ -180,7 +199,7 @@ export class FloorListComponent implements OnInit {
 
     this.floorsApi.update(floorRowId(row), body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Floor updated.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('property.floorUpdated') });
         this.editVisible.set(false);
         this.loadFloors(bId);
       },
@@ -190,13 +209,13 @@ export class FloorListComponent implements OnInit {
 
   onDelete(row: FloorListRow): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate floor ${row.label}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('property.confirmDeactivateFloor', { label: row.label }),
+      header: this.i18n.t('property.confirmDeactivationHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.floorsApi.delete(floorRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'Floor marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: this.i18n.t('property.floorMarkedInactive') });
             this.loadFloors(this.buildingId()!);
           },
         });
@@ -207,7 +226,7 @@ export class FloorListComponent implements OnInit {
   onRestore(row: FloorListRow): void {
     this.floorsApi.restore(floorRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'Floor is active again.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restored'), detail: this.i18n.t('property.floorActiveAgain') });
         this.loadFloors(this.buildingId()!);
       },
     });
@@ -216,7 +235,7 @@ export class FloorListComponent implements OnInit {
   prepareActions(event: Event, row: FloorListRow, menu: any): void {
     const items: MenuItem[] = [
       {
-        label: 'Edit',
+        label: this.i18n.t('property.menu.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
       },
@@ -224,13 +243,13 @@ export class FloorListComponent implements OnInit {
 
     if (row.deletedAt || row.status === 'inactive') {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('property.menu.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestore(row),
       });
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });

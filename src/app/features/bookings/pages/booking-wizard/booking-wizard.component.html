@@ -1,7 +1,7 @@
-<app-page-header title="New booking" subtitle="Reservation, walk-in, or group check-in — three quick steps." />
+<app-page-header [title]="'nav.newBooking' | translate" [subtitle]="'bookings.wizard.subtitle' | translate" />
 
 <div class="wizard-steps">
-  @for (label of steps; track label; let i = $index) {
+  @for (label of steps(); track label; let i = $index) {
     <div class="wizard-step" [class.wizard-step--active]="step() === i + 1" [class.wizard-step--done]="step() > i + 1">
       <span class="wizard-step__dot">
         @if (step() > i + 1) {
@@ -23,8 +23,8 @@
           <header class="wizard-section__header">
             <span class="wizard-section__icon"><i class="pi pi-user"></i></span>
             <div>
-              <h3 class="wizard-section__title">Guest</h3>
-              <p class="wizard-section__subtitle">Search for a returning guest, or create a new one.</p>
+              <h3 class="wizard-section__title">{{ 'bookings.wizard.guestSectionTitle' | translate }}</h3>
+              <p class="wizard-section__subtitle">{{ 'bookings.wizard.guestSectionSubtitle' | translate }}</p>
             </div>
           </header>
 
@@ -33,141 +33,258 @@
           @if (guest(); as g) {
             <div class="guest-detail-card">
               <div class="guest-detail-card__row">
-                <span class="guest-detail-card__label">Full name</span>
+                <span class="guest-detail-card__label">{{ 'common.fullName' | translate }}</span>
                 <span class="guest-detail-card__value">{{ g.fullName }}</span>
               </div>
               <div class="guest-detail-card__row">
-                <span class="guest-detail-card__label">Phone</span>
+                <span class="guest-detail-card__label">{{ 'common.phone' | translate }}</span>
                 <span class="guest-detail-card__value">{{ g.phone ?? '—' }}</span>
               </div>
               <div class="guest-detail-card__row">
-                <span class="guest-detail-card__label">Email</span>
+                <span class="guest-detail-card__label">{{ 'common.email' | translate }}</span>
                 <span class="guest-detail-card__value">{{ g.email ?? '—' }}</span>
               </div>
               <div class="guest-detail-card__row">
-                <span class="guest-detail-card__label">CNIC / Passport</span>
+                <span class="guest-detail-card__label">{{ 'common.cnic' | translate }}</span>
                 <span class="guest-detail-card__value">{{ g.cnic ?? '—' }}</span>
               </div>
             </div>
+          }
+
+          <div class="field reference-field">
+            <label for="w-reference">{{ 'bookings.referenceBy' | translate }}</label>
+            <span class="input-with-icon">
+              <i class="pi pi-user-plus"></i>
+              <input pInputText id="w-reference" type="text" maxlength="120" [ngModel]="referenceBy()"
+                (ngModelChange)="referenceBy.set($event)" [placeholder]="'bookings.referenceByPlaceholder' | translate" />
+            </span>
+          </div>
+        </section>
+
+        <section class="wizard-section">
+          <header class="wizard-section__header">
+            <span class="wizard-section__icon"><i class="pi pi-users"></i></span>
+            <div class="flex-1">
+              <h3 class="wizard-section__title">{{ 'bookings.companionsTitle' | translate }}</h3>
+              <p class="wizard-section__subtitle">{{ 'bookings.companionsSubtitle' | translate }}</p>
+            </div>
+          </header>
+
+          <div class="companion-count">
+            <label for="w-companion-count">{{ 'bookings.companionCount' | translate }}</label>
+            <p-inputnumber inputId="w-companion-count" [ngModel]="companions().length" (ngModelChange)="onCompanionCountChange($event)"
+              [min]="0" [max]="maxCompanions" [showButtons]="true" buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" inputStyleClass="text-center" />
+          </div>
+
+          @if (companions().length === 0) {
+            <p class="companions-empty"><i class="pi pi-info-circle"></i> {{ 'bookings.companionsEmpty' | translate }}</p>
+          } @else {
+            <div class="companion-list">
+              @for (c of companions(); track $index; let i = $index) {
+                <div class="companion-card">
+                  <div class="companion-card__header">
+                    <span class="companion-card__badge">{{ i + 1 }}</span>
+                    <span class="companion-card__title">{{ 'bookings.companionN' | translate: { n: i + 1 } }}</span>
+                    <button type="button" class="doc-chip__action doc-chip__action--remove" [title]="'common.remove' | translate"
+                      [attr.aria-label]="'common.remove' | translate" (click)="removeCompanion(i)">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
+                  <div class="companion-card__grid">
+                    <div class="field">
+                      <label [for]="'w-c-name-' + i">{{ 'common.fullName' | translate }} *</label>
+                      <input pInputText [id]="'w-c-name-' + i" type="text" maxlength="120" [ngModel]="c.fullName"
+                        (ngModelChange)="updateCompanion(i, { fullName: $event })" />
+                    </div>
+                    <div class="field">
+                      <label [for]="'w-c-rel-' + i">{{ 'bookings.relationWithPrimary' | translate }}</label>
+                      <p-select [inputId]="'w-c-rel-' + i" [options]="relationOptions()" optionLabel="label" optionValue="value"
+                        [ngModel]="c.relation" (ngModelChange)="updateCompanion(i, { relation: $event })"
+                        [placeholder]="'bookings.selectRelation' | translate" [showClear]="true" appendTo="body" />
+                    </div>
+                    <div class="field">
+                      <label>{{ 'bookings.idDocument' | translate }}</label>
+                      <p-selectbutton [options]="idTypeOptions()" optionLabel="label" optionValue="value" [ngModel]="c.idType"
+                        (ngModelChange)="onCompanionIdTypeChange(i, $event)" [allowEmpty]="false" size="small" />
+                    </div>
+                    <div class="field">
+                      <label [for]="'w-c-id-' + i">
+                        {{ (c.idType === 'passport' ? 'bookings.passportNumber' : 'bookings.cnicNumber') | translate }}
+                      </label>
+                      <input pInputText [id]="'w-c-id-' + i" type="text" maxlength="40" [ngModel]="c.idNumber"
+                        (ngModelChange)="updateCompanion(i, { idNumber: $event })"
+                        [placeholder]="c.idType === 'passport' ? 'AB1234567' : '35202-1234567-1'" />
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      </div>
+
+      <section class="wizard-section step1-grid--secondary">
+        <header class="wizard-section__header">
+          <span class="wizard-section__icon"><i class="pi pi-paperclip"></i></span>
+          <div>
+            <h3 class="wizard-section__title">{{ 'bookings.docsSectionTitle' | translate }}</h3>
+            <p class="wizard-section__subtitle">{{ 'bookings.docsSectionSubtitle' | translate }}</p>
+          </div>
+        </header>
+
+        <div class="docs-layout">
+          <label class="doc-dropzone" for="w-docs">
+            <i class="pi pi-cloud-upload doc-dropzone__icon"></i>
+            <span class="doc-dropzone__title">{{ 'bookings.dropFilesHere' | translate }}</span>
+            <span class="doc-dropzone__hint">{{ 'bookings.fileTypesHint' | translate }}</span>
+            <input #docInput id="w-docs" type="file" multiple [accept]="documentAccept" class="doc-dropzone__input"
+              (change)="onPendingFilesPicked(docInput)" />
+          </label>
+
+          @if (pendingDocuments().length > 0) {
+            <ul class="pending-docs">
+              @for (file of pendingDocuments(); track $index) {
+                <li class="pending-docs__item">
+                  <i class="pending-docs__icon" [class]="documentIcon(file.type)"></i>
+                  <span class="pending-docs__name" [title]="file.name">{{ file.name }}</span>
+                  <span class="pending-docs__size">{{ formatDocumentSize(file.size) }}</span>
+                  <button type="button" class="doc-chip__action doc-chip__action--remove" [title]="'common.remove' | translate"
+                    [attr.aria-label]="'common.remove' | translate" (click)="removePendingDocument($index)">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+
+      @if (guestStepMissing().length > 0) {
+        <small class="app-field-error step1-hint">{{ 'bookings.stillNeeded' | translate: { items: guestStepMissing().join(', ') } }}</small>
+      }
+    }
+
+    @case (2) {
+      <div class="step1-grid">
+        <section class="wizard-section">
+          <header class="wizard-section__header">
+            <span class="wizard-section__icon"><i class="pi pi-building"></i></span>
+            <div>
+              <h3 class="wizard-section__title">{{ 'bookings.wizard.staySectionTitle' | translate }}</h3>
+              <p class="wizard-section__subtitle">{{ 'bookings.wizard.staySectionSubtitle' | translate }}</p>
+            </div>
+          </header>
+
+          <p-selectbutton [options]="accommodationOptions()" optionLabel="label" optionValue="value" [ngModel]="bookingType()"
+            (ngModelChange)="bookingType.set($event)" [allowEmpty]="false" class="mb-3" />
+
+          @if (bookingType() === 'hall') {
+            <div class="field mb-3">
+              <label>{{ 'hallAudience.label' | translate }}</label>
+              <p-selectbutton [options]="hallAudienceOptions()" optionLabel="label" optionValue="value" [ngModel]="hallAudience()"
+                (ngModelChange)="onHallAudienceChange($event)" [allowEmpty]="false" />
+            </div>
+          }
+
+          <div class="form-grid" [hidden]="branches().length <= 1">
+            <div class="field">
+              <label for="w-branch">{{ 'common.branch' | translate }}</label>
+              <p-select inputId="w-branch" [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+                (ngModelChange)="onBranchChange($event)" [placeholder]="'bookings.selectBranch' | translate" />
+            </div>
+          </div>
+
+          <div class="date-grid">
+            <div class="field">
+              <label for="w-checkin">{{ 'bookings.checkInDate' | translate }}</label>
+              <p-datepicker inputId="w-checkin" [ngModel]="checkInDate()" (ngModelChange)="checkInDate.set($event)" [showIcon]="true"
+                dateFormat="D, d M yy" [minDate]="minCheckInDate" [readonlyInput]="true" />
+            </div>
+            <div class="field field--nights">
+              <label for="w-nights">{{ 'bookings.stayLength' | translate }}</label>
+              <p-inputnumber inputId="w-nights" [ngModel]="nights()" (ngModelChange)="onNightsChange($event)" [min]="1" [max]="365"
+                [showButtons]="true" buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus"
+                inputStyleClass="text-center" />
+            </div>
+          </div>
+          @if (checkOutDate(); as checkOut) {
+            <small class="auto-checkout-hint">
+              <i class="pi pi-sign-out"></i>
+              {{ 'bookings.checkOutDate' | translate }}: <strong>{{ checkOut | date: 'EEE, d MMM y' }}</strong>
+            </small>
           }
         </section>
 
         <section class="wizard-section">
           <header class="wizard-section__header">
-            <span class="wizard-section__icon"><i class="pi pi-building"></i></span>
+            <span class="wizard-section__icon"><i class="pi pi-align-left"></i></span>
             <div>
-              <h3 class="wizard-section__title">Stay &amp; accommodation</h3>
-              <p class="wizard-section__subtitle">Branch, dates, and party size for this booking.</p>
+              <h3 class="wizard-section__title">{{ 'bookings.notesSectionTitle' | translate }}</h3>
+              <p class="wizard-section__subtitle">{{ 'bookings.notesSectionSubtitle' | translate }}</p>
             </div>
           </header>
 
-          <p-selectbutton [options]="accommodationOptions" optionLabel="label" optionValue="value" [ngModel]="bookingType()"
-            (ngModelChange)="bookingType.set($event)" class="mb-3" />
-
-          <div class="form-grid">
-            <div class="field">
-              <label for="w-branch">Branch</label>
-              <p-select id="w-branch" [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
-                (ngModelChange)="onBranchChange($event)" placeholder="Select branch" />
-            </div>
+          <div class="party-summary">
+            <span class="party-summary__chip"><i class="pi pi-users"></i> {{ 'bookings.guestsCount' | translate: { count: partySize() } }}</span>
+            @if (bookingType() === 'room') {
+              <span class="party-summary__chip">{{ adults() }} {{ 'common.adults' | translate }}</span>
+              @if (children() > 0) {
+                <span class="party-summary__chip">{{ children() }} {{ 'common.children' | translate }}</span>
+              }
+            }
+            <span class="party-summary__note">{{ 'bookings.partyFromGuestStep' | translate }}</span>
           </div>
 
-          <div class="form-grid">
-            <div class="field">
-              <label for="w-checkin">Check-in date</label>
-              <p-datepicker id="w-checkin" [ngModel]="checkInDate()" (ngModelChange)="checkInDate.set($event)" [showIcon]="true"
-                dateFormat="yy-mm-dd" [minDate]="minCheckInDate" />
-            </div>
-            <div class="field">
-              <label for="w-checkout">Expected checkout</label>
-              <p-datepicker id="w-checkout" [ngModel]="checkOutDate()" (ngModelChange)="checkOutDate.set($event)" [showIcon]="true"
-                dateFormat="yy-mm-dd" [minDate]="minCheckOutDate()" />
-            </div>
-          </div>
+          <textarea pTextarea id="w-notes" rows="4" class="w-full" [ngModel]="notes()" (ngModelChange)="notes.set($event)"
+            [placeholder]="'bookings.notesPlaceholder' | translate" [attr.aria-label]="'bookings.notesSectionTitle' | translate"></textarea>
 
-          @if (bookingType() === 'room') {
-            <div class="form-grid">
-              <div class="field">
-                <label for="w-adults">Adults</label>
-                <p-inputnumber id="w-adults" [ngModel]="adults()" (ngModelChange)="adults.set($event)" [min]="1" />
-              </div>
-              <div class="field">
-                <label for="w-children">Children</label>
-                <p-inputnumber id="w-children" [ngModel]="children()" (ngModelChange)="children.set($event)" [min]="0" />
-              </div>
-            </div>
-          } @else {
-            <div class="field">
-              <label for="w-party">Party size</label>
-              <p-inputnumber id="w-party" [ngModel]="partySize()" (ngModelChange)="partySize.set($event)" [min]="1" />
-            </div>
-          }
-
-          <div class="walkin-toggle" [class.walkin-toggle--disabled]="!isCheckInToday()">
-            <p-toggleswitch inputId="w-checkin-now" [ngModel]="checkInNow()" (ngModelChange)="checkInNow.set($event)"
-              [disabled]="!isCheckInToday()" />
-            <div class="walkin-toggle__text">
-              <label for="w-checkin-now">Check in immediately (walk-in)</label>
-              <small>
-                @if (isCheckInToday()) {
-                  Guest will be checked in as soon as this booking is created.
-                } @else {
-                  Only available when check-in date is today — this stay is a future reservation.
-                }
-              </small>
-            </div>
+          <div class="arrival-note" [class.arrival-note--future]="!isCheckInToday()">
+            <i class="pi" [class.pi-sign-in]="isCheckInToday()" [class.pi-calendar-clock]="!isCheckInToday()"></i>
+            <span>{{ (isCheckInToday() ? 'bookings.autoCheckInToday' : 'bookings.autoCheckInFuture') | translate }}</span>
           </div>
         </section>
       </div>
 
-      <section class="wizard-section wizard-section--notes">
-        <header class="wizard-section__header">
-          <span class="wizard-section__icon"><i class="pi pi-align-left"></i></span>
-          <div>
-            <h3 class="wizard-section__title">Booking notes</h3>
-            <p class="wizard-section__subtitle">Optional — anything staff should know about this stay.</p>
-          </div>
-        </header>
-        <textarea pTextarea id="w-notes" rows="3" class="w-full" [ngModel]="notes()" (ngModelChange)="notes.set($event)"
-          placeholder="e.g. arriving late, requested a quiet room, travelling with an infant…"></textarea>
-      </section>
-
-      @if (step1Missing().length > 0) {
-        <small class="app-field-error step1-hint">Still needed: {{ step1Missing().join(', ') }}.</small>
+      @if (stayStepMissing().length > 0) {
+        <small class="app-field-error step1-hint">{{ 'bookings.stillNeeded' | translate: { items: stayStepMissing().join(', ') } }}</small>
       }
     }
 
-    @case (2) {
+    @case (3) {
       <div class="flex align-items-baseline justify-content-between flex-wrap gap-2 mb-2">
-        <h3 class="mt-0 mb-0">Room selection</h3>
+        <h3 class="mt-0 mb-0">{{ 'bookings.roomSelectionTitle' | translate }}</h3>
         @if (!searching() && wizardUnits().length > 0) {
           <span class="availability-summary">
-            <strong>{{ availableCount() }}</strong> of {{ wizardUnits().length }}
-            {{ bookingType() === 'room' ? 'rooms' : 'halls' }} are free for your dates
+            {{ 'bookings.availableSummary' | translate: {
+              available: availableCount(),
+              total: wizardUnits().length,
+              unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate
+            } }}
           </span>
         }
       </div>
 
       <div class="filter-bar">
         <div class="field">
-          <label for="w-filter-building">Building</label>
+          <label for="w-filter-building">{{ 'common.building' | translate }}</label>
           <p-select id="w-filter-building" [options]="buildingFilterOptions()" optionLabel="label" optionValue="value"
             [ngModel]="filterBuildingId()" (ngModelChange)="onFilterBuildingChange($event)" />
         </div>
         <div class="field">
-          <label for="w-filter-floor">Floor</label>
+          <label for="w-filter-floor">{{ 'common.floor' | translate }}</label>
           <p-select id="w-filter-floor" [options]="floorFilterOptions()" optionLabel="label" optionValue="value"
             [ngModel]="filterFloorId()" (ngModelChange)="onFilterFloorChange($event)" />
         </div>
       </div>
 
       <div class="status-legend">
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--success"></span> Available</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--info"></span> Occupied</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--warn"></span> Cleaning</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--danger"></span> Maintenance</span>
+        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--success"></span> {{ 'status.available' | translate }}</span>
+        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--info"></span> {{ 'status.occupied' | translate }}</span>
+        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--warn"></span> {{ 'status.cleaning' | translate }}</span>
+        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--danger"></span> {{ 'status.maintenance' | translate }}</span>
         <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--capacity"></span>
-          Fits fewer guests than requested {{ canOverrideCapacity() ? '(you can override)' : '(admin only)' }}</span>
+          {{ 'bookings.legend.fitsFewerGuests' | translate }}</span>
       </div>
       @if (searching()) {
         <div class="unit-results">
@@ -176,7 +293,7 @@
           }
         </div>
       } @else if (wizardUnits().length === 0) {
-        <p class="text-color-secondary">No {{ bookingType() === 'room' ? 'rooms' : 'halls' }} match this filter yet.</p>
+        <p class="text-color-secondary">{{ 'bookings.noUnitsMatch' | translate: { unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate } }}</p>
       } @else {
         <div class="unit-results">
           @for (unit of wizardUnits(); track unit.id) {
@@ -213,7 +330,7 @@
               @if (unit.level === 'capacity-warning') {
                 <span class="unit-card__reason unit-card__reason--warning">
                   <i class="pi pi-exclamation-triangle"></i>
-                  {{ unit.message }} {{ canOverrideCapacity() ? '(admin override)' : '(admin only)' }}
+                  {{ unit.message }}
                 </span>
               } @else if (unit.message) {
                 <span class="unit-card__reason">{{ unit.message }}</span>
@@ -224,23 +341,23 @@
       }
     }
 
-    @case (3) {
+    @case (4) {
       <div class="confirmation">
         <i class="pi pi-check-circle confirmation__icon"></i>
-        <h3>Booking confirmed</h3>
-        <p class="text-color-secondary">Booking number</p>
+        <h3>{{ 'bookings.confirmedTitle' | translate }}</h3>
+        <p class="text-color-secondary">{{ 'bookings.bookingNumberFull' | translate }}</p>
         <p class="confirmation__number">{{ createdBookingNumber() }}</p>
         <div class="flex gap-2 justify-content-center mt-3">
-          <p-button label="View booking" (onClick)="goToBooking()" />
-          <p-button label="Start another booking" [outlined]="true" (onClick)="startAnother()" />
+          <p-button [label]="'bookings.viewBooking' | translate" (onClick)="goToBooking()" />
+          <p-button [label]="'bookings.startAnother' | translate" [outlined]="true" (onClick)="startAnother()" />
         </div>
       </div>
 
       <div class="booking-documents">
         <div class="booking-documents__header">
-          <span class="booking-documents__title"><i class="pi pi-paperclip"></i> Documents</span>
+          <span class="booking-documents__title"><i class="pi pi-paperclip"></i> {{ 'bookings.documentsTitle' | translate }}</span>
           <p-fileupload #documentFileUpload mode="basic" [auto]="false" [multiple]="true"
-            [accept]="documentAccept" [maxFileSize]="maxDocumentSize" chooseLabel="Attach document"
+            [accept]="documentAccept" [maxFileSize]="maxDocumentSize" [chooseLabel]="'bookings.attachDocument' | translate"
             chooseIcon="pi pi-upload" [disabled]="uploadingDocuments()" (onSelect)="onDocumentFilesSelected($event)" />
         </div>
 
@@ -251,10 +368,10 @@
                 <i class="doc-chip__icon" [class]="documentIcon(doc.mimeType)"></i>
                 <span class="doc-chip__name" [title]="doc.originalName">{{ doc.originalName }}</span>
                 <span class="doc-chip__size">{{ formatDocumentSize(doc.sizeBytes) }}</span>
-                <button type="button" class="doc-chip__action" title="View / download" (click)="viewDocument(doc)">
+                <button type="button" class="doc-chip__action" [title]="'bookings.viewDownload' | translate" (click)="viewDocument(doc)">
                   <i class="pi pi-eye"></i>
                 </button>
-                <button type="button" class="doc-chip__action doc-chip__action--remove" title="Remove"
+                <button type="button" class="doc-chip__action doc-chip__action--remove" [title]="'common.remove' | translate"
                   (click)="removeDocument(doc)">
                   <i class="pi pi-times"></i>
                 </button>
@@ -262,16 +379,16 @@
             }
           </div>
         } @else {
-          <p class="booking-documents__empty">No documents attached yet — optional.</p>
+          <p class="booking-documents__empty">{{ 'bookings.noDocumentsYet' | translate }}</p>
         }
       </div>
     }
   }
 
-  @if (step() < 3) {
+  @if (step() < 4) {
     <div class="wizard-actions">
-      <p-button label="Back" [outlined]="true" [disabled]="step() === 1" (onClick)="back()" />
-      <p-button [label]="step() === 2 ? 'Confirm booking' : 'Next'" [disabled]="!canProceed()" [loading]="creating() || committingGuest()" (onClick)="next()" />
+      <p-button [label]="'common.back' | translate" [outlined]="true" [disabled]="step() === 1" (onClick)="back()" />
+      <p-button [label]="(step() === 3 ? 'bookings.confirmBooking' : 'common.next') | translate" [disabled]="!canProceed()" [loading]="creating() || committingGuest()" (onClick)="next()" />
     </div>
   }
 </p-card>

@@ -15,6 +15,9 @@ import type { AmenityRow } from '../../../../core/models/unit-admin.model';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { AMENITIES_DICTIONARY } from '../../amenities.dictionary';
 import { AmenitiesApiService } from '../../services/amenities-api.service';
 
 @Component({
@@ -34,6 +37,7 @@ import { AmenitiesApiService } from '../../services/amenities-api.service';
     ToggleSwitch,
     ConfirmDialog,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './amenity-list.component.html',
   styleUrl: './amenity-list.component.scss',
@@ -44,6 +48,7 @@ export class AmenityListComponent {
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
+  readonly i18n = inject(TranslationService);
 
   readonly rows = signal<AmenityRow[]>([]);
   readonly loading = signal(true);
@@ -61,6 +66,7 @@ export class AmenityListComponent {
   });
 
   constructor() {
+    this.i18n.register(AMENITIES_DICTIONARY);
     this.reload();
   }
 
@@ -103,12 +109,16 @@ export class AmenityListComponent {
     const req = target ? this.api.update(target._id, body) : this.api.create(body);
     req.subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: target ? 'Updated' : 'Created', detail: body.name ?? '' });
+        this.messages.add({
+          severity: 'success',
+          summary: this.i18n.t(target ? 'common.updated' : 'common.created'),
+          detail: body.name ?? '',
+        });
         this.formVisible.set(false);
         this.reload();
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Save failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('amenities.saveFailed') });
       },
       complete: () => this.saving.set(false),
     });
@@ -116,17 +126,21 @@ export class AmenityListComponent {
 
   remove(row: AmenityRow): void {
     this.confirmation.confirm({
-      message: `Remove amenity "${row.name}"?`,
-      header: 'Confirm removal',
+      message: this.i18n.t('amenities.confirmRemove', { name: row.name }),
+      header: this.i18n.t('amenities.confirmRemoveHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.api.delete(row._id).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Removed', detail: row.name });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('amenities.removed'), detail: row.name });
             this.reload();
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Removal failed' });
+            this.messages.add({
+              severity: 'error',
+              summary: this.i18n.t('common.error'),
+              detail: err.message || this.i18n.t('amenities.removalFailed'),
+            });
           },
         });
       },

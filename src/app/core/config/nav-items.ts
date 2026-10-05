@@ -6,6 +6,7 @@ import {
 } from '../models/roles.model';
 
 export interface NavItem {
+  /** Translation key (see core/i18n/dictionaries/nav.dictionary.ts), not a literal label. */
   label: string;
   routerLink: string;
   /** Lucide icon name registered with provideIcons (e.g. lucideLayoutDashboard) */
@@ -15,10 +16,10 @@ export interface NavItem {
 
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
-    label: 'Overview',
+    label: 'nav.group.overview',
     items: [
       {
-        label: 'Dashboard',
+        label: 'nav.dashboard',
         routerLink: '/dashboard',
         icon: 'lucideLayoutDashboard',
         roles: [
@@ -36,22 +37,22 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'nav.group.operations',
     items: [
       {
-        label: 'Bookings',
+        label: 'nav.bookings',
         routerLink: '/bookings',
         icon: 'lucideCalendarCheck',
         roles: GUEST_READ_ROLES,
       },
       {
-        label: 'Guests',
+        label: 'nav.guests',
         routerLink: '/guests',
         icon: 'lucideUsers',
         roles: GUEST_READ_ROLES,
       },
       {
-        label: 'Stays',
+        label: 'nav.stays',
         routerLink: '/stays',
         icon: 'lucideBedDouble',
         roles: GUEST_READ_ROLES,
@@ -59,28 +60,28 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Property',
+    label: 'nav.group.property',
     items: [
       {
-        label: 'Branches',
+        label: 'nav.branches',
         routerLink: '/branches',
         icon: 'lucideBuilding2',
         roles: ['super_admin', 'admin', 'branch_admin', 'building_admin'],
       },
       {
-        label: 'Rooms',
+        label: 'nav.rooms',
         routerLink: '/rooms',
         icon: 'lucideDoorOpen',
         roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
       },
       {
-        label: 'Halls',
+        label: 'nav.halls',
         routerLink: '/halls',
         icon: 'lucideUsers',
         roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
       },
       {
-        label: 'Amenities',
+        label: 'nav.amenities',
         routerLink: '/amenities',
         icon: 'lucideTag',
         roles: ['super_admin', 'admin', 'branch_admin'],
@@ -88,16 +89,16 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'People',
+    label: 'nav.group.people',
     items: [
       {
-        label: 'HR',
+        label: 'nav.hr',
         routerLink: '/hr/employees',
         icon: 'lucideBriefcase',
         roles: ['super_admin', 'admin', 'employee_admin', 'branch_admin'],
       },
       {
-        label: 'Users',
+        label: 'nav.users',
         routerLink: '/users',
         icon: 'lucideUserCog',
         roles: USER_ADMIN_ROLES,
@@ -105,10 +106,10 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'Insights',
+    label: 'nav.group.insights',
     items: [
       {
-        label: 'Reports',
+        label: 'nav.reports',
         routerLink: '/reports',
         icon: 'lucideChartBar',
         roles: ['super_admin', 'admin', 'branch_admin', 'booking_admin'],
@@ -116,10 +117,10 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: 'System',
+    label: 'nav.group.system',
     items: [
       {
-        label: 'Audit log',
+        label: 'nav.auditLog',
         routerLink: '/audit',
         icon: 'lucideScrollText',
         roles: AUDIT_ROLES,

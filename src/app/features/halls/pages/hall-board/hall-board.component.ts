@@ -13,6 +13,7 @@ import { InputNumber } from 'primeng/inputnumber';
 import { InputText } from 'primeng/inputtext';
 import { MultiSelect } from 'primeng/multiselect';
 import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
 import { Toolbar } from 'primeng/toolbar';
 import type { BranchListRow } from '../../../../core/models/branch-admin.model';
@@ -24,7 +25,7 @@ import {
   UNIT_STATUS_OPTIONS,
   type AmenityRow,
   type PublicHallRow,
-  type UnitStatus,
+  type UnitStatus, type HallAudience,
 } from '../../../../core/models/unit-admin.model';
 import { AmenitiesApiService } from '../../../amenities/services/amenities-api.service';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
@@ -37,11 +38,15 @@ import { FieldErrorComponent } from '../../../../shared/field-error/field-error.
 import { GuestPickerComponent } from '../../../../shared/guest-picker/guest-picker.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { HALLS_DICTIONARY } from '../../halls.dictionary';
 import { HallsApiService } from '../../services/halls-api.service';
 
 @Component({
   selector: 'app-hall-board',
   imports: [
+    SelectButton,
     DatePipe,
     FormsModule,
     ReactiveFormsModule,
@@ -63,6 +68,7 @@ import { HallsApiService } from '../../services/halls-api.service';
     Dialog,
     ConfirmDialog,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './hall-board.component.html',
   styleUrl: './hall-board.component.scss',
@@ -79,8 +85,13 @@ export class HallBoardComponent {
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly route = inject(ActivatedRoute);
+  readonly i18n = inject(TranslationService);
 
   readonly statusOptions = UNIT_STATUS_OPTIONS;
+  readonly statusOptionsT = computed(() => {
+    this.i18n.currentLang();
+    return this.statusOptions.map((o) => ({ ...o, label: this.i18n.t(`status.${o.value}`) }));
+  });
 
   readonly branches = signal<BranchListRow[]>([]);
   readonly buildings = signal<BuildingListRow[]>([]);
@@ -112,9 +123,17 @@ export class HallBoardComponent {
   readonly form = this.fb.nonNullable.group({
     code: ['', Validators.required],
     maxCapacity: [20, [Validators.required, Validators.min(1)]],
+    audience: ['mixed' as HallAudience],
     amenityIds: [[] as string[]],
     status: ['available' as UnitStatus],
   });
+
+  readonly audienceOptions = computed(() =>
+    (['gents', 'ladies', 'mixed'] as HallAudience[]).map((value) => ({
+      label: this.i18n.t(`hallAudience.${value}`),
+      value,
+    })),
+  );
 
   readonly checkInVisible = signal(false);
   readonly checkInSaving = signal(false);
@@ -126,7 +145,14 @@ export class HallBoardComponent {
   });
 
   constructor() {
-    this.branchesApi.list(1, 100, 'active').subscribe({ next: ({ items }) => this.branches.set(items) });
+    this.i18n.register(HALLS_DICTIONARY);
+    this.branchesApi.list(1, 100, 'active').subscribe({
+      next: ({ items }) => {
+        this.branches.set(items);
+        // Single-branch setup: there's nothing to choose, so start on it straight away.
+        if (!this.branchId() && items.length) this.onBranchChange(items[0]._id);
+      },
+    });
     this.amenitiesApi.list().subscribe({ next: ({ items }) => this.amenities.set(items) });
 
     // Deep link support: booking detail's "view hall" link passes the hall's own
@@ -221,7 +247,7 @@ export class HallBoardComponent {
 
   openCreate(): void {
     this.editTarget.set(null);
-    this.form.reset({ code: '', maxCapacity: 20, amenityIds: [], status: 'available' });
+    this.form.reset({ code: '', maxCapacity: 20, audience: 'mixed', amenityIds: [], status: 'available' });
     this.formVisible.set(true);
   }
 
@@ -230,6 +256,7 @@ export class HallBoardComponent {
     this.form.reset({
       code: hall.code,
       maxCapacity: hall.maxCapacity,
+      audience: hall.audience ?? 'mixed',
       amenityIds: hall.amenityIds ?? [],
       status: hall.status,
     });
@@ -247,6 +274,7 @@ export class HallBoardComponent {
       floorId: target?.floorId ?? this.floorId()!,
       code: v.code!,
       maxCapacity: v.maxCapacity!,
+      audience: v.audience,
       amenityIds: v.amenityIds ?? [],
       status: v.status ?? 'available',
     };
@@ -254,27 +282,37 @@ export class HallBoardComponent {
     const req = target ? this.hallsApi.update(target._id, payload) : this.hallsApi.create(payload);
     req.subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: target ? 'Updated' : 'Created', detail: v.code ?? '' });
+        this.messages.add({
+          severity: 'success',
+          summary: this.i18n.t(target ? 'common.updated' : 'common.created'),
+          detail: v.code ?? '',
+        });
         this.formVisible.set(false);
         this.reload();
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Save failed' }),
+      error: (err) =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.saveFailed') }),
       complete: () => this.saving.set(false),
     });
   }
 
   remove(hall: PublicHallRow): void {
     this.confirmation.confirm({
-      message: `Deactivate hall "${hall.code}"?`,
-      header: 'Confirm deactivation',
+      message: this.i18n.t('halls.confirmDeactivate', { code: hall.code }),
+      header: this.i18n.t('halls.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.hallsApi.delete(hall._id).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: hall.code });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: hall.code });
             this.reload();
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Deactivation failed' }),
+          error: (err) =>
+            this.messages.add({
+              severity: 'error',
+              summary: this.i18n.t('common.error'),
+              detail: err.message || this.i18n.t('halls.deactivationFailed'),
+            }),
         });
       },
     });
@@ -292,7 +330,11 @@ export class HallBoardComponent {
     const branchId = this.branchId();
     if (!hall || !branchId) return;
     if (!guest) {
-      this.messages.add({ severity: 'warn', summary: 'Guest required', detail: 'Search or create a guest first.' });
+      this.messages.add({
+        severity: 'warn',
+        summary: this.i18n.t('halls.guestRequired'),
+        detail: this.i18n.t('halls.guestRequiredDetail'),
+      });
       return;
     }
     if (this.checkInForm.invalid) {
@@ -312,30 +354,40 @@ export class HallBoardComponent {
       })
       .subscribe({
         next: () => {
-          this.messages.add({ severity: 'success', summary: 'Checked in', detail: `Party of ${v.partySize} checked in to ${hall.code}` });
+          this.messages.add({
+            severity: 'success',
+            summary: this.i18n.t('halls.checkedInSummary'),
+            detail: this.i18n.t('halls.checkedInDetail', { size: v.partySize!, code: hall.code }),
+          });
           this.checkInVisible.set(false);
           this.reload();
           this.selectHall(hall);
         },
-        error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Check-in failed' }),
+        error: (err) =>
+          this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.checkInFailed') }),
         complete: () => this.checkInSaving.set(false),
       });
   }
 
   checkOutParty(line: BookingUnitRow): void {
     this.confirmation.confirm({
-      message: `Check out this party of ${line.occupancy.partySize}?`,
-      header: 'Confirm check-out',
+      message: this.i18n.t('halls.confirmCheckOut', { size: line.occupancy.partySize ?? 0 }),
+      header: this.i18n.t('halls.confirmCheckOutHeader'),
       icon: 'pi pi-sign-out',
       accept: () => {
         this.bookingsApi.checkOut(line.bookingId, line._id).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Checked out', detail: 'Capacity freed up.' });
+            this.messages.add({
+              severity: 'success',
+              summary: this.i18n.t('halls.checkedOutSummary'),
+              detail: this.i18n.t('halls.checkedOutDetail'),
+            });
             this.reload();
             const hall = this.selectedHall();
             if (hall) this.selectHall(hall);
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Check-out failed' }),
+          error: (err) =>
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.checkOutFailed') }),
         });
       },
     });

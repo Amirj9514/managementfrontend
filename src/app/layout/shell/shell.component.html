@@ -7,14 +7,14 @@
     <div class="app-sidebar__brand">
       <span class="app-sidebar__logo">M</span>
       @if (!sidebarCollapsed()) {
-        <span class="app-sidebar__name">Management</span>
+        <span class="app-sidebar__name">{{ 'shell.brand' | translate }}</span>
       }
     </div>
     <nav class="app-sidebar__nav">
       @for (group of navGroups; track group.label) {
         <div class="app-sidebar__group">
           @if (!sidebarCollapsed()) {
-            <p class="app-sidebar__group-label">{{ group.label }}</p>
+            <p class="app-sidebar__group-label">{{ group.label | translate }}</p>
           }
           @for (item of filteredItems(group.items, u); track item.routerLink) {
             <a
@@ -25,7 +25,7 @@
             >
               <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
               @if (!sidebarCollapsed()) {
-                <span>{{ item.label }}</span>
+                <span>{{ item.label | translate }}</span>
               }
             </a>
           }
@@ -39,7 +39,7 @@
       class="app-topbar__menu-btn"
       [text]="true"
       [rounded]="true"
-      aria-label="Open menu"
+      [attr.aria-label]="'shell.openMenu' | translate"
       (onClick)="openMobileNav()"
     >
       <ng-icon name="lucideMenu" size="1.25rem" />
@@ -48,7 +48,7 @@
       class="app-topbar__collapse"
       [text]="true"
       [rounded]="true"
-      aria-label="Toggle sidebar"
+      [attr.aria-label]="'shell.toggleSidebar' | translate"
       (onClick)="toggleSidebar()"
     >
       @if (sidebarCollapsed()) {
@@ -58,12 +58,22 @@
       }
     </p-button>
     <div class="app-topbar__spacer"></div>
+    <p-button
+      class="app-topbar__lang"
+      [text]="true"
+      [outlined]="true"
+      size="small"
+      [attr.aria-label]="'shell.language' | translate"
+      (onClick)="i18n.toggleLang()"
+    >
+      {{ i18n.currentLang() === 'en' ? 'اردو' : 'English' }}
+    </p-button>
     @if (u; as user) {
       <p-button [text]="true" (onClick)="userMenuBtn.toggle($event)" class="app-topbar__user">
         <span class="app-topbar__avatar">{{ user.name.charAt(0).toUpperCase() }}</span>
         <span class="app-topbar__user-name">{{ user.name }}</span>
       </p-button>
-      <p-menu #userMenuBtn [model]="menuItems" [popup]="true" appendTo="body" />
+      <p-menu #userMenuBtn [model]="menuItems()" [popup]="true" appendTo="body" />
     }
   </header>
 
@@ -83,12 +93,12 @@
   (onHide)="closeMobileNav()"
 >
   <ng-template #header>
-    <span class="app-sidebar__name">Management</span>
+    <span class="app-sidebar__name">{{ 'shell.brand' | translate }}</span>
   </ng-template>
   <nav class="app-sidebar__nav">
     @for (group of navGroups; track group.label) {
       <div class="app-sidebar__group">
-        <p class="app-sidebar__group-label">{{ group.label }}</p>
+        <p class="app-sidebar__group-label">{{ group.label | translate }}</p>
         @for (item of filteredItems(group.items, u); track item.routerLink) {
           <a
             class="app-sidebar__link"
@@ -97,7 +107,7 @@
             (click)="closeMobileNav()"
           >
             <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
-            <span>{{ item.label }}</span>
+            <span>{{ item.label | translate }}</span>
           </a>
         }
       </div>

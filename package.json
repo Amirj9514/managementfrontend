@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "db:seed": "npm --prefix ../managementBackend run db:seed",
+    "db:seed:reset": "npm --prefix ../managementBackend run db:seed:reset"
   },
   "prettier": {
     "printWidth": 100,

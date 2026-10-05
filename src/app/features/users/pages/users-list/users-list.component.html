@@ -1,20 +1,20 @@
 <app-page-header
-  title="Users"
-  subtitle="Staff accounts — list (GET /users), create (POST /users), role & assignment (PATCH /users/:id/assignment)."
+  [title]="'nav.users' | translate"
+  [subtitle]="'users.subtitle' | translate"
 />
 <p-toolbar styleClass="users-toolbar">
   <ng-template #start>
     <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" label="New user" (onClick)="openCreate()" />
+      <p-button type="button" [label]="'users.newUser' | translate" (onClick)="openCreate()" />
       <p-select
         [options]="[
-          { label: 'Active', value: 'active' },
-          { label: 'Inactive / Deleted', value: 'inactive' },
-          { label: 'All', value: 'all' }
+          { label: ('users.filter.active' | translate), value: 'active' },
+          { label: ('users.filter.inactiveDeleted' | translate), value: 'inactive' },
+          { label: ('users.filter.all' | translate), value: 'all' }
         ]"
         [ngModel]="status()"
         (ngModelChange)="onStatusChange($event)"
-        placeholder="Filter by status"
+        [placeholder]="'users.filterByStatus' | translate"
         styleClass="w-12rem"
       />
     </div>
@@ -24,22 +24,22 @@
   @if (loading()) {
     <app-table-skeleton [columns]="5" [rows]="10" />
   } @else if (rows().length === 0 && totalRecords() === 0) {
-    <app-empty-state 
-      title="No users found" 
-      description="There are no staff accounts in the system yet, or none match your current status filter." 
+    <app-empty-state
+      [title]="'users.emptyTitle' | translate"
+      [description]="'users.emptyDescription' | translate"
       icon="lucideUsers"
-      actionLabel="Create User"
+      [actionLabel]="'users.createUser' | translate"
       (actionClick)="openCreate()"
     />
   } @else {
     <p-table [value]="rows()" [loading]="false" [tableStyle]="{ 'min-width': '48rem' }">
       <ng-template #header>
         <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Created</th>
+          <th>{{ 'common.name' | translate }}</th>
+          <th>{{ 'common.email' | translate }}</th>
+          <th>{{ 'common.role' | translate }}</th>
+          <th>{{ 'common.status' | translate }}</th>
+          <th>{{ 'common.created' | translate }}</th>
           <th style="width: 11rem"></th>
         </tr>
       </ng-template>
@@ -47,12 +47,12 @@
         <tr>
           <td>{{ row.name || '—' }}</td>
           <td>{{ row.email }}</td>
-          <td>{{ row.role }}</td>
+          <td>{{ 'role.' + row.role | translate }}</td>
           <td>
             @if (row.deletedAt || row.status === 'inactive') {
-              <p-tag value="Inactive" severity="danger" />
+              <p-tag [value]="'status.inactive' | translate" severity="danger" />
             } @else {
-              <p-tag value="Active" severity="success" />
+              <p-tag [value]="'status.active' | translate" severity="success" />
             }
           </td>
           <td>{{ row.createdAt ? (row.createdAt | date: 'medium') : '—' }}</td>
@@ -84,7 +84,7 @@
 </p-card>
 
 <p-drawer
-  header="New user"
+  [header]="'users.newUserHeader' | translate"
   [visible]="createVisible()"
   (visibleChange)="createVisible.set($event)"
   position="right"
@@ -94,12 +94,12 @@
     <p-fluid>
       <div class="form-grid">
         <div class="field">
-          <label for="cu-email">Email</label>
+          <label for="cu-email">{{ 'common.email' | translate }}</label>
           <input pInputText id="cu-email" type="email" formControlName="email" autocomplete="off" />
-          <app-field-error [control]="createForm.controls.email" label="Email" />
+          <app-field-error [control]="createForm.controls.email" [label]="'common.email' | translate" />
         </div>
         <div class="field">
-          <label for="cu-password">Password</label>
+          <label for="cu-password">{{ 'common.password' | translate }}</label>
           <p-password
             id="cu-password"
             formControlName="password"
@@ -109,91 +109,91 @@
             inputStyleClass="w-full"
             autocomplete="new-password"
           />
-          <app-field-error [control]="createForm.controls.password" label="Password" />
+          <app-field-error [control]="createForm.controls.password" [label]="'common.password' | translate" />
         </div>
         <div class="field">
-          <label for="cu-name">Name</label>
+          <label for="cu-name">{{ 'common.name' | translate }}</label>
           <input pInputText id="cu-name" formControlName="name" autocomplete="off" />
         </div>
         <div class="field">
-          <label for="cu-role">Role</label>
+          <label for="cu-role">{{ 'common.role' | translate }}</label>
           <p-select
             inputId="cu-role"
             formControlName="role"
-            [options]="staffRoleOptions"
+            [options]="staffRoleOptions()"
             optionLabel="label"
             optionValue="value"
-            placeholder="Role"
+            [placeholder]="'common.role' | translate"
             styleClass="w-full"
             appendTo="body"
           />
-          <app-field-error [control]="createForm.controls.role" label="Role" />
+          <app-field-error [control]="createForm.controls.role" [label]="'common.role' | translate" />
         </div>
         <div class="field field--full">
           <div class="checkbox-row">
             <p-checkbox formControlName="withAssignment" inputId="cu-assign" [binary]="true" />
-            <label for="cu-assign">Include branch / building assignment</label>
+            <label for="cu-assign">{{ 'users.includeAssignment' | translate }}</label>
           </div>
         </div>
         @if (createForm.controls.withAssignment.value) {
           <div class="field field--full">
-            <label for="cu-branches">Branches</label>
+            <label for="cu-branches">{{ 'entity.branches' | translate }}</label>
             <p-multiselect
               inputId="cu-branches"
               formControlName="branchIds"
               [options]="branchSelectOptions()"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select branches"
+              [placeholder]="'users.selectBranches' | translate"
               display="chip"
               styleClass="w-full"
               appendTo="body"
             />
           </div>
           <div class="field field--full">
-            <label for="cu-buildings">Building IDs</label>
+            <label for="cu-buildings">{{ 'users.buildingIds' | translate }}</label>
             <input
               pInputText
               id="cu-buildings"
               formControlName="buildingIdsText"
-              placeholder="Comma-separated 24-char hex IDs"
+              [placeholder]="'users.buildingIdsPlaceholder' | translate"
               autocomplete="off"
             />
           </div>
         }
       </div>
       <div class="form-actions">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="createVisible.set(false)" />
-        <p-button type="submit" label="Create user" [loading]="savingCreate()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="createVisible.set(false)" />
+        <p-button type="submit" [label]="'users.createUserBtn' | translate" [loading]="savingCreate()" />
       </div>
     </p-fluid>
   </form>
 </p-drawer>
 
 <p-drawer
-  header="Edit user"
+  [header]="'users.editUserHeader' | translate"
   [visible]="editVisible()"
   (visibleChange)="editVisible.set($event)"
   position="right"
   [style]="{ width: 'min(36rem, 100vw)' }"
 >
   @if (editTarget(); as target) {
-    <p class="assign-user-hint">Update basic details for {{ target.email }}</p>
+    <p class="assign-user-hint">{{ 'users.editUserHint' | translate: { email: target.email } }}</p>
   }
   <form [formGroup]="editForm" (ngSubmit)="submitEdit()">
     <p-fluid>
       <div class="form-grid">
         <div class="field">
-          <label for="eu-email">Email</label>
+          <label for="eu-email">{{ 'common.email' | translate }}</label>
           <input pInputText id="eu-email" type="email" formControlName="email" autocomplete="off" />
-          <app-field-error [control]="editForm.controls.email" label="Email" />
+          <app-field-error [control]="editForm.controls.email" [label]="'common.email' | translate" />
         </div>
         <div class="field">
-          <label for="eu-name">Name</label>
+          <label for="eu-name">{{ 'common.name' | translate }}</label>
           <input pInputText id="eu-name" formControlName="name" autocomplete="off" />
         </div>
         <div class="field">
-          <label for="eu-password">New password (optional)</label>
+          <label for="eu-password">{{ 'users.newPasswordOptional' | translate }}</label>
           <p-password
             id="eu-password"
             formControlName="password"
@@ -205,32 +205,32 @@
           />
         </div>
         <div class="field">
-          <label for="eu-status">Status</label>
+          <label for="eu-status">{{ 'common.status' | translate }}</label>
           <p-select
             inputId="eu-status"
             formControlName="status"
             [options]="[
-              { label: 'Active', value: 'active' },
-              { label: 'Inactive / Deleted', value: 'inactive' }
+              { label: ('status.active' | translate), value: 'active' },
+              { label: ('users.statusInactiveDeleted' | translate), value: 'inactive' }
             ]"
             optionLabel="label"
             optionValue="value"
-            placeholder="Status"
+            [placeholder]="'common.status' | translate"
             styleClass="w-full"
             appendTo="body"
           />
         </div>
       </div>
       <div class="form-actions">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="editVisible.set(false)" />
-        <p-button type="submit" label="Save changes" [loading]="savingEdit()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="editVisible.set(false)" />
+        <p-button type="submit" [label]="'common.saveChanges' | translate" [loading]="savingEdit()" />
       </div>
     </p-fluid>
   </form>
 </p-drawer>
 
 <p-drawer
-  header="Role & assignment"
+  [header]="'users.roleAssignmentHeader' | translate"
   [visible]="assignVisible()"
   (visibleChange)="assignVisible.set($event)"
   position="right"
@@ -243,58 +243,58 @@
     <p-fluid>
       <div class="form-grid">
         <div class="field field--full">
-          <label for="as-role">Role</label>
+          <label for="as-role">{{ 'common.role' | translate }}</label>
           <p-select
             inputId="as-role"
             formControlName="role"
-            [options]="staffRoleOptions"
+            [options]="staffRoleOptions()"
             optionLabel="label"
             optionValue="value"
-            placeholder="Role"
+            [placeholder]="'common.role' | translate"
             styleClass="w-full"
             appendTo="body"
           />
-          <app-field-error [control]="assignForm.controls.role" label="Role" />
+          <app-field-error [control]="assignForm.controls.role" [label]="'common.role' | translate" />
         </div>
         <div class="field field--full">
           <div class="checkbox-row">
             <p-checkbox formControlName="updateScopes" inputId="as-scopes" [binary]="true" />
-            <label for="as-scopes">Update branch & building assignment</label>
+            <label for="as-scopes">{{ 'users.updateScopes' | translate }}</label>
           </div>
           <p class="field-hint">
-            When enabled, branch and building lists are sent to the server (empty clears scoped assignment per API rules).
+            {{ 'users.updateScopesHint' | translate }}
           </p>
         </div>
         @if (assignForm.controls.updateScopes.value) {
           <div class="field field--full">
-            <label for="as-branches">Branches</label>
+            <label for="as-branches">{{ 'entity.branches' | translate }}</label>
             <p-multiselect
               inputId="as-branches"
               formControlName="branchIds"
               [options]="branchSelectOptions()"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select branches"
+              [placeholder]="'users.selectBranches' | translate"
               display="chip"
               styleClass="w-full"
               appendTo="body"
             />
           </div>
           <div class="field field--full">
-            <label for="as-buildings">Building IDs</label>
+            <label for="as-buildings">{{ 'users.buildingIds' | translate }}</label>
             <input
               pInputText
               id="as-buildings"
               formControlName="buildingIdsText"
-              placeholder="Comma-separated 24-char hex IDs"
+              [placeholder]="'users.buildingIdsPlaceholder' | translate"
               autocomplete="off"
             />
           </div>
         }
       </div>
       <div class="form-actions">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="assignVisible.set(false)" />
-        <p-button type="submit" label="Save" [loading]="savingAssign()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="assignVisible.set(false)" />
+        <p-button type="submit" [label]="'common.save' | translate" [loading]="savingAssign()" />
       </div>
     </p-fluid>
   </form>

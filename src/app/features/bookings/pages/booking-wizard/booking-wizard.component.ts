@@ -3,11 +3,11 @@ import {
   Component,
   type OnDestroy,
   computed,
-  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -17,12 +17,17 @@ import { Card } from 'primeng/card';
 import { DatePicker } from 'primeng/datepicker';
 import { FileUpload, type FileSelectEvent } from 'primeng/fileupload';
 import { InputNumber } from 'primeng/inputnumber';
+import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { SelectButton } from 'primeng/selectbutton';
 import { Textarea } from 'primeng/textarea';
-import { ToggleSwitch } from 'primeng/toggleswitch';
 import type { BranchListRow } from '../../../../core/models/branch-admin.model';
-import type { BookingAccommodationType, BookingDocument } from '../../../../core/models/booking.model';
+import type {
+  BookingAccommodationType,
+  BookingCompanion,
+  BookingDocument,
+  CompanionIdType,
+} from '../../../../core/models/booking.model';
 import type { BuildingListRow } from '../../../../core/models/building-admin.model';
 import type { FloorListRow } from '../../../../core/models/floor-admin.model';
 import type { Guest } from '../../../../core/models/guest.model';
@@ -34,7 +39,8 @@ import {
   type PublicHallRow,
   type UnitStatus,
 } from '../../../../core/models/unit-admin.model';
-import { AuthService } from '../../../../core/services/auth.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
 import { AmenitiesApiService } from '../../../amenities/services/amenities-api.service';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
 import { BuildingsApiService } from '../../../property/services/buildings-api.service';
@@ -46,13 +52,13 @@ import { GuestPickerComponent } from '../../../../shared/guest-picker/guest-pick
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { BookingDetailDrawerService } from '../../services/booking-detail-drawer.service';
 import { BookingsApiService } from '../../services/bookings-api.service';
+import { BOOKINGS_DICTIONARY } from '../../bookings.dictionary';
 
 /**
  * 'available' — bookable by anyone.
  * 'capacity-warning' — the unit's own status/dates are fine, it's just short on
- *   capacity for the requested party; a soft, policy-level block that an admin can
- *   override (e.g. squeezing in an extra guest), unlike a real occupied/maintenance
- *   room which nobody can select.
+ *   capacity for the requested party; flagged so staff notice, but still selectable
+ *   (extra bed, kids sharing…), unlike a real occupied/maintenance room which nobody can select.
  * 'blocked' — status isn't available or there's a real date conflict; never selectable.
  */
 type UnitBlockLevel = 'available' | 'capacity-warning' | 'blocked';
@@ -74,11 +80,11 @@ interface WizardUnit {
   amenityNames: string[];
 }
 
-const STATUS_LABELS: Record<UnitStatus, string> = {
-  available: 'Available',
-  occupied: 'Occupied',
-  cleaning: 'Cleaning',
-  maintenance: 'Maintenance',
+const STATUS_KEYS: Record<UnitStatus, string> = {
+  available: 'status.available',
+  occupied: 'status.occupied',
+  cleaning: 'status.cleaning',
+  maintenance: 'status.maintenance',
 };
 
 interface FilterOption {
@@ -86,21 +92,53 @@ interface FilterOption {
   value: string | undefined;
 }
 
-const UNAVAILABLE_REASON_LABELS: Record<string, string> = {
-  booked: 'Already booked for these dates',
-  occupied: 'Currently occupied',
-  cleaning: 'Being cleaned',
-  maintenance: 'Under maintenance',
+const UNAVAILABLE_REASON_KEYS: Record<string, string> = {
+  booked: 'bookings.reason.booked',
+  occupied: 'bookings.reason.occupied',
+  cleaning: 'bookings.reason.cleaning',
+  maintenance: 'bookings.reason.maintenance',
 };
 
-/** Only these roles may select a capacity-short unit; everyone else sees it as blocked too. */
-const CAPACITY_OVERRIDE_ROLES = ['super_admin', 'admin'] as const;
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
-const STEPS = ['Guest & Stay Details', 'Room Selection', 'Confirmation'];
+const STEP_KEYS = [
+  'bookings.wizard.step.guestInfo',
+  'bookings.wizard.step.stayDetails',
+  'bookings.wizard.step.roomSelection',
+  'bookings.wizard.step.confirmation',
+];
+
+const RELATION_KEYS = [
+  'spouse',
+  'child',
+  'parent',
+  'sibling',
+  'relative',
+  'friend',
+  'colleague',
+  'driver',
+  'other',
+] as const;
+
+/** Editable row on step 1 — trimmed to BookingCompanion on submit. */
+interface CompanionDraft {
+  fullName: string;
+  idType: CompanionIdType;
+  idNumber: string;
+  relation: string | null;
+}
+
+const MAX_COMPANIONS = 20;
 
 @Component({
   selector: 'app-booking-wizard',
   imports: [
+    DatePipe,
     FormsModule,
     Card,
     PageHeaderComponent,
@@ -109,10 +147,11 @@ const STEPS = ['Guest & Stay Details', 'Room Selection', 'Confirmation'];
     Select,
     SelectButton,
     InputNumber,
+    InputText,
     Textarea,
     DatePicker,
     FileUpload,
-    ToggleSwitch,
+    TranslatePipe,
   ],
   templateUrl: './booking-wizard.component.html',
   styleUrl: './booking-wizard.component.scss',
@@ -127,29 +166,101 @@ export class BookingWizardComponent implements OnDestroy {
   private readonly roomTypesApi = inject(RoomTypesApiService);
   private readonly amenitiesApi = inject(AmenitiesApiService);
   private readonly bookingsApi = inject(BookingsApiService);
-  private readonly auth = inject(AuthService);
   private readonly messages = inject(MessageService);
   private readonly router = inject(Router);
   private readonly drawer = inject(BookingDetailDrawerService);
+  readonly i18n = inject(TranslationService);
 
-  readonly canOverrideCapacity = computed(() => this.auth.hasAnyRole(CAPACITY_OVERRIDE_ROLES));
 
-  readonly steps = STEPS;
+  readonly steps = computed(() => STEP_KEYS.map((k) => this.i18n.t(k)));
   readonly step = signal(1);
 
   readonly guestPicker = viewChild(GuestPickerComponent);
 
-  readonly accommodationOptions = [
-    { label: 'Private room', value: 'room' as BookingAccommodationType },
-    { label: 'Public hall', value: 'hall' as BookingAccommodationType },
-  ];
+  readonly accommodationOptions = computed(() => [
+    { label: this.i18n.t('bookings.accommodation.room'), value: 'room' as BookingAccommodationType },
+    { label: this.i18n.t('bookings.accommodation.hall'), value: 'hall' as BookingAccommodationType },
+  ]);
 
   // Step 1 — guest & stay details
   readonly guest = signal<Guest | null>(null);
   readonly notes = signal('');
+  readonly referenceBy = signal('');
   readonly committingGuest = signal(false);
 
+  /** People staying with the primary guest — the count input grows/shrinks this list, keeping
+   *  whatever was already typed into the surviving rows. */
+  readonly companions = signal<CompanionDraft[]>([]);
+  readonly maxCompanions = MAX_COMPANIONS;
+  readonly idTypeOptions = computed(() => [
+    { label: this.i18n.t('common.cnic'), value: 'cnic' as CompanionIdType },
+    { label: this.i18n.t('bookings.idType.passport'), value: 'passport' as CompanionIdType },
+  ]);
+  readonly relationOptions = computed(() =>
+    RELATION_KEYS.map((k) => ({ label: this.i18n.t(`bookings.relation.${k}`), value: k })),
+  );
+
+  onCompanionCountChange(value: number | null): void {
+    const count = Math.min(MAX_COMPANIONS, Math.max(0, Math.floor(value ?? 0)));
+    const current = this.companions();
+    if (count === current.length) return;
+    this.companions.set(
+      count < current.length
+        ? current.slice(0, count)
+        : [
+            ...current,
+            ...Array.from({ length: count - current.length }, () => ({
+              fullName: '',
+              idType: 'cnic' as CompanionIdType,
+              idNumber: '',
+              relation: null,
+            })),
+          ],
+    );
+  }
+
+  updateCompanion(index: number, patch: Partial<CompanionDraft>): void {
+    this.companions.update((list) => list.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  }
+
+  onCompanionIdTypeChange(index: number, idType: CompanionIdType | null): void {
+    if (idType) this.updateCompanion(index, { idType });
+  }
+
+  removeCompanion(index: number): void {
+    this.companions.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  private companionsPayload(): BookingCompanion[] | undefined {
+    const list = this.companions()
+      .filter((c) => c.fullName.trim())
+      .map((c) => ({
+        fullName: c.fullName.trim(),
+        idType: c.idType,
+        idNumber: c.idNumber.trim() || undefined,
+        relation: c.relation ?? undefined,
+      }));
+    return list.length ? list : undefined;
+  }
+
+  relationLabel(value: string | null | undefined): string {
+    return value ? this.i18n.t(`bookings.relation.${value}`) : '—';
+  }
+
   readonly bookingType = signal<BookingAccommodationType>('room');
+  /** Hall stays only — which hall the party goes to (gents and ladies halls are separate). */
+  readonly hallAudience = signal<'gents' | 'ladies'>('gents');
+  readonly hallAudienceOptions = computed(() => [
+    { label: this.i18n.t('hallAudience.gents'), value: 'gents' as const, icon: 'pi pi-user' },
+    { label: this.i18n.t('hallAudience.ladies'), value: 'ladies' as const, icon: 'pi pi-user' },
+  ]);
+
+  onHallAudienceChange(value: 'gents' | 'ladies' | null): void {
+    if (!value || value === this.hallAudience()) return;
+    this.hallAudience.set(value);
+    // A hall picked for the other audience no longer applies.
+    this.selectedUnitId.set(undefined);
+  }
   readonly branches = signal<BranchListRow[]>([]);
   /** Buildings under the selected branch — used by step 2's building filter. */
   readonly buildings = signal<BuildingListRow[]>([]);
@@ -160,8 +271,6 @@ export class BookingWizardComponent implements OnDestroy {
   /** All amenities — used to label room/hall amenity chips. */
   readonly amenities = signal<AmenityRow[]>([]);
   readonly branchId = signal<string | undefined>(undefined);
-  readonly checkInDate = signal<Date | null>(null);
-  readonly checkOutDate = signal<Date | null>(null);
   /** Midnight today — the floor for the check-in picker, computed once (the wizard is a
    *  single-sitting flow, so "today" doesn't need to be reactive). */
   readonly minCheckInDate = (() => {
@@ -169,22 +278,22 @@ export class BookingWizardComponent implements OnDestroy {
     d.setHours(0, 0, 0, 0);
     return d;
   })();
-  /** Checkout must be strictly after check-in — the day after whatever's picked (or today,
-   *  before a check-in date is chosen). */
-  readonly minCheckOutDate = computed(() => {
-    const base = this.checkInDate() ?? this.minCheckInDate;
-    const next = new Date(base);
-    next.setDate(next.getDate() + 1);
-    return next;
+  /** Staff only pick check-in + nights; the expected checkout sent to the backend is always
+   *  derived (check-in + nights), so there's no separate checkout picker to keep in sync. */
+  readonly nights = signal(1);
+  readonly checkInDate = signal<Date | null>(new Date(this.minCheckInDate));
+  readonly checkOutDate = computed<Date | null>(() => {
+    const checkIn = this.checkInDate();
+    return checkIn ? addDays(checkIn, this.nights()) : null;
   });
-  readonly adults = signal(2);
-  readonly children = signal(0);
-  readonly partySize = signal(1);
-  /** Only meaningful when the check-in date is today — see `isCheckInToday`. */
-  readonly checkInNow = signal(false);
+  /** Party size comes entirely from step 1 — the primary guest plus every accompanying guest —
+   *  so stay details don't ask for it again. Companions marked as "child" count as children. */
+  readonly partySize = computed(() => this.companions().length + 1);
+  readonly children = computed(() => this.companions().filter((c) => c.relation === 'child').length);
+  readonly adults = computed(() => Math.max(1, this.partySize() - this.children()));
 
-  /** Walk-in check-in only makes sense for a check-in date of today; a future-dated
-   *  reservation can't be "checked in immediately" yet. */
+  /** Confirming a stay that starts today checks the guest in on the spot; a future-dated one is
+   *  saved as a reservation and checked in from the check-in details when they arrive. */
   readonly isCheckInToday = computed(() => {
     const d = this.checkInDate();
     if (!d) return false;
@@ -193,20 +302,19 @@ export class BookingWizardComponent implements OnDestroy {
   });
 
   constructor() {
-    this.branchesApi.list(1, 100, 'active').subscribe({ next: ({ items }) => this.branches.set(items) });
+    this.i18n.register(BOOKINGS_DICTIONARY);
+    this.branchesApi.list(1, 100, 'active').subscribe({
+      next: ({ items }) => {
+        this.branches.set(items);
+        // Single-branch setup: never ask — select it so step 3 can load its rooms/halls.
+        if (!this.branchId() && items.length) this.onBranchChange(items[0]._id);
+      },
+    });
     this.amenitiesApi.list().subscribe({ next: ({ items }) => this.amenities.set(items) });
-    // The walk-in toggle only applies to a today check-in — silently uncheck it the moment
-    // the date moves away from today, so a stale "check in immediately" can't sneak into a
-    // future-dated reservation.
-    effect(() => {
-      if (!this.isCheckInToday() && this.checkInNow()) this.checkInNow.set(false);
-    });
-    // Keep an already-picked checkout date honest whenever check-in moves past it — clear it
-    // rather than silently submitting a stale, now-invalid range.
-    effect(() => {
-      const checkOut = this.checkOutDate();
-      if (checkOut && checkOut < this.minCheckOutDate()) this.checkOutDate.set(null);
-    });
+  }
+
+  onNightsChange(value: number | null): void {
+    this.nights.set(Math.max(1, Math.floor(value ?? 1)));
   }
 
   // Step 2 — room selection
@@ -218,14 +326,14 @@ export class BookingWizardComponent implements OnDestroy {
   readonly filterFloorId = signal<string | undefined>(undefined);
 
   readonly buildingFilterOptions = computed<FilterOption[]>(() => [
-    { label: 'All buildings', value: undefined },
+    { label: this.i18n.t('bookings.allBuildings'), value: undefined },
     ...this.buildings().map((b) => ({ label: b.name, value: b._id })),
   ]);
 
   readonly floorFilterOptions = computed<FilterOption[]>(() => {
     const buildingId = this.filterBuildingId();
     const floors = buildingId ? this.allFloors().filter((f) => f.buildingId === buildingId) : this.allFloors();
-    return [{ label: 'All floors', value: undefined }, ...floors.map((f) => ({ label: f.label, value: f._id }))];
+    return [{ label: this.i18n.t('bookings.allFloors'), value: undefined }, ...floors.map((f) => ({ label: f.label, value: f._id }))];
   });
 
   /** roomResults/hallResults narrowed to the chosen building/floor — recomputed client-side, no refetch. */
@@ -240,15 +348,20 @@ export class BookingWizardComponent implements OnDestroy {
   readonly filteredHallResults = computed(() => {
     const buildingId = this.filterBuildingId();
     const floorId = this.filterFloorId();
+    const audience = this.hallAudience();
     return this.hallResults().filter(
-      (h) => (!buildingId || h.buildingId === buildingId) && (!floorId || h.floorId === floorId),
+      (h) =>
+        (!buildingId || h.buildingId === buildingId) &&
+        (!floorId || h.floorId === floorId) &&
+        // A gents party only sees gents (or mixed) halls, and likewise for ladies.
+        (!h.audience || h.audience === 'mixed' || h.audience === audience),
     );
   });
 
   /** Every room/hall matching the current building/floor filter. A unit with a real status/date
    * conflict is always 'blocked'; one that's genuinely free but just short on capacity is only a
-   * 'capacity-warning' — a policy call, not a physical one — so it stays selectable for admins
-   * while still being flagged and blocked for everyone else. */
+   * 'capacity-warning' — a policy call, not a physical one — so it stays selectable for anyone,
+   * just flagged. */
   readonly wizardUnits = computed<WizardUnit[]>(() => {
     let units: WizardUnit[];
     if (this.bookingType() === 'room') {
@@ -260,25 +373,29 @@ export class BookingWizardComponent implements OnDestroy {
         let message: string | undefined;
         if (statusBlocked) {
           level = 'blocked';
-          message = r.unavailableReason ? UNAVAILABLE_REASON_LABELS[r.unavailableReason] ?? 'Unavailable' : 'Unavailable';
+          message = this.i18n.t(
+            r.unavailableReason ? UNAVAILABLE_REASON_KEYS[r.unavailableReason] ?? 'bookings.reason.unavailable' : 'bookings.reason.unavailable',
+          );
         } else if (capacityShort) {
           level = 'capacity-warning';
-          message = `Fits up to ${r.capacity.total} guests — ${needed} requested`;
+          message = this.i18n.t('bookings.fitsUpTo', { total: r.capacity.total, needed });
         } else {
           level = 'available';
         }
         return {
           id: r._id,
           code: r.code,
-          detail: `Capacity ${r.capacity.total}`,
+          detail: this.i18n.t('bookings.capacityCount', { count: r.capacity.total }),
           level,
           message,
           status: r.status,
-          statusLabel: STATUS_LABELS[r.status],
+          statusLabel: this.i18n.t(STATUS_KEYS[r.status]),
           statusSeverity: unitStatusSeverity(r.status),
           typeLabel: this.roomTypeName(r.roomTypeId),
           locationLabel: this.locationLabel(r.buildingId, r.floorId),
-          capacityText: `${r.capacity.adults} adult${r.capacity.adults === 1 ? '' : 's'}${r.capacity.children ? `, ${r.capacity.children} child${r.capacity.children === 1 ? '' : 'ren'}` : ''}`,
+          capacityText:
+            `${r.capacity.adults} ${this.i18n.t('common.adults')}` +
+            (r.capacity.children ? `, ${r.capacity.children} ${this.i18n.t('common.children')}` : ''),
           amenityNames: this.amenityNamesFor(r.amenityIds),
         };
       });
@@ -291,25 +408,32 @@ export class BookingWizardComponent implements OnDestroy {
         let message: string | undefined;
         if (statusBlocked) {
           level = 'blocked';
-          message = UNAVAILABLE_REASON_LABELS[h.status] ?? 'Unavailable';
+          message = this.i18n.t(UNAVAILABLE_REASON_KEYS[h.status] ?? 'bookings.reason.unavailable');
         } else if (capacityShort) {
           level = 'capacity-warning';
-          message = `Only ${remaining(h)} of ${h.maxCapacity} spots left — ${this.partySize()} requested`;
+          message = this.i18n.t('bookings.spotsLeftRequested', {
+            remaining: remaining(h),
+            max: h.maxCapacity,
+            needed: this.partySize(),
+          });
         } else {
           level = 'available';
         }
         return {
           id: h._id,
           code: h.code,
-          detail: `${remaining(h)} of ${h.maxCapacity} spots available`,
+          detail: this.i18n.t('bookings.spotsAvailable', { remaining: remaining(h), max: h.maxCapacity }),
           level,
           message,
           status: h.status,
-          statusLabel: STATUS_LABELS[h.status],
+          statusLabel: this.i18n.t(STATUS_KEYS[h.status]),
           statusSeverity: unitStatusSeverity(h.status),
-          typeLabel: 'Public hall',
+          typeLabel:
+            h.audience && h.audience !== 'mixed'
+              ? `${this.i18n.t('bookings.publicHall')} · ${this.i18n.t('hallAudience.' + h.audience)}`
+              : this.i18n.t('bookings.publicHall'),
           locationLabel: this.locationLabel(h.buildingId, h.floorId),
-          capacityText: `Up to ${h.maxCapacity} guests`,
+          capacityText: this.i18n.t('bookings.upToGuests', { count: h.maxCapacity }),
           amenityNames: this.amenityNamesFor(h.amenityIds),
         };
       });
@@ -320,11 +444,9 @@ export class BookingWizardComponent implements OnDestroy {
 
   readonly availableCount = computed(() => this.wizardUnits().filter((u) => u.level === 'available').length);
 
-  /** A capacity-warning unit is selectable only for admins; a blocked one never is. */
+  /** Only a real status/date conflict blocks a unit — a capacity-short one is still bookable. */
   isSelectable(unit: WizardUnit): boolean {
-    if (unit.level === 'blocked') return false;
-    if (unit.level === 'capacity-warning') return this.canOverrideCapacity();
-    return true;
+    return unit.level !== 'blocked';
   }
 
   // Step 3 — confirmation
@@ -339,6 +461,61 @@ export class BookingWizardComponent implements OnDestroy {
   readonly documentAccept = 'image/*,application/pdf';
   private readonly documentFileUpload = viewChild<FileUpload>('documentFileUpload');
   private readonly objectUrls = new Set<string>();
+
+  /** Files picked on step 1, before the check-in exists — held client-side and uploaded right
+   *  after it's created, so staff can attach ID scans up front instead of only on step 3. */
+  readonly pendingDocuments = signal<File[]>([]);
+
+  onPendingFilesPicked(input: HTMLInputElement): void {
+    const picked = Array.from(input.files ?? []);
+    input.value = '';
+    const accepted: File[] = [];
+    for (const file of picked) {
+      const typeOk = file.type.startsWith('image/') || file.type === 'application/pdf';
+      if (!typeOk) continue;
+      if (file.size > this.maxDocumentSize) {
+        this.messages.add({
+          severity: 'warn',
+          summary: this.i18n.t('bookings.toast.documentUploadFailed'),
+          detail: this.i18n.t('bookings.toast.fileTooLarge', { name: file.name }),
+        });
+        continue;
+      }
+      accepted.push(file);
+    }
+    if (accepted.length) this.pendingDocuments.update((files) => [...files, ...accepted]);
+  }
+
+  removePendingDocument(index: number): void {
+    this.pendingDocuments.update((files) => files.filter((_, i) => i !== index));
+  }
+
+  /** Uploads the step-1 queue to the newly created check-in. A failure here never undoes the
+   *  check-in — it just tells staff to re-attach on the confirmation step. */
+  private uploadPendingDocuments(bookingId: string, done: () => void): void {
+    const files = this.pendingDocuments();
+    if (!files.length) {
+      done();
+      return;
+    }
+    this.bookingsApi.uploadDocuments(bookingId, files).subscribe({
+      next: (updated) => {
+        this.bookingDocuments.set(updated.documents ?? []);
+        this.pendingDocuments.set([]);
+        done();
+      },
+      error: () => {
+        this.messages.add({
+          severity: 'warn',
+          summary: this.i18n.t('bookings.toast.documentUploadFailed'),
+          detail: this.i18n.t('bookings.toast.pendingDocumentsFailed'),
+          life: 8000,
+        });
+        this.pendingDocuments.set([]);
+        done();
+      },
+    });
+  }
 
   onBranchChange(branchId: string | null): void {
     this.branchId.set(branchId ?? undefined);
@@ -359,7 +536,7 @@ export class BookingWizardComponent implements OnDestroy {
   }
 
   private roomTypeName(id: string): string {
-    return this.roomTypes().find((t) => t._id === id)?.name ?? 'Room';
+    return this.roomTypes().find((t) => t._id === id)?.name ?? this.i18n.t('common.room');
   }
 
   private buildingName(id: string | null | undefined): string | null {
@@ -372,7 +549,7 @@ export class BookingWizardComponent implements OnDestroy {
 
   private locationLabel(buildingId: string | null | undefined, floorId: string | null | undefined): string {
     const parts = [this.buildingName(buildingId), this.floorLabel(floorId)].filter((p): p is string => !!p);
-    return parts.length ? parts.join(' · ') : 'Location unassigned';
+    return parts.length ? parts.join(' · ') : this.i18n.t('bookings.locationUnassigned');
   }
 
   private amenityNamesFor(ids: string[]): string[] {
@@ -402,19 +579,20 @@ export class BookingWizardComponent implements OnDestroy {
     this.filterFloorId.set(floorId ?? undefined);
   }
 
-  /** Which part of the combined step-1 form is missing, for inline hints. */
-  readonly step1Missing = computed(() => {
+  /** Step 1 (guest information) — what's still missing, for the inline hint. */
+  readonly guestStepMissing = computed(() => {
     const missing: string[] = [];
     const guestReady = !!this.guest() || !!this.guestPicker()?.hasPendingGuestInput();
-    if (!guestReady) missing.push('a guest');
-    if (!this.branchId()) missing.push('a branch');
-    if (!this.checkInDate()) missing.push('a check-in date');
-    if (!this.checkOutDate()) missing.push('a checkout date');
-    const checkIn = this.checkInDate();
-    const checkOut = this.checkOutDate();
-    if (checkIn && checkOut && checkOut <= checkIn) missing.push('a checkout date after check-in');
-    if (this.bookingType() === 'room' && this.adults() < 1) missing.push('at least 1 adult');
-    if (this.bookingType() === 'hall' && this.partySize() < 1) missing.push('a party size');
+    if (!guestReady) missing.push(this.i18n.t('bookings.missing.guest'));
+    if (this.companions().some((c) => !c.fullName.trim())) missing.push(this.i18n.t('bookings.missing.companionNames'));
+    return missing;
+  });
+
+  /** Step 2 (stay details) — what's still missing, for the inline hint. */
+  readonly stayStepMissing = computed(() => {
+    const missing: string[] = [];
+    if (!this.branchId()) missing.push(this.i18n.t('bookings.missing.branch'));
+    if (!this.checkInDate()) missing.push(this.i18n.t('bookings.missing.checkInDate'));
     return missing;
   });
 
@@ -422,8 +600,10 @@ export class BookingWizardComponent implements OnDestroy {
     if (this.committingGuest()) return false;
     switch (this.step()) {
       case 1:
-        return this.step1Missing().length === 0;
+        return this.guestStepMissing().length === 0;
       case 2:
+        return this.stayStepMissing().length === 0;
+      case 3:
         return !!this.selectedUnitId();
       default:
         return true;
@@ -432,29 +612,33 @@ export class BookingWizardComponent implements OnDestroy {
 
   next(): void {
     if (this.step() === 1) {
-      this.commitStep1();
+      this.commitGuestStep();
       return;
     }
     if (!this.canProceed()) return;
     if (this.step() === 2) {
+      this.searchAvailability();
+      this.step.set(3);
+      return;
+    }
+    if (this.step() === 3) {
       this.submitBooking();
       return;
     }
-    this.step.update((s) => Math.min(s + 1, STEPS.length));
+    this.step.update((s) => Math.min(s + 1, STEP_KEYS.length));
   }
 
-  /** Next from step 1: creates the pending new guest (if the drawer's open) and uploads any queued
-   * documents to it, then validates the rest of step 1 before advancing and kicking off the search. */
-  private commitStep1(): void {
+  /** Next from step 1: creates the pending new guest (if the picker's create form is open), then
+   * advances to stay details once the guest step is complete. */
+  private commitGuestStep(): void {
     const picker = this.guestPicker();
     if (!picker) return;
     this.committingGuest.set(true);
     picker.commitPendingGuest().subscribe((guest) => {
       this.committingGuest.set(false);
       if (guest) this.guest.set(guest);
-      if (this.step1Missing().length > 0) return;
-      this.searchAvailability();
-      this.step.update((s) => s + 1);
+      if (this.guestStepMissing().length > 0) return;
+      this.step.set(2);
     });
   }
 
@@ -497,8 +681,8 @@ export class BookingWizardComponent implements OnDestroy {
     if (unit.level === 'capacity-warning') {
       this.messages.add({
         severity: 'warn',
-        summary: 'Capacity override',
-        detail: `${unit.code}: ${unit.message}. Selected as an admin override.`,
+        summary: this.i18n.t('bookings.toast.capacityOverride'),
+        detail: this.i18n.t('bookings.toast.capacityOverrideDetail', { code: unit.code, message: unit.message ?? '' }),
       });
     }
   }
@@ -522,9 +706,8 @@ export class BookingWizardComponent implements OnDestroy {
     const branchId = this.branchId();
     if (!guest || !branchId || !this.selectedUnitId()) return;
     this.creating.set(true);
-    // Belt-and-braces alongside the effect that unchecks `checkInNow` when the date drifts
-    // off today — a future-dated stay must never be submitted as a walk-in.
-    const checkInNow = this.checkInNow() && this.isCheckInToday();
+    // No manual toggle: a stay starting today is checked in automatically on confirm.
+    const checkInNow = this.isCheckInToday();
     this.bookingsApi
       .create({
         branchId,
@@ -532,6 +715,8 @@ export class BookingWizardComponent implements OnDestroy {
         source: checkInNow ? 'walk_in' : 'reservation',
         primaryGuestId: guest._id,
         notes: this.notes() || undefined,
+        referenceBy: this.referenceBy().trim() || undefined,
+        companions: this.companionsPayload(),
         lines: [this.buildLine()],
         checkInNow,
       })
@@ -540,11 +725,17 @@ export class BookingWizardComponent implements OnDestroy {
           this.createdBookingNumber.set(booking.bookingNumber);
           this.createdBookingId.set(booking._id);
           this.bookingDocuments.set(booking.documents ?? []);
-          this.creating.set(false);
-          this.step.set(3);
+          this.uploadPendingDocuments(booking._id, () => {
+            this.creating.set(false);
+            this.step.set(4);
+          });
         },
         error: (err) => {
-          this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Booking failed' });
+          this.messages.add({
+            severity: 'error',
+            summary: this.i18n.t('common.error'),
+            detail: err.message || this.i18n.t('bookings.toast.bookingFailed'),
+          });
           this.creating.set(false);
         },
       });
@@ -571,7 +762,11 @@ export class BookingWizardComponent implements OnDestroy {
         this.uploadingDocuments.set(false);
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Document upload failed' });
+        this.messages.add({
+          severity: 'error',
+          summary: this.i18n.t('common.error'),
+          detail: err?.message || this.i18n.t('bookings.toast.documentUploadFailed'),
+        });
         this.documentFileUpload()?.clear();
         this.uploadingDocuments.set(false);
       },
@@ -584,7 +779,11 @@ export class BookingWizardComponent implements OnDestroy {
     this.bookingsApi.deleteDocument(bookingId, doc._id).subscribe({
       next: (updated) => this.bookingDocuments.set(updated.documents ?? []),
       error: (err) =>
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Could not remove document' }),
+        this.messages.add({
+          severity: 'error',
+          summary: this.i18n.t('common.error'),
+          detail: err?.message || this.i18n.t('bookings.toast.removeDocumentFailed'),
+        }),
     });
   }
 
@@ -600,7 +799,11 @@ export class BookingWizardComponent implements OnDestroy {
         setTimeout(() => this.revokeUrl(url), 60_000);
       },
       error: (err) =>
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Could not open document' }),
+        this.messages.add({
+          severity: 'error',
+          summary: this.i18n.t('common.error'),
+          detail: err?.message || this.i18n.t('bookings.toast.openDocumentFailed'),
+        }),
     });
   }
 

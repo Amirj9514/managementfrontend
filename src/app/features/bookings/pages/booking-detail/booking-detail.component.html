@@ -1,5 +1,5 @@
-<app-page-header title="Booking details" subtitle="View and manage this booking." />
+<app-page-header [title]="'nav.bookingDetails' | translate" [subtitle]="'bookings.detailSubtitle' | translate" />
 
-<p-button label="Back to bookings" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" styleClass="mb-4" />
+<p-button [label]="'bookings.backToBookings' | translate" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" styleClass="mb-4" />
 
 <app-booking-detail-body [bookingId]="id" />

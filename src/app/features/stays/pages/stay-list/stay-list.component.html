@@ -1,24 +1,24 @@
-<app-page-header title="Stays" subtitle="Reservations and in-house stays." />
+<app-page-header [title]="'nav.stays' | translate" [subtitle]="'stays.subtitle' | translate" />
 <p-card>
   @if (!loading() && rows().length === 0) {
-    <app-empty-state title="No stays" description="No stay records returned." />
+    <app-empty-state [title]="'stays.emptyTitle' | translate" [description]="'stays.emptyDescription' | translate" />
   } @else {
     <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '42rem' }">
       <ng-template #header>
         <tr>
-          <th>Status</th>
-          <th>Check-in</th>
-          <th>Check-out</th>
-          <th style="width: 12rem">Actions</th>
+          <th>{{ 'common.status' | translate }}</th>
+          <th>{{ 'stays.checkIn' | translate }}</th>
+          <th>{{ 'stays.checkOut' | translate }}</th>
+          <th style="width: 12rem">{{ 'common.actions' | translate }}</th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
         <tr>
-          <td>{{ row.status }}</td>
+          <td><app-status-badge [status]="row.status" /></td>
           <td>{{ row.checkIn ?? '—' }}</td>
           <td>{{ row.checkOut ?? '—' }}</td>
           <td>
-            <p-button label="Detail" [text]="true" size="small" (onClick)="open(row.id)" />
+            <p-button [label]="'stays.detailAction' | translate" [text]="true" size="small" (onClick)="open(row.id)" />
           </td>
         </tr>
       </ng-template>

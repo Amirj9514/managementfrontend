@@ -6,7 +6,7 @@ export const auditRoutes: Routes = [
   {
     path: '',
     canActivate: [roleGuard],
-    data: { roles: AUDIT_ROLES, breadcrumb: 'Audit log' },
+    data: { roles: AUDIT_ROLES, breadcrumb: 'nav.auditLog' },
     loadComponent: () =>
       import('./pages/audit-list/audit-list.component').then((m) => m.AuditListComponent),
   },

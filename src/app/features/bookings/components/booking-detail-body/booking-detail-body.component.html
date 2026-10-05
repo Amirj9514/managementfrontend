@@ -2,21 +2,29 @@
   <div class="flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
     <div>
       <h3 class="m-0">{{ d.booking.bookingNumber }}</h3>
-      <p class="m-0 text-color-secondary">Booking · {{ d.booking.bookingType }}</p>
+      <p class="m-0 text-color-secondary">{{ 'bookings.bookingTypeLine' | translate: { type: ((d.booking.bookingType === 'hall' ? 'common.hall' : 'common.room') | translate) } }}</p>
     </div>
     <div class="flex gap-2 align-items-center">
       <app-status-badge [status]="d.booking.status" [severityMap]="statusSeverityMap" />
-      <p-button label="Cancel booking" severity="danger" [outlined]="true" size="small" (onClick)="cancelWholeBooking()" />
+      <p-button [label]="'bookings.cancelBooking' | translate" severity="danger" [outlined]="true" size="small" (onClick)="cancelWholeBooking()" />
     </div>
   </div>
 
+  @if (d.booking.referenceBy) {
+    <div class="reference-line">
+      <i class="pi pi-user-plus"></i>
+      <span class="reference-line__label">{{ 'bookings.referenceBy' | translate }}:</span>
+      <span class="reference-line__value">{{ d.booking.referenceBy }}</span>
+    </div>
+  }
+
   @if (d.booking.notes) {
-    <p-card header="Booking notes" styleClass="mb-3">
+    <p-card [header]="'bookings.notesSectionTitle' | translate" styleClass="mb-3">
       <p class="booking-notes-text">{{ d.booking.notes }}</p>
     </p-card>
   }
 
-  <p-card header="Guests" styleClass="mb-3">
+  <p-card [header]="'entity.guests' | translate" styleClass="mb-3">
     <div class="guest-list">
       @for (guest of orderedGuests(); track guest._id) {
         <div class="guest-row">
@@ -24,7 +32,7 @@
             <i class="pi pi-user"></i>
             <button type="button" class="entity-link" (click)="openGuest(guest._id)">{{ guest.fullName }}</button>
             @if (guest.isPrimary) {
-              <span class="guest-row__primary">Primary</span>
+              <span class="guest-row__primary">{{ 'bookings.primary' | translate }}</span>
             }
           </div>
           <div class="guest-row__contact">
@@ -40,12 +48,89 @@
           </div>
         </div>
       } @empty {
-        <p class="text-color-secondary m-0">No guest information available.</p>
+        <p class="text-color-secondary m-0">{{ 'bookings.noGuestInfo' | translate }}</p>
       }
     </div>
+
+    @if (companions().length > 0) {
+      <div class="companions">
+        <span class="companions__title">
+          <i class="pi pi-users"></i> {{ 'bookings.companionsTitle' | translate }}
+          <span class="companions__count">{{ companions().length }}</span>
+        </span>
+        <div class="companions__table-wrap">
+          <table class="companions__table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>{{ 'common.fullName' | translate }}</th>
+                <th>{{ 'bookings.relationWithPrimary' | translate }}</th>
+                <th>{{ 'bookings.idDocument' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of companions(); track $index; let i = $index) {
+                <tr>
+                  <td class="companions__index">{{ i + 1 }}</td>
+                  <td class="font-medium">{{ c.fullName }}</td>
+                  <td>
+                    @if (c.relation) {
+                      <span class="companions__relation">{{ relationLabel(c.relation) }}</span>
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td>
+                    @if (c.idNumber) {
+                      <span class="companions__id-type">{{ idTypeLabel(c.idType) }}</span> {{ c.idNumber }}
+                    } @else {
+                      <span class="text-color-secondary">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
   </p-card>
 
-  <p-card header="Booking lines">
+  <p-card styleClass="mb-3">
+    <ng-template #title>
+      <div class="docs-header">
+        <span>{{ 'bookings.documentsTitle' | translate }}</span>
+        <label class="docs-upload-btn" [class.docs-upload-btn--busy]="uploadingDocuments()" [attr.for]="'detail-docs-' + bookingId()">
+          <i class="pi" [class.pi-upload]="!uploadingDocuments()" [class.pi-spin]="uploadingDocuments()" [class.pi-spinner]="uploadingDocuments()"></i>
+          {{ 'bookings.attachDocument' | translate }}
+          <input #detailDocInput type="file" multiple [accept]="documentAccept" [id]="'detail-docs-' + bookingId()"
+            [disabled]="uploadingDocuments()" (change)="onDocumentFilesPicked(detailDocInput)" />
+        </label>
+      </div>
+    </ng-template>
+
+    @if (documents().length > 0) {
+      <ul class="doc-list">
+        @for (doc of documents(); track doc._id) {
+          <li class="doc-list__item">
+            <span class="doc-list__icon"><i [class]="documentIcon(doc.mimeType)"></i></span>
+            <div class="doc-list__text">
+              <span class="doc-list__name" [title]="doc.originalName">{{ doc.originalName }}</span>
+              <span class="doc-list__meta">{{ formatDocumentSize(doc.sizeBytes) }} · {{ doc.uploadedAt | date: 'd MMM y, h:mm a' }}</span>
+            </div>
+            <p-button icon="pi pi-eye" [text]="true" [rounded]="true" size="small" [ariaLabel]="'bookings.viewDownload' | translate"
+              [title]="'bookings.viewDownload' | translate" (onClick)="viewDocument(doc)" />
+            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" size="small" severity="danger"
+              [ariaLabel]="'common.remove' | translate" [title]="'common.remove' | translate" (onClick)="removeDocument(doc)" />
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="text-color-secondary m-0 docs-empty"><i class="pi pi-paperclip"></i> {{ 'bookings.noDocumentsYet' | translate }}</p>
+    }
+  </p-card>
+
+  <p-card [header]="'bookings.linesCardHeader' | translate">
     <div class="booking-lines">
       @for (line of d.lines; track line._id) {
         @let unit = unitById().get(line.unitId);
@@ -58,7 +143,7 @@
               } @else {
                 <span class="line-card__code">{{ line.unitId }}</span>
               }
-              <span class="line-card__type">{{ unit ? roomTypeName(unit) : (line.unitType === 'private_room' ? 'Room' : 'Hall') }}</span>
+              <span class="line-card__type">{{ unit ? roomTypeName(unit) : ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
             </div>
             <app-status-badge [status]="line.status" [severityMap]="statusSeverityMap" />
           </div>
@@ -69,19 +154,19 @@
 
           <div class="line-card__meta">
             <div class="line-card__meta-item">
-              <span class="line-card__meta-label"><i class="pi pi-calendar"></i> Dates</span>
+              <span class="line-card__meta-label"><i class="pi pi-calendar"></i> {{ 'bookings.datesLabel' | translate }}</span>
               <span class="line-card__meta-value">{{ line.checkInDate | date: 'short' }} → {{ line.expectedCheckOut | date: 'short' }}</span>
             </div>
             <div class="line-card__meta-item">
-              <span class="line-card__meta-label"><i class="pi pi-users"></i> Occupancy</span>
+              <span class="line-card__meta-label"><i class="pi pi-users"></i> {{ 'bookings.occupancy' | translate }}</span>
               <span class="line-card__meta-value">
                 @if (line.unitType === 'private_room') {
-                  {{ line.occupancy.totalGuests }} guests
+                  {{ 'bookings.guestsCount' | translate: { count: line.occupancy.totalGuests ?? 0 } }}
                 } @else {
-                  Party of {{ line.occupancy.partySize }}
+                  {{ 'bookings.partyOf' | translate: { count: line.occupancy.partySize ?? 0 } }}
                 }
                 @if (unit) {
-                  <span class="text-color-secondary"> ({{ capacityText(unit) }} capacity)</span>
+                  <span class="text-color-secondary"> {{ 'bookings.capacityParen' | translate: { capacity: capacityText(unit) } }}</span>
                 }
               </span>
             </div>
@@ -89,20 +174,20 @@
 
           <div class="line-card__actions">
             @if (line.status === 'reserved') {
-              <p-button label="Check in" size="small" (onClick)="checkIn(line)" />
-              <p-button label="Cancel" size="small" severity="danger" [outlined]="true" (onClick)="cancelLine(line)" />
+              <p-button [label]="'bookings.action.checkIn' | translate" size="small" (onClick)="checkIn(line)" />
+              <p-button [label]="'common.cancel' | translate" size="small" severity="danger" [outlined]="true" (onClick)="cancelLine(line)" />
             }
             @if (line.status === 'checked_in') {
-              <p-button label="Check out" size="small" (onClick)="checkOut(line)" />
+              <p-button [label]="'bookings.action.checkOut' | translate" size="small" (onClick)="checkOut(line)" />
               @if (line.unitType === 'private_room') {
-                <p-button label="Transfer" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
+                <p-button [label]="'bookings.action.transfer' | translate" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
               }
             }
             @if (line.status === 'reserved' || line.status === 'checked_in') {
-              <p-button label="Extend" size="small" [outlined]="true" (onClick)="openExtend(line)" />
+              <p-button [label]="'bookings.action.extend' | translate" size="small" [outlined]="true" (onClick)="openExtend(line)" />
             }
             @if (line.status !== 'reserved' && line.status !== 'checked_in') {
-              <span class="line-card__no-actions text-color-secondary">No actions available</span>
+              <span class="line-card__no-actions text-color-secondary">{{ 'bookings.noActionsAvailable' | translate }}</span>
             }
           </div>
         </div>
@@ -111,36 +196,36 @@
   </p-card>
 }
 
-<p-dialog header="Extend stay" [(visible)]="extendVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
+<p-dialog [header]="'bookings.extendStayHeader' | translate" [(visible)]="extendVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
   <p-fluid>
     <div class="field mb-3">
-      <label for="ext-date">New expected checkout</label>
+      <label for="ext-date">{{ 'bookings.newExpectedCheckout' | translate }}</label>
       <p-datepicker id="ext-date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [showIcon]="true"
         dateFormat="yy-mm-dd" appendTo="body" />
     </div>
     <div class="flex justify-content-end gap-2">
-      <p-button type="button" label="Cancel" [outlined]="true" (onClick)="extendVisible.set(false)" />
-      <p-button type="button" label="Save" [loading]="extendSaving()" (onClick)="submitExtend()" />
+      <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="extendVisible.set(false)" />
+      <p-button type="button" [label]="'common.save' | translate" [loading]="extendSaving()" (onClick)="submitExtend()" />
     </div>
   </p-fluid>
 </p-dialog>
 
-<p-dialog header="Transfer room" [(visible)]="transferVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
+<p-dialog [header]="'bookings.transferRoomHeader' | translate" [(visible)]="transferVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
   <div [formGroup]="transferForm">
     <p-fluid>
       <div class="field mb-3">
-        <label for="tr-room">Target room</label>
+        <label for="tr-room">{{ 'bookings.targetRoom' | translate }}</label>
         <p-select id="tr-room" [options]="transferRooms()" optionLabel="code" optionValue="_id" formControlName="toUnitId"
-          placeholder="Select an available room" appendTo="body" />
-        <app-field-error [control]="transferForm.controls.toUnitId" label="Target room" />
+          [placeholder]="'bookings.selectAvailableRoom' | translate" appendTo="body" />
+        <app-field-error [control]="transferForm.controls.toUnitId" [label]="'bookings.targetRoom' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="tr-reason">Reason (optional)</label>
+        <label for="tr-reason">{{ 'bookings.reasonOptional' | translate }}</label>
         <input pInputText id="tr-reason" formControlName="reason" autocomplete="off" />
       </div>
       <div class="flex justify-content-end gap-2">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="transferVisible.set(false)" />
-        <p-button type="button" label="Transfer" [loading]="transferSaving()" (onClick)="submitTransfer()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="transferVisible.set(false)" />
+        <p-button type="button" [label]="'bookings.action.transfer' | translate" [loading]="transferSaving()" (onClick)="submitTransfer()" />
       </div>
     </p-fluid>
   </div>

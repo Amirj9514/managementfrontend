@@ -19,14 +19,18 @@ import { BranchesApiService } from '../../../branches/services/branches-api.serv
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatCardComponent } from '../../../../shared/stat-card/stat-card.component';
+import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
 import { ReportsApiService } from '../../services/reports-api.service';
+import { REPORTS_DICTIONARY } from '../../reports.dictionary';
 
 type ReportView = 'occupancy' | 'arrivals' | 'departures';
 
-const VIEW_OPTIONS: { label: string; value: ReportView }[] = [
-  { label: 'Occupancy', value: 'occupancy' },
-  { label: 'Arrivals', value: 'arrivals' },
-  { label: 'Departures', value: 'departures' },
+const VIEW_OPTION_KEYS: { key: string; value: ReportView }[] = [
+  { key: 'reports.view.occupancy', value: 'occupancy' },
+  { key: 'reports.view.arrivals', value: 'arrivals' },
+  { key: 'reports.view.departures', value: 'departures' },
 ];
 
 @Component({
@@ -44,6 +48,8 @@ const VIEW_OPTIONS: { label: string; value: ReportView }[] = [
     DatePicker,
     Chart,
     TableModule,
+    StatusBadgeComponent,
+    TranslatePipe,
   ],
   templateUrl: './reports-overview.component.html',
   styleUrl: './reports-overview.component.scss',
@@ -52,8 +58,12 @@ const VIEW_OPTIONS: { label: string; value: ReportView }[] = [
 export class ReportsOverviewComponent {
   private readonly reportsApi = inject(ReportsApiService);
   private readonly branchesApi = inject(BranchesApiService);
+  readonly i18n = inject(TranslationService);
 
-  readonly viewOptions = VIEW_OPTIONS;
+  readonly viewOptions = computed(() => {
+    this.i18n.currentLang();
+    return VIEW_OPTION_KEYS.map((o) => ({ label: this.i18n.t(o.key), value: o.value }));
+  });
   readonly view = signal<ReportView>('occupancy');
 
   readonly branches = signal<BranchListRow[]>([]);
@@ -72,7 +82,7 @@ export class ReportsOverviewComponent {
     labels: this.occupancy().map((d) => d.date),
     datasets: [
       {
-        label: 'Occupancy %',
+        label: this.i18n.t('reports.chartLabel'),
         data: this.occupancy().map((d) => d.occupancyPct),
         borderColor: '#6366f1',
         backgroundColor: 'rgba(99,102,241,0.15)',
@@ -91,6 +101,7 @@ export class ReportsOverviewComponent {
   });
 
   constructor() {
+    this.i18n.register(REPORTS_DICTIONARY);
     this.branchesApi.list(1, 100, 'active').subscribe({
       next: ({ items }) => {
         this.branches.set(items);

@@ -13,6 +13,8 @@ import { InputText } from 'primeng/inputtext';
 import { Paginator } from 'primeng/paginator';
 import type { PaginatorState } from 'primeng/paginator';
 import { Select } from 'primeng/select';
+import { CountryStateFieldsComponent } from '../../../../shared/country-state-fields/country-state-fields.component';
+import { DEFAULT_COUNTRY } from '../../../../core/data/countries';
 import { Tag } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
 import { Textarea } from 'primeng/textarea';
@@ -20,10 +22,13 @@ import { Toolbar } from 'primeng/toolbar';
 import { GUEST_DELETE_ROLES, GUEST_WRITE_ROLES } from '../../../../core/models/roles.model';
 import { guestRowId, type Guest } from '../../../../core/models/guest.model';
 import { AuthService } from '../../../../core/services/auth.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { GuestApiService } from '../../services/guest-api.service';
+import { GUESTS_DICTIONARY } from '../../guests.dictionary';
 
 @Component({
   selector: 'app-guest-list',
@@ -42,12 +47,14 @@ import { GuestApiService } from '../../services/guest-api.service';
     DatePicker,
     Textarea,
     Select,
+    CountryStateFieldsComponent,
     Tag,
     Paginator,
     ConfirmDialog,
     EmptyStateComponent,
     PageHeaderComponent,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './guest-list.component.html',
   styleUrl: './guest-list.component.scss',
@@ -60,14 +67,18 @@ export class GuestListComponent {
   private readonly messages = inject(MessageService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  readonly i18n = inject(TranslationService);
 
   readonly today = new Date();
 
-  readonly statusOptions = [
-    { label: 'Active', value: 'active' },
-    { label: 'Inactive / deleted', value: 'inactive' },
-    { label: 'All', value: 'all' },
-  ];
+  readonly statusOptions = computed(() => {
+    this.i18n.currentLang();
+    return [
+      { label: this.i18n.t('guests.filter.active'), value: 'active' },
+      { label: this.i18n.t('guests.filter.inactive'), value: 'inactive' },
+      { label: this.i18n.t('guests.filter.all'), value: 'all' },
+    ];
+  });
 
   readonly rows = signal<Guest[]>([]);
   readonly loading = signal(true);
@@ -98,11 +109,14 @@ export class GuestListComponent {
     phone: [''],
     cnic: [''],
     address: [''],
+    country: [DEFAULT_COUNTRY],
+    state: [''],
     dateOfBirth: [null as Date | null],
     notes: [''],
   });
 
   constructor() {
+    this.i18n.register(GUESTS_DICTIONARY);
     const user = this.auth.getUser();
     this.canWrite.set(!!user && GUEST_WRITE_ROLES.includes(user.role));
     this.canDelete.set(!!user && GUEST_DELETE_ROLES.includes(user.role));
@@ -149,7 +163,7 @@ export class GuestListComponent {
 
   openCreate(): void {
     this.editTarget.set(null);
-    this.form.reset({ fullName: '', email: '', phone: '', cnic: '', address: '', dateOfBirth: null, notes: '' });
+    this.form.reset({ fullName: '', email: '', phone: '', cnic: '', address: '', country: DEFAULT_COUNTRY, state: '', dateOfBirth: null, notes: '' });
     this.createVisible.set(true);
   }
 
@@ -161,6 +175,8 @@ export class GuestListComponent {
       phone: row.phone ?? '',
       cnic: row.cnic ?? '',
       address: row.address ?? '',
+      country: row.country ?? '',
+      state: row.state ?? '',
       dateOfBirth: this.dobToDate(row.dateOfBirth),
       notes: row.notes ?? '',
     });
@@ -191,6 +207,8 @@ export class GuestListComponent {
       phone: v.phone || undefined,
       cnic: v.cnic || undefined,
       address: v.address || undefined,
+      country: v.country || undefined,
+      state: v.state?.trim() || undefined,
       dateOfBirth: v.dateOfBirth ? v.dateOfBirth.toISOString() : undefined,
       notes: v.notes || undefined,
     };
@@ -199,28 +217,38 @@ export class GuestListComponent {
     const req = target ? this.guestsApi.update(guestRowId(target), payload) : this.guestsApi.create(payload);
     req.subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: target ? 'Updated' : 'Created', detail: payload.fullName });
+        this.messages.add({
+          severity: 'success',
+          summary: target ? this.i18n.t('guests.toast.updated') : this.i18n.t('guests.toast.created'),
+          detail: payload.fullName,
+        });
         this.createVisible.set(false);
         this.editVisible.set(false);
         this.reload();
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Save failed' }),
+      error: (err) =>
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('guests.toast.saveFailed') }),
       complete: () => this.saving.set(false),
     });
   }
 
   onDelete(row: Guest): void {
     this.confirmation.confirm({
-      message: `Deactivate ${row.fullName}?`,
-      header: 'Confirm deactivation',
+      message: this.i18n.t('guests.confirmDeactivateMessage', { name: row.fullName }),
+      header: this.i18n.t('guests.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.guestsApi.delete(guestRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: row.fullName });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('guests.toast.deactivated'), detail: row.fullName });
             this.reload();
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Deactivation failed' }),
+          error: (err) =>
+            this.messages.add({
+              severity: 'error',
+              summary: this.i18n.t('common.error'),
+              detail: err.message || this.i18n.t('guests.toast.deactivationFailed'),
+            }),
         });
       },
     });
@@ -229,10 +257,15 @@ export class GuestListComponent {
   onRestore(row: Guest): void {
     this.guestsApi.restore(guestRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: row.fullName });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('guests.toast.restored'), detail: row.fullName });
         this.reload();
       },
-      error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Restore failed' }),
+      error: (err) =>
+        this.messages.add({
+          severity: 'error',
+          summary: this.i18n.t('common.error'),
+          detail: err.message || this.i18n.t('guests.toast.restoreFailed'),
+        }),
     });
   }
 }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Drawer } from 'primeng/drawer';
 import { BookingDetailBodyComponent } from '../../features/bookings/components/booking-detail-body/booking-detail-body.component';
 import { BookingDetailDrawerService } from '../../features/bookings/services/booking-detail-drawer.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 /**
  * Mounted once in the shell — renders whichever booking `BookingDetailDrawerService` points
@@ -10,7 +11,7 @@ import { BookingDetailDrawerService } from '../../features/bookings/services/boo
  */
 @Component({
   selector: 'app-booking-detail-drawer',
-  imports: [Drawer, BookingDetailBodyComponent],
+  imports: [Drawer, BookingDetailBodyComponent, TranslatePipe],
   templateUrl: './booking-detail-drawer.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

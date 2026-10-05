@@ -1,15 +1,15 @@
-<app-page-header title="Audit log" subtitle="Administrative audit trail (API: /audit-logs)." />
+<app-page-header [title]="'nav.auditLog' | translate" [subtitle]="'audit.subtitle' | translate" />
 <p-card>
   @if (!loading() && rows().length === 0) {
-    <app-empty-state title="No entries" description="No audit records returned." />
+    <app-empty-state [title]="'audit.emptyTitle' | translate" [description]="'audit.emptyDescription' | translate" />
   } @else {
     <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '44rem' }">
       <ng-template #header>
         <tr>
-          <th>When</th>
-          <th>Action</th>
-          <th>Resource</th>
-          <th>User</th>
+          <th>{{ 'audit.when' | translate }}</th>
+          <th>{{ 'audit.action' | translate }}</th>
+          <th>{{ 'audit.resource' | translate }}</th>
+          <th>{{ 'audit.user' | translate }}</th>
         </tr>
       </ng-template>
       <ng-template #body let-row>

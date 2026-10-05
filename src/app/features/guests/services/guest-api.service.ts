@@ -15,6 +15,9 @@ export class GuestApiService {
     if (params.q) {
       hp = hp.set('q', params.q);
     }
+    if (params.searchBy) {
+      hp = hp.set('searchBy', params.searchBy);
+    }
     if (params.page != null) {
       hp = hp.set('page', String(params.page));
     }

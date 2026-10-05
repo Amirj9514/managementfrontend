@@ -5,7 +5,7 @@
   [style]="{ width: 'min(48rem, 100vw)' }"
 >
   <ng-template #header>
-    <span class="font-semibold">Booking details</span>
+    <span class="font-semibold">{{ 'nav.bookingDetails' | translate }}</span>
   </ng-template>
   @if (drawerSvc.bookingId(); as id) {
     <app-booking-detail-body [bookingId]="id" />

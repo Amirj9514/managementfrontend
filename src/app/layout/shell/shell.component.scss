@@ -92,6 +92,14 @@
   font-size: 0.875rem;
 }
 
+.app-topbar__lang {
+  margin-right: 0.5rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: 1px solid var(--app-border-subtle) !important;
+  border-radius: 999px !important;
+}
+
 .app-topbar__menu-btn {
   @media (min-width: 1024px) {
     display: none !important;

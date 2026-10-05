@@ -46,8 +46,29 @@ export interface BookingRow {
   guestIds: string[];
   status: BookingStatus;
   notes?: string;
+  referenceBy?: string;
+  companions?: BookingCompanion[];
   documents?: BookingDocument[];
   createdAt?: string;
+  // List-only summaries (GET /bookings) — resolved server-side so a card/table row can show who,
+  // where and when without fetching the full booking. Absent on single-booking responses.
+  primaryGuestName?: string | null;
+  primaryGuestPhone?: string | null;
+  unitCodes?: string[];
+  checkInDate?: string | null;
+  expectedCheckOut?: string | null;
+  guestCount?: number;
+}
+
+export type CompanionIdType = 'cnic' | 'passport';
+
+/** Someone staying with the primary guest — recorded on the check-in itself, not as a Guest. */
+export interface BookingCompanion {
+  _id?: string;
+  fullName: string;
+  idType: CompanionIdType;
+  idNumber?: string;
+  relation?: string;
 }
 
 /** One uploaded document attached to a booking (e.g. guest ID/photo captured at confirmation). */
@@ -94,6 +115,8 @@ export interface BookingCreateRequest {
   primaryGuestId: string;
   guestIds?: string[];
   notes?: string;
+  referenceBy?: string;
+  companions?: BookingCompanion[];
   lines: BookingLineRequest[];
   checkInNow?: boolean;
 }

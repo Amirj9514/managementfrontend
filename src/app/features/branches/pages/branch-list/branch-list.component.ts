@@ -37,6 +37,9 @@ import { Ripple } from 'primeng/ripple';
 import { BuildingListRow, buildingRowId } from '../../../../core/models/building-admin.model';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { BRANCHES_DICTIONARY } from '../../branches.dictionary';
 
 @Component({
   selector: 'app-branch-list',
@@ -63,6 +66,7 @@ import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-
     Select,
     TableSkeletonComponent,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './branch-list.component.html',
   styleUrl: './branch-list.component.scss',
@@ -76,6 +80,7 @@ export class BranchListComponent {
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
+  readonly i18n = inject(TranslationService);
 
   readonly rows = signal<BranchListRow[]>([]);
   readonly loading = signal(true);
@@ -116,6 +121,7 @@ export class BranchListComponent {
   });
 
   constructor() {
+    this.i18n.register(BRANCHES_DICTIONARY);
     this.reload();
   }
 
@@ -187,7 +193,7 @@ export class BranchListComponent {
     this.savingCreate.set(true);
     this.api.create(body as any).subscribe({
       next: (res) => {
-        this.messages.add({ severity: 'success', summary: 'Branch created', detail: res.name });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.branchCreated'), detail: res.name });
         this.createVisible.set(false);
         this.reload();
       },
@@ -219,7 +225,7 @@ export class BranchListComponent {
     this.savingEdit.set(true);
     this.api.update(branchRowId(row), body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Branch details saved.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('branches.toast.branchDetailsSaved') });
         this.editVisible.set(false);
         this.editTarget.set(null);
         this.reload();
@@ -230,17 +236,17 @@ export class BranchListComponent {
 
   onDelete(row: BranchListRow): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate ${row.name}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('branches.confirmDeactivateBranchMessage', { name: row.name }),
+      header: this.i18n.t('branches.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.api.delete(branchRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'Branch marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.branchDeactivated') });
             this.reload();
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Could not deactivate branch.' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotDeactivate') });
           }
         });
       },
@@ -250,7 +256,7 @@ export class BranchListComponent {
   onRestore(row: BranchListRow): void {
     this.api.restore(branchRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'Branch is now active again.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.branchRestored') });
         this.reload();
       },
     });
@@ -258,18 +264,18 @@ export class BranchListComponent {
 
   onPermanentDelete(row: BranchListRow): void {
     this.confirmation.confirm({
-      message: `PERMANENT DELETE: This will completely remove ${row.name} from the database. This action cannot be undone. Proceed?`,
-      header: 'PERMANENT DELETE',
+      message: this.i18n.t('branches.confirmPermanentDeleteBranchMessage', { name: row.name }),
+      header: this.i18n.t('branches.confirmPermanentDeleteHeader'),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deletePermanent(branchRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Permanently Deleted', detail: 'Branch removed from system.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.permanentlyDeleted'), detail: this.i18n.t('branches.toast.branchPermanentlyDeleted') });
             this.reload();
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Could not delete branch permanently.' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotPermanentDelete') });
           }
         });
       },
@@ -283,7 +289,7 @@ export class BranchListComponent {
   prepareActions(event: Event, row: BranchListRow, menu: any): void {
     const items: MenuItem[] = [
       {
-        label: 'Edit',
+        label: this.i18n.t('common.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
       },
@@ -291,21 +297,21 @@ export class BranchListComponent {
 
     if (row.deletedAt || !row.active) {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('common.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestore(row),
       });
 
       if (this.isAuthorizedForPermanentDelete()) {
         items.push({
-          label: 'Delete Forever',
+          label: this.i18n.t('branches.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDelete(row),
         });
       }
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('branches.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });
@@ -335,7 +341,7 @@ export class BranchListComponent {
       name: this.buildingForm.getRawValue().name!,
     }).subscribe({
       next: (res) => {
-        this.messages.add({ severity: 'success', summary: 'Building created', detail: res.name });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.buildingCreated'), detail: res.name });
         this.buildingCreateVisible.set(false);
         this.reloadBuildings(branch._id);
       },
@@ -363,7 +369,7 @@ export class BranchListComponent {
       name: this.buildingForm.getRawValue().name!,
     }).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Building updated.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('branches.toast.buildingUpdated') });
         this.buildingEditVisible.set(false);
         this.reloadBuildings(branch._id);
       },
@@ -373,16 +379,16 @@ export class BranchListComponent {
 
   onDeleteBuilding(building: BuildingListRow, branchId: string): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate ${building.name}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('branches.confirmDeactivateBuildingMessage', { name: building.name }),
+      header: this.i18n.t('branches.confirmDeactivateHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.buildingsApi.delete(buildingRowId(building)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'Building marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.buildingDeactivated') });
             this.reloadBuildings(branchId);
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Failed to deactivate.' })
+          error: (err) => this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotDeactivateBuilding') })
         });
       },
     });
@@ -391,7 +397,7 @@ export class BranchListComponent {
   onRestoreBuilding(building: BuildingListRow, branchId: string): void {
     this.buildingsApi.restore(buildingRowId(building)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'Building is now active.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.buildingRestored') });
         this.reloadBuildings(branchId);
       },
     });
@@ -414,7 +420,7 @@ export class BranchListComponent {
   prepareBuildingActions(event: Event, building: BuildingListRow, branch: BranchListRow, menu: any): void {
     const items: MenuItem[] = [
       {
-        label: 'Edit',
+        label: this.i18n.t('common.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEditBuilding(building, branch),
       },
@@ -422,13 +428,13 @@ export class BranchListComponent {
 
     if (building.deletedAt || building.status === 'inactive') {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('common.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestoreBuilding(building, branch._id),
       });
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('branches.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDeleteBuilding(building, branch._id),
       });

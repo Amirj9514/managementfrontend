@@ -1,0 +1,10 @@
+// Self-hosted Urdu typeface — the variable font covers the whole weight range in one file,
+// so this is the only one loaded (the four static weight files under Noto_Nastaliq_Urdu/static
+// are left on disk as provided but unused, to avoid shipping ~2MB of redundant weights).
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  src: url('./Noto_Nastaliq_Urdu/NotoNastaliqUrdu-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

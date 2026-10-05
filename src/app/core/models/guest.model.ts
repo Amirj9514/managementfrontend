@@ -17,6 +17,8 @@ export interface Guest {
   phone?: string | null;
   cnic?: string | null;
   address?: string | null;
+  country?: string | null;
+  state?: string | null;
   dateOfBirth?: string | null;
   notes?: string | null;
   notesLog?: GuestNoteEntry[];
@@ -28,6 +30,8 @@ export interface Guest {
 
 export interface GuestSearchParams {
   q?: string;
+  /** 'identity' = match `q` against phone / CNIC / passport only (never name or email). */
+  searchBy?: 'all' | 'identity';
   email?: string;
   phone?: string;
   cnic?: string;
@@ -41,6 +45,8 @@ export interface GuestPayload {
   phone?: string;
   cnic?: string;
   address?: string;
+  country?: string;
+  state?: string;
   dateOfBirth?: string;
   notes?: string;
 }

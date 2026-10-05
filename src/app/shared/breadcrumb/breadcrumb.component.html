@@ -1,9 +1,9 @@
 <nav class="app-breadcrumb" aria-label="Breadcrumb">
   @for (crumb of crumbs(); track crumb.label + (crumb.url ?? ''); let last = $last) {
     @if (crumb.url) {
-      <a class="app-breadcrumb__link" [routerLink]="crumb.url">{{ crumb.label }}</a>
+      <a class="app-breadcrumb__link" [routerLink]="crumb.url">{{ crumb.label | translate }}</a>
     } @else {
-      <span class="app-breadcrumb__current">{{ crumb.label }}</span>
+      <span class="app-breadcrumb__current">{{ crumb.label | translate }}</span>
     }
     @if (!last) {
       <i class="pi pi-chevron-right app-breadcrumb__sep"></i>

@@ -11,12 +11,15 @@ import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 import { Textarea } from 'primeng/textarea';
 import { BOOKING_STATUS_SEVERITY, type BookingRow } from '../../../../core/models/booking.model';
 import type { Guest } from '../../../../core/models/guest.model';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
 import { BookingDetailDrawerService } from '../../../bookings/services/booking-detail-drawer.service';
 import { BookingsApiService } from '../../../bookings/services/bookings-api.service';
 import { GuestApiService } from '../../services/guest-api.service';
+import { GUESTS_DICTIONARY } from '../../guests.dictionary';
 
 @Component({
   selector: 'app-guest-detail',
@@ -36,6 +39,7 @@ import { GuestApiService } from '../../services/guest-api.service';
     Tab,
     TabPanels,
     TabPanel,
+    TranslatePipe,
   ],
   templateUrl: './guest-detail.component.html',
   styleUrl: './guest-detail.component.scss',
@@ -49,6 +53,7 @@ export class GuestDetailComponent {
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly drawer = inject(BookingDetailDrawerService);
+  readonly i18n = inject(TranslationService);
 
   readonly statusSeverityMap = BOOKING_STATUS_SEVERITY;
 
@@ -67,6 +72,7 @@ export class GuestDetailComponent {
   readonly first = computed(() => (this.page() - 1) * this.pageSize());
 
   constructor() {
+    this.i18n.register(GUESTS_DICTIONARY);
     this.reload();
     this.reloadBookings();
   }
@@ -121,7 +127,7 @@ export class GuestDetailComponent {
         this.addingNote.set(false);
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Could not add note' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err?.message || this.i18n.t('guests.toast.addNoteFailed') });
         this.addingNote.set(false);
       },
     });
@@ -129,14 +135,14 @@ export class GuestDetailComponent {
 
   removeNote(noteId: string): void {
     this.confirmation.confirm({
-      message: 'Delete this note? This cannot be undone.',
-      header: 'Confirm deletion',
+      message: this.i18n.t('guests.confirmDeleteNoteMessage'),
+      header: this.i18n.t('common.confirmDeleteTitle'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.guestApi.deleteNote(this.guestId, noteId).subscribe({
           next: (guest) => this.guest.set(guest),
           error: (err) =>
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Could not delete note' }),
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err?.message || this.i18n.t('guests.toast.deleteNoteFailed') }),
         });
       },
     });

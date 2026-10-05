@@ -6,7 +6,7 @@ export const propertyRoutes: Routes = [
   {
     path: 'buildings',
     canActivate: [roleGuard],
-    data: { roles: BRANCH_ADMIN_ROLES, breadcrumb: 'Buildings' },
+    data: { roles: BRANCH_ADMIN_ROLES, breadcrumb: 'nav.buildings' },
     loadComponent: () =>
       import('./pages/building-list/building-list.component').then((m) => m.BuildingListComponent),
   },
@@ -15,8 +15,8 @@ export const propertyRoutes: Routes = [
     canActivate: [roleGuard],
     data: {
       roles: BRANCH_ADMIN_ROLES,
-      breadcrumb: 'Floors',
-      breadcrumbParent: { label: 'Buildings', url: '/property/buildings' },
+      breadcrumb: 'nav.floors',
+      breadcrumbParent: { label: 'nav.buildings', url: '/property/buildings' },
     },
     loadComponent: () =>
       import('./pages/floor-list/floor-list.component').then((m) => m.FloorListComponent),

@@ -47,6 +47,9 @@ export interface PrivateRoomCreateRequest {
 
 export type PrivateRoomUpdateRequest = Partial<PrivateRoomCreateRequest>;
 
+/** Who a public hall is for — gents and ladies halls are booked separately. */
+export type HallAudience = 'gents' | 'ladies' | 'mixed';
+
 export interface HallOccupancySnapshot {
   maxCapacity: number;
   occupied: number;
@@ -65,6 +68,7 @@ export interface PublicHallRow {
   images: UnitImage[];
   active: boolean;
   maxCapacity: number;
+  audience?: HallAudience;
   occupancy?: HallOccupancySnapshot;
   /** Present only when the list was queried with checkInDate/expectedCheckOut — occupancy projected for that specific range, not "right now". */
   rangeOccupancy?: HallOccupancySnapshot;
@@ -77,6 +81,7 @@ export interface PublicHallCreateRequest {
   floorId: string;
   code: string;
   maxCapacity: number;
+  audience?: HallAudience;
   amenityIds?: string[];
   status?: UnitStatus;
   active?: boolean;

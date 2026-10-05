@@ -14,6 +14,42 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Urdu reads far better in a Nastaliq face than a Latin sans-serif stretched over Arabic
+   script — swap the whole app's font the moment Urdu/RTL mode is active. `body` above sets
+   its own font-family directly (not just inherited from <html>, where dir="rtl" lives), so
+   that direct declaration has to be overridden here too, not just on [dir='rtl'] itself —
+   inheritance alone never reaches past body's own rule.
+   Nastaliq also needs its own size/spacing tuning, not just a font swap: its calligraphic,
+   diagonally-stacked letterforms are inherently denser and taller than a Latin sans-serif at
+   the same declared size/weight, so left at the Latin UI's defaults it reads as too small,
+   too heavy, and visually cramped against fixed-height rows (exactly what showed up in the
+   bookings table header). Bumping size + line-height and capping the default weight fixes
+   that without needing to touch every component that renders text. */
+[dir='rtl'] {
+  font-family: var(--app-font-urdu);
+}
+
+[dir='rtl'] body {
+  font-family: var(--app-font-urdu);
+  font-size: 1.125rem;
+  line-height: 2;
+  font-weight: 400;
+}
+
+[dir='rtl'] h1,
+[dir='rtl'] h2,
+[dir='rtl'] h3,
+[dir='rtl'] h4,
+[dir='rtl'] h5,
+[dir='rtl'] h6,
+[dir='rtl'] strong,
+[dir='rtl'] b,
+[dir='rtl'] .font-bold,
+[dir='rtl'] .font-semibold,
+[dir='rtl'] .font-medium {
+  font-weight: 500;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: var(--app-sidebar-width) 1fr;
@@ -54,6 +90,18 @@ body {
   @media (max-width: 1023px) {
     display: none;
   }
+}
+
+/* Baseline RTL support for Urdu: CSS Grid's named-area placement IS direction-aware (tracks
+   are laid out from inline-start, which flips with `direction: rtl`), so `dir="rtl"` on <html>
+   cascading down to `direction: rtl` here is enough on its own to move the "sidebar" track to
+   the physical right automatically — no grid-template-areas override needed (an earlier,
+   now-removed attempt to also swap the area strings double-flipped things: the sidebar-width
+   column ended up holding the main-content area, and vice versa). Only the border side needs
+   an explicit swap, since `border-right`/`border-left` are physical, not logical, properties. */
+[dir='rtl'] .app-shell__sidebar {
+  border-right: none;
+  border-left: 1px solid var(--app-border-subtle);
 }
 
 .app-shell__topbar {

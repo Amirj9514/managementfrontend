@@ -1,40 +1,44 @@
 @if (guest(); as g) {
-  <app-page-header [title]="g.fullName" subtitle="Guest profile" />
+  <app-page-header [title]="g.fullName" [subtitle]="'guests.profileHeader' | translate" />
 
-  <p-button label="Back to guests" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" styleClass="mb-4" />
+  <p-button [label]="'guests.backToGuests' | translate" icon="pi pi-arrow-left" [text]="true" (onClick)="back()" styleClass="mb-4" />
 
-  <p-card header="Guest details" styleClass="mb-4">
+  <p-card [header]="'guests.detailsHeader' | translate" styleClass="mb-4">
     <div class="view-grid">
       <div>
-        <span class="detail-label">Full name</span>
+        <span class="detail-label">{{ 'common.fullName' | translate }}</span>
         <p>{{ g.fullName }}</p>
       </div>
       <div>
-        <span class="detail-label">Phone</span>
+        <span class="detail-label">{{ 'common.phone' | translate }}</span>
         <p>{{ g.phone ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Email</span>
+        <span class="detail-label">{{ 'common.email' | translate }}</span>
         <p>{{ g.email ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">CNIC / Passport</span>
+        <span class="detail-label">{{ 'common.cnic' | translate }}</span>
         <p>{{ g.cnic ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Address</span>
+        <span class="detail-label">{{ 'common.address' | translate }}</span>
         <p>{{ g.address ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Date of birth</span>
+        <span class="detail-label">{{ 'common.country' | translate }} / {{ 'common.state' | translate }}</span>
+        <p>{{ g.country || '—' }}{{ g.state ? ' · ' + g.state : '' }}</p>
+      </div>
+      <div>
+        <span class="detail-label">{{ 'common.dob' | translate }}</span>
         <p>{{ g.dateOfBirth ? (g.dateOfBirth | date: 'mediumDate') : '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Notes (creation)</span>
+        <span class="detail-label">{{ 'guests.notesCreation' | translate }}</span>
         <p>{{ g.notes ?? '—' }}</p>
       </div>
       <div>
-        <span class="detail-label">Guest since</span>
+        <span class="detail-label">{{ 'guests.guestSince' | translate }}</span>
         <p>{{ g.createdAt ? (g.createdAt | date: 'medium') : '—' }}</p>
       </div>
     </div>
@@ -42,13 +46,13 @@
 
   <p-tabs value="bookings">
     <p-tablist>
-      <p-tab value="bookings"><i class="pi pi-history"></i> Previous bookings</p-tab>
-      <p-tab value="notes"><i class="pi pi-comment"></i> Notes</p-tab>
+      <p-tab value="bookings"><i class="pi pi-history"></i> {{ 'guests.tab.previousBookings' | translate }}</p-tab>
+      <p-tab value="notes"><i class="pi pi-comment"></i> {{ 'common.notes' | translate }}</p-tab>
     </p-tablist>
     <p-tabpanels>
       <p-tabpanel value="bookings">
         @if (!bookingsLoading() && bookings().length === 0) {
-          <app-empty-state title="No bookings yet" description="This guest hasn't made any bookings." />
+          <app-empty-state [title]="'guests.noBookingsTitle' | translate" [description]="'guests.noBookingsDescription' | translate" />
         } @else {
           <div class="booking-cards">
             @for (row of bookings(); track row._id) {
@@ -59,10 +63,10 @@
                 </div>
                 <div class="booking-card__meta">
                   <span class="capitalize"><i class="pi" [class.pi-home]="row.bookingType === 'room'"
-                    [class.pi-building]="row.bookingType === 'hall'"></i> {{ row.bookingType }}</span>
+                    [class.pi-building]="row.bookingType === 'hall'"></i> {{ (row.bookingType === 'room' ? 'common.room' : 'common.hall') | translate }}</span>
                   <span><i class="pi pi-calendar"></i> {{ row.createdAt | date: 'medium' }}</span>
                 </div>
-                <span class="booking-card__view"><i class="pi pi-eye"></i> View details</span>
+                <span class="booking-card__view"><i class="pi pi-eye"></i> {{ 'common.viewDetails' | translate }}</span>
               </button>
             }
           </div>
@@ -75,14 +79,14 @@
 
       <p-tabpanel value="notes">
         <div class="notes-add">
-          <textarea pTextarea rows="2" class="w-full" placeholder="Log a note about this guest…"
+          <textarea pTextarea rows="2" class="w-full" [attr.placeholder]="'guests.notePlaceholder' | translate"
             [ngModel]="newNoteText()" (ngModelChange)="newNoteText.set($event)"></textarea>
-          <p-button label="Add note" icon="pi pi-plus" size="small" [loading]="addingNote()"
+          <p-button [label]="'guests.addNote' | translate" icon="pi pi-plus" size="small" [loading]="addingNote()"
             [disabled]="!newNoteText().trim()" (onClick)="addNote()" />
         </div>
 
         @if (!g.notesLog || g.notesLog.length === 0) {
-          <p class="notes-empty">No notes logged yet.</p>
+          <p class="notes-empty">{{ 'guests.noNotesYet' | translate }}</p>
         } @else {
           <ul class="notes-list">
             @for (n of g.notesLog; track n._id) {
@@ -91,7 +95,7 @@
                   <p class="notes-list__text">{{ n.text }}</p>
                   <span class="notes-list__meta">{{ n.authorName }} · {{ n.createdAt | date: 'medium' }}</span>
                 </div>
-                <button type="button" class="notes-list__remove" title="Delete note" (click)="removeNote(n._id)">
+                <button type="button" class="notes-list__remove" [attr.title]="'guests.deleteNote' | translate" (click)="removeNote(n._id)">
                   <i class="pi pi-times"></i>
                 </button>
               </li>

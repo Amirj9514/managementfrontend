@@ -1,15 +1,15 @@
-<app-page-header title="Branches"
-  subtitle="Property branches — list (GET /branches), create (POST /branches), edit (PATCH /branches/:id)." />
+<app-page-header [title]="'nav.branches' | translate"
+  [subtitle]="'branches.subtitle' | translate" />
 
 <p-toolbar styleClass="branches-toolbar">
   <ng-template #start>
     <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" label="New branch" (onClick)="openCreate()" />
+      <p-button type="button" [label]="'branches.newBranch' | translate" (onClick)="openCreate()" />
       <p-select [options]="[
-          { label: 'Active', value: 'active' },
-          { label: 'Inactive / Deleted', value: 'inactive' },
-          { label: 'All', value: 'all' }
-        ]" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" placeholder="Filter by status"
+          { label: ('branches.filter.active' | translate), value: 'active' },
+          { label: ('branches.filter.inactiveDeleted' | translate), value: 'inactive' },
+          { label: ('branches.filter.all' | translate), value: 'all' }
+        ]" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" [placeholder]="'branches.filterByStatus' | translate"
         styleClass="w-12rem" />
     </div>
   </ng-template>
@@ -19,11 +19,11 @@
   @if (loading()) {
     <app-table-skeleton [columns]="7" [rows]="8" />
   } @else if (rows().length === 0 && totalRecords() === 0) {
-    <app-empty-state 
-      title="No branches found" 
-      description="It look like you haven't added any branches yet. Start by creating your first property location."
+    <app-empty-state
+      [title]="'branches.emptyTitle' | translate"
+      [description]="'branches.emptyDescription' | translate"
       icon="lucideBuilding"
-      actionLabel="Create Branch"
+      [actionLabel]="'branches.createBranch' | translate"
       (actionClick)="openCreate()"
     />
   } @else {
@@ -32,12 +32,12 @@
     <ng-template #header>
       <tr>
         <th style="width: 3rem"></th>
-        <th>Name</th>
-        <th>Code</th>
-        <th>City</th>
-        <th>Country</th>
-        <th>Status</th>
-        <th>Created</th>
+        <th>{{ 'common.name' | translate }}</th>
+        <th>{{ 'branches.code' | translate }}</th>
+        <th>{{ 'branches.city' | translate }}</th>
+        <th>{{ 'branches.country' | translate }}</th>
+        <th>{{ 'common.status' | translate }}</th>
+        <th>{{ 'common.created' | translate }}</th>
         <th style="width: 4rem"></th>
       </tr>
     </ng-template>
@@ -53,9 +53,9 @@
         <td>{{ row.country }}</td>
         <td>
           @if (row.deletedAt || row.status === 'inactive') {
-          <p-tag value="Inactive" severity="danger" />
+          <p-tag [value]="'status.inactive' | translate" severity="danger" />
           } @else {
-          <p-tag value="Active" severity="success" />
+          <p-tag [value]="'status.active' | translate" severity="success" />
           }
         </td>
         <td>{{ row.createdAt ? (row.createdAt | date: 'short') : '—' }}</td>
@@ -77,9 +77,9 @@
                 <span class="p-2 bg-primary-50 text-primary-600 rounded-lg">
                   <i class="pi pi-building text-xl"></i>
                 </span>
-                Buildings in {{ row.name }}
+                {{ 'branches.buildingsIn' | translate: { name: row.name } }}
               </h4>
-              <p-button label="Add Building" icon="pi pi-plus" size="small" (onClick)="openCreateBuilding(row)" />
+              <p-button [label]="'branches.addBuilding' | translate" icon="pi pi-plus" size="small" (onClick)="openCreateBuilding(row)" />
             </div>
 
             @if (row.buildings && row.buildings.length > 0) {
@@ -87,9 +87,9 @@
               styleClass="p-datatable-sm shadow-sm border border-surface-200 rounded-xl overflow-hidden bg-white">
               <ng-template #header>
       <tr>
-        <th style="width: 40%">Name</th>
-        <th>Status</th>
-        <th>Created</th>
+        <th style="width: 40%">{{ 'common.name' | translate }}</th>
+        <th>{{ 'common.status' | translate }}</th>
+        <th>{{ 'common.created' | translate }}</th>
         <th style="width: 4rem"></th>
       </tr>
     </ng-template>
@@ -98,14 +98,14 @@
         <td class="font-medium text-surface-900">{{ building.name }}</td>
         <td>
           @if (building.deletedAt || building.status === 'inactive') {
-          <p-tag value="Inactive" severity="danger" [rounded]="true" />
+          <p-tag [value]="'status.inactive' | translate" severity="danger" [rounded]="true" />
           } @else {
-          <p-tag value="Active" severity="success" [rounded]="true" />
+          <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
           }
         </td>
         <td>{{ building.createdAt | date: 'short' }}</td>
         <td style="text-align: right; white-space: nowrap">
-          <p-button label="Floors" icon="pi pi-list" [text]="true" size="small"
+          <p-button [label]="'branches.floors' | translate" icon="pi pi-list" [text]="true" size="small"
             (onClick)="navigateToFloors(building._id)" />
           <p-button type="button" [text]="true" [rounded]="true"
             (onClick)="prepareBuildingActions($event, building, row, buildingMenu)">
@@ -118,7 +118,7 @@
   } @else {
   <div class="p-8 bg-white border border-dashed border-surface-300 rounded-xl text-center">
     <i class="pi pi-inbox text-4xl text-surface-300 mb-3"></i>
-    <p class="m-0 text-surface-500 font-medium">No buildings found for this branch.</p>
+    <p class="m-0 text-surface-500 font-medium">{{ 'branches.noBuildingsFound' | translate }}</p>
   </div>
   }
   </div>
@@ -137,43 +137,43 @@
 </p-card>
 
 <!-- Branch Forms -->
-<p-drawer [header]="createVisible() ? 'New branch' : 'Edit branch'" [visible]="createVisible() || editVisible()"
+<p-drawer [header]="(createVisible() ? 'branches.newBranchHeader' : 'branches.editBranchHeader') | translate" [visible]="createVisible() || editVisible()"
   (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)" position="right"
   [style]="{ width: 'min(36rem, 100vw)' }">
   <form [formGroup]="branchForm" (ngSubmit)="createVisible() ? submitCreate() : submitEdit()">
     <p-fluid>
       <div class="form-grid">
         <div class="field">
-          <label for="b-name">Name</label>
+          <label for="b-name">{{ 'common.name' | translate }}</label>
           <input pInputText id="b-name" formControlName="name" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.name" label="Name" />
+          <app-field-error [control]="branchForm.controls.name" [label]="'common.name' | translate" />
         </div>
         @if (editVisible()) {
         <div class="field">
-          <label for="b-code">Code</label>
+          <label for="b-code">{{ 'branches.code' | translate }}</label>
           <input pInputText id="b-code" formControlName="code" autocomplete="off" [readonly]="true" />
         </div>
         }
         <div class="field">
-          <label for="b-city">City</label>
+          <label for="b-city">{{ 'branches.city' | translate }}</label>
           <input pInputText id="b-city" formControlName="city" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.city" label="City" />
+          <app-field-error [control]="branchForm.controls.city" [label]="'branches.city' | translate" />
         </div>
         <div class="field">
-          <label for="b-country">Country</label>
+          <label for="b-country">{{ 'branches.country' | translate }}</label>
           <input pInputText id="b-country" formControlName="country" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.country" label="Country" />
+          <app-field-error [control]="branchForm.controls.country" [label]="'branches.country' | translate" />
         </div>
         <div class="field field--full disabledSections">
-          <label for="b-timezone">Timezone</label>
+          <label for="b-timezone">{{ 'branches.timezone' | translate }}</label>
           <input pInputText id="b-timezone" formControlName="timezone" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.timezone" label="Timezone" />
+          <app-field-error [control]="branchForm.controls.timezone" [label]="'branches.timezone' | translate" />
         </div>
       </div>
       <div class="form-actions">
-        <p-button type="button" label="Cancel" [outlined]="true"
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true"
           (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
-        <p-button type="submit" [label]="createVisible() ? 'Create branch' : 'Save changes'"
+        <p-button type="submit" [label]="(createVisible() ? 'branches.createBranchBtn' : 'common.saveChanges') | translate"
           [loading]="createVisible() ? savingCreate() : savingEdit()" />
       </div>
     </p-fluid>
@@ -181,7 +181,7 @@
 </p-drawer>
 
 <!-- Building Forms -->
-<p-drawer [header]="buildingCreateVisible() ? 'New Building' : 'Edit Building'"
+<p-drawer [header]="(buildingCreateVisible() ? 'branches.newBuildingHeader' : 'branches.editBuildingHeader') | translate"
   [visible]="buildingCreateVisible() || buildingEditVisible()"
   (visibleChange)="buildingCreateVisible() ? buildingCreateVisible.set($event) : buildingEditVisible.set($event)"
   position="right" [style]="{ width: 'min(32rem, 100vw)' }">
@@ -189,20 +189,20 @@
     <p-fluid>
       <div class="p-3 bg-surface-50 border border-surface-200 rounded mb-4">
         <p class="m-0 text-sm text-surface-600">
-          Branch: <span class="font-bold text-surface-900">{{ buildingTargetBranch()?.name }}</span>
+          {{ 'branches.branchLabel' | translate }}: <span class="font-bold text-surface-900">{{ buildingTargetBranch()?.name }}</span>
         </p>
       </div>
       <div class="form-grid">
         <div class="field">
-          <label for="bu-name">Building Name</label>
-          <input pInputText id="bu-name" formControlName="name" placeholder="e.g. Tower A" autocomplete="off" />
-          <app-field-error [control]="buildingForm.controls.name" label="Building name" />
+          <label for="bu-name">{{ 'branches.buildingName' | translate }}</label>
+          <input pInputText id="bu-name" formControlName="name" [placeholder]="'branches.buildingNamePlaceholder' | translate" autocomplete="off" />
+          <app-field-error [control]="buildingForm.controls.name" [label]="'branches.buildingName' | translate" />
         </div>
       </div>
       <div class="form-actions">
-        <p-button type="button" label="Cancel" [outlined]="true"
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true"
           (onClick)="buildingCreateVisible() ? buildingCreateVisible.set(false) : buildingEditVisible.set(false)" />
-        <p-button type="submit" [label]="buildingCreateVisible() ? 'Create Building' : 'Save Changes'"
+        <p-button type="submit" [label]="(buildingCreateVisible() ? 'branches.createBuildingBtn' : 'common.saveChanges') | translate"
           [loading]="savingBuilding()" />
       </div>
     </p-fluid>

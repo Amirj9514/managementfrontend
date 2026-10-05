@@ -13,10 +13,16 @@ import { Textarea } from 'primeng/textarea';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, catchError, of, tap } from 'rxjs';
 import type { Guest } from '../../core/models/guest.model';
-import type { BookingRow } from '../../core/models/booking.model';
+import { BOOKING_STATUS_SEVERITY, type BookingRow } from '../../core/models/booking.model';
 import { GuestApiService } from '../../features/guests/services/guest-api.service';
 import { BookingsApiService } from '../../features/bookings/services/bookings-api.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { TranslationService } from '../../core/i18n/translation.service';
 import { FieldErrorComponent } from '../field-error/field-error.component';
+import { StatusBadgeComponent } from '../status-badge/status-badge.component';
+import { GUEST_PICKER_DICTIONARY } from './guest-picker.dictionary';
+import { CountryStateFieldsComponent } from '../country-state-fields/country-state-fields.component';
+import { DEFAULT_COUNTRY } from '../../core/data/countries';
 
 /** Which new-guest field a typed search query most likely belongs to. */
 function classifySeed(value: string): 'email' | 'phone' | 'cnic' | 'fullName' {
@@ -47,6 +53,9 @@ const RECENT_BOOKINGS_LIMIT = 1;
     DatePicker,
     Textarea,
     FieldErrorComponent,
+    StatusBadgeComponent,
+    CountryStateFieldsComponent,
+    TranslatePipe,
   ],
   templateUrl: './guest-picker.component.html',
   styleUrl: './guest-picker.component.scss',
@@ -58,6 +67,9 @@ export class GuestPickerComponent {
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
   private readonly router = inject(Router);
+  readonly i18n = inject(TranslationService);
+
+  readonly statusSeverityMap = BOOKING_STATUS_SEVERITY;
 
   readonly selected = model<Guest | null>(null);
   readonly guestCreated = output<Guest>();
@@ -85,7 +97,11 @@ export class GuestPickerComponent {
 
   /** Shown only once a search has actually run and come back empty — not before the user has typed anything. */
   readonly noResults = computed(
-    () => this.lastQuery().trim().length > 0 && !this.searching() && this.suggestions().length === 0,
+    () =>
+      this.lastQuery().trim().length > 0 &&
+      !this.needsIdentityQuery() &&
+      !this.searching() &&
+      this.suggestions().length === 0,
   );
 
   /** Whether the parent wizard's own "Next" action has something to commit first — either a
@@ -98,15 +114,33 @@ export class GuestPickerComponent {
     phone: [''],
     cnic: [''],
     address: [''],
+    country: [DEFAULT_COUNTRY],
+    state: [''],
     dateOfBirth: [null as Date | null],
     notes: [''],
   });
 
+  constructor() {
+    this.i18n.register(GUEST_PICKER_DICTIONARY);
+  }
+
+  /** True while the typed text can't be a phone/CNIC/passport (no digits) — e.g. a name. */
+  readonly needsIdentityQuery = computed(() => {
+    const q = this.lastQuery().trim();
+    return q.length > 0 && !/\d/.test(q);
+  });
+
   search(event: AutoCompleteCompleteEvent): void {
     this.lastQuery.set(event.query);
+    // Guests are identified by phone, CNIC or passport only — never by name — so a query with no
+    // digits can't match anything; skip the round-trip and let the hint explain why.
+    if (!/\d/.test(event.query)) {
+      this.suggestions.set([]);
+      this.searching.set(false);
+      return;
+    }
     this.searching.set(true);
-    // Guests are searchable by name, email, phone, or CNIC/passport — one box, `q` covers all four server-side.
-    this.guestApi.list({ q: event.query, limit: 10 }).subscribe({
+    this.guestApi.list({ q: event.query, searchBy: 'identity', limit: 10 }).subscribe({
       next: (results) => {
         this.suggestions.set(results);
         this.searching.set(false);
@@ -169,7 +203,9 @@ export class GuestPickerComponent {
   }
 
   displayGuest = (guest: Guest | string): string =>
-    typeof guest === 'string' ? guest : `${guest.fullName}${guest.phone ? ' · ' + guest.phone : ''}`;
+    typeof guest === 'string'
+      ? guest
+      : [guest.fullName, guest.phone, guest.cnic].filter((part): part is string => !!part).join(' · ');
 
   /** Opens the new-guest drawer, pre-filling whichever field the typed search text looks like. */
   openNewGuest(seed?: string): void {
@@ -181,6 +217,8 @@ export class GuestPickerComponent {
       phone: field === 'phone' ? value : '',
       cnic: field === 'cnic' ? value : '',
       address: '',
+      country: DEFAULT_COUNTRY,
+      state: '',
       dateOfBirth: null,
       notes: '',
     });
@@ -222,6 +260,8 @@ export class GuestPickerComponent {
         phone: v.phone || undefined,
         cnic: v.cnic || undefined,
         address: v.address || undefined,
+        country: v.country || undefined,
+        state: v.state?.trim() || undefined,
         dateOfBirth: v.dateOfBirth ? v.dateOfBirth.toISOString() : undefined,
         notes: v.notes || undefined,
       })
@@ -234,7 +274,11 @@ export class GuestPickerComponent {
         }),
         catchError((err) => {
           this.saving.set(false);
-          this.messages.add({ severity: 'error', summary: 'Error', detail: err?.message || 'Could not create guest' });
+          this.messages.add({
+            severity: 'error',
+            summary: this.i18n.t('common.error'),
+            detail: err?.message || this.i18n.t('guestPicker.createGuestFailed'),
+          });
           return of(null);
         }),
       );

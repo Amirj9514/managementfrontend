@@ -1,20 +1,20 @@
 <div class="register">
-  <h1 class="register__title">Create account</h1>
-  <p class="register__subtitle">Register when your API allows bootstrap sign-up.</p>
+  <h1 class="register__title">{{ 'auth.register.title' | translate }}</h1>
+  <p class="register__subtitle">{{ 'auth.register.subtitle' | translate }}</p>
   <form class="register__form" [formGroup]="form" (ngSubmit)="submit()">
     <p-fluid>
       <div class="field">
-        <label for="name">Name</label>
+        <label for="name">{{ 'common.name' | translate }}</label>
         <input pInputText id="name" formControlName="name" autocomplete="name" />
-        <app-field-error [control]="form.controls.name" label="Name" />
+        <app-field-error [control]="form.controls.name" [label]="'common.name' | translate" />
       </div>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">{{ 'common.email' | translate }}</label>
         <input pInputText id="email" type="email" formControlName="email" autocomplete="username" />
-        <app-field-error [control]="form.controls.email" label="Email" />
+        <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
       </div>
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">{{ 'common.password' | translate }}</label>
         <input
           pInputText
           id="password"
@@ -22,18 +22,18 @@
           formControlName="password"
           autocomplete="new-password"
         />
-        <app-field-error [control]="form.controls.password" label="Password" />
+        <app-field-error [control]="form.controls.password" [label]="'common.password' | translate" />
       </div>
       <p-button
         type="submit"
-        label="Create account"
+        [label]="'auth.register.submit' | translate"
         [loading]="submitting"
         styleClass="w-full"
       />
     </p-fluid>
   </form>
   <p class="register__footer">
-    Already have an account?
-    <a routerLink="/login">Sign in</a>
+    {{ 'auth.register.haveAccount' | translate }}
+    <a routerLink="/login">{{ 'auth.register.signInLink' | translate }}</a>
   </p>
 </div>

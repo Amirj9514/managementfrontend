@@ -1,15 +1,15 @@
 <div class="login">
-  <h1 class="login__title">Welcome back</h1>
-  <p class="login__subtitle">Sign in to continue to Management.</p>
+  <h1 class="login__title">{{ 'auth.login.title' | translate }}</h1>
+  <p class="login__subtitle">{{ 'auth.login.subtitle' | translate }}</p>
   <form class="login__form" [formGroup]="form" (ngSubmit)="submit()">
     <p-fluid>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">{{ 'common.email' | translate }}</label>
         <input pInputText id="email" type="email" formControlName="email" autocomplete="username" />
-        <app-field-error [control]="form.controls.email" label="Email" />
+        <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
       </div>
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">{{ 'common.password' | translate }}</label>
         <input
           pInputText
           id="password"
@@ -17,18 +17,18 @@
           formControlName="password"
           autocomplete="current-password"
         />
-        <app-field-error [control]="form.controls.password" label="Password" />
+        <app-field-error [control]="form.controls.password" [label]="'common.password' | translate" />
       </div>
       <p-button
         type="submit"
-        label="Sign in"
+        [label]="'auth.login.submit' | translate"
         [loading]="submitting"
         styleClass="w-full"
       />
     </p-fluid>
   </form>
   <p class="login__footer">
-    Need an account?
-    <a routerLink="/register">Register</a>
+    {{ 'auth.login.noAccount' | translate }}
+    <a routerLink="/register">{{ 'auth.login.registerLink' | translate }}</a>
   </p>
 </div>

@@ -3,19 +3,37 @@
     <div class="guest-picker__input-wrap">
       <p-autocomplete [ngModel]="selected()" (ngModelChange)="onModelChange($event)" [suggestions]="suggestions()"
         (completeMethod)="search($event)" (onSelect)="onGuestSelect($event)" [optionLabel]="displayGuest"
-        placeholder="Search by name, email, phone, or CNIC/passport" styleClass="w-full" inputStyleClass="w-full"
-        [dropdown]="false" [showEmptyMessage]="true" emptyMessage="No matching guests" />
+        [placeholder]="'guestPicker.searchPlaceholder' | translate" styleClass="w-full" inputStyleClass="w-full"
+        [dropdown]="false" [showEmptyMessage]="!needsIdentityQuery()" [emptyMessage]="'guestPicker.noMatchingGuests' | translate">
+        <ng-template let-guest #item>
+          <div class="guest-option">
+            <span class="guest-option__name">{{ guest.fullName }}</span>
+            <span class="guest-option__ids">
+              @if (guest.phone) {
+                <span><i class="pi pi-phone"></i> {{ guest.phone }}</span>
+              }
+              @if (guest.cnic) {
+                <span><i class="pi pi-id-card"></i> {{ guest.cnic }}</span>
+              }
+            </span>
+          </div>
+        </ng-template>
+      </p-autocomplete>
       @if (searching()) {
         <i class="pi pi-spin pi-spinner guest-picker__spinner" aria-hidden="true"></i>
       }
     </div>
-    <p-button label="New guest" icon="pi pi-user-plus" [text]="true" size="small" (onClick)="openNewGuest()" />
+    <p-button [label]="'guestPicker.newGuest' | translate" icon="pi pi-user-plus" [text]="true" size="small" (onClick)="openNewGuest()" />
   </div>
+
+  @if (needsIdentityQuery() && !selected()) {
+    <small class="guest-picker__id-hint"><i class="pi pi-info-circle"></i> {{ 'guestPicker.identityOnlyHint' | translate }}</small>
+  }
 
   @if (noResults()) {
     <div class="guest-picker__no-results">
-      <span>No guest matches &ldquo;{{ lastQuery() }}&rdquo;.</span>
-      <p-button label="Add as new guest" icon="pi pi-user-plus" size="small" (onClick)="openNewGuest(lastQuery())" />
+      <span>{{ 'guestPicker.noMatchFor' | translate: { query: lastQuery() } }}</span>
+      <p-button [label]="'guestPicker.addAsNewGuest' | translate" icon="pi pi-user-plus" size="small" (onClick)="openNewGuest(lastQuery())" />
     </div>
   }
 
@@ -23,24 +41,24 @@
     <div class="guest-glance">
       <div class="guest-glance__section">
         <div class="guest-glance__header">
-          <span class="guest-glance__title"><i class="pi pi-history"></i> Last booking</span>
-          <span class="guest-glance__count">{{ historyTotal() }} total</span>
+          <span class="guest-glance__title"><i class="pi pi-history"></i> {{ 'guestPicker.lastBooking' | translate }}</span>
+          <span class="guest-glance__count">{{ 'guestPicker.totalCount' | translate: { count: historyTotal() } }}</span>
         </div>
         @if (historyLoading()) {
-          <p class="guest-glance__empty">Loading…</p>
+          <p class="guest-glance__empty">{{ 'common.loading' | translate }}</p>
         } @else if (lastBooking(); as b) {
           <div class="guest-glance__item">
-            <span class="guest-glance__item-main">{{ b.bookingNumber }} · {{ b.bookingType === 'room' ? 'Room' : 'Hall' }}</span>
-            <span class="guest-glance__item-status">{{ b.status }}</span>
+            <span class="guest-glance__item-main">{{ b.bookingNumber }} · {{ (b.bookingType === 'room' ? 'common.room' : 'common.hall') | translate }}</span>
+            <app-status-badge class="guest-glance__item-status" [status]="b.status" [severityMap]="statusSeverityMap" />
           </div>
         } @else {
-          <p class="guest-glance__empty">No previous bookings.</p>
+          <p class="guest-glance__empty">{{ 'guestPicker.noPreviousBookings' | translate }}</p>
         }
       </div>
 
       <div class="guest-glance__section">
         <div class="guest-glance__header">
-          <span class="guest-glance__title"><i class="pi pi-comment"></i> Last note</span>
+          <span class="guest-glance__title"><i class="pi pi-comment"></i> {{ 'guestPicker.lastNote' | translate }}</span>
         </div>
         @if (lastNote(); as n) {
           <div class="guest-glance__item guest-glance__item--note">
@@ -48,54 +66,56 @@
             <span class="guest-glance__note-meta">{{ n.authorName }} · {{ n.createdAt | date: 'short' }}</span>
           </div>
         } @else {
-          <p class="guest-glance__empty">No notes logged.</p>
+          <p class="guest-glance__empty">{{ 'guestPicker.noNotesLogged' | translate }}</p>
         }
       </div>
 
       <button type="button" class="guest-glance__profile-link" (click)="viewProfile()">
-        View all details <i class="pi pi-arrow-right"></i>
+        {{ 'guestPicker.viewAllDetails' | translate }} <i class="pi pi-arrow-right"></i>
       </button>
     </div>
   }
 </div>
 
-<p-drawer header="New guest" [(visible)]="newGuestVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
+<p-drawer [header]="'guestPicker.newGuest' | translate" [(visible)]="newGuestVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
   <form [formGroup]="newGuestForm" (ngSubmit)="submitNewGuest()">
     <p-fluid>
       <div class="field mb-3">
-        <label for="gp-fullname">Full name</label>
+        <label for="gp-fullname">{{ 'common.fullName' | translate }}</label>
         <input pInputText id="gp-fullname" formControlName="fullName" autocomplete="off" />
-        <app-field-error [control]="newGuestForm.controls.fullName" label="Full name" />
+        <app-field-error [control]="newGuestForm.controls.fullName" [label]="'common.fullName' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="gp-email">Email</label>
+        <label for="gp-email">{{ 'common.email' | translate }}</label>
         <input pInputText id="gp-email" type="email" formControlName="email" autocomplete="off" />
       </div>
       <div class="field mb-3">
-        <label for="gp-phone">Phone</label>
+        <label for="gp-phone">{{ 'common.phone' | translate }}</label>
         <input pInputText id="gp-phone" formControlName="phone" autocomplete="off" />
       </div>
       <div class="field mb-3">
-        <label for="gp-cnic">CNIC / Passport</label>
+        <label for="gp-cnic">{{ 'common.cnic' | translate }}</label>
         <input pInputText id="gp-cnic" formControlName="cnic" autocomplete="off" />
       </div>
       <div class="field mb-3">
-        <label for="gp-address">Address</label>
+        <label for="gp-address">{{ 'common.address' | translate }}</label>
         <input pInputText id="gp-address" formControlName="address" autocomplete="off" />
       </div>
+      <app-country-state-fields idPrefix="gp" [countryControl]="newGuestForm.controls.country"
+        [stateControl]="newGuestForm.controls.state" />
       <div class="field mb-3">
-        <label for="gp-dob">Date of birth</label>
+        <label for="gp-dob">{{ 'common.dob' | translate }}</label>
         <p-datepicker id="gp-dob" formControlName="dateOfBirth" [showIcon]="true" dateFormat="yy-mm-dd" [maxDate]="today"
           appendTo="body" />
       </div>
       <div class="field mb-3">
-        <label for="gp-notes">Notes</label>
+        <label for="gp-notes">{{ 'common.notes' | translate }}</label>
         <textarea pTextarea id="gp-notes" formControlName="notes" rows="3" style="width: 100%"></textarea>
       </div>
 
       <div class="flex justify-content-end gap-2">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="newGuestVisible.set(false)" />
-        <p-button type="submit" label="Create guest" [loading]="saving()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="newGuestVisible.set(false)" />
+        <p-button type="submit" [label]="'guestPicker.createGuest' | translate" [loading]="saving()" />
       </div>
     </p-fluid>
   </form>

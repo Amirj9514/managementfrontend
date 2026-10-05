@@ -34,7 +34,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        data: { breadcrumb: 'Dashboard' },
+        data: { breadcrumb: 'nav.dashboard' },
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
@@ -93,7 +93,7 @@ export const routes: Routes = [
       },
       {
         path: 'forbidden',
-        data: { breadcrumb: 'Forbidden' },
+        data: { breadcrumb: 'nav.forbidden' },
         loadComponent: () =>
           import('./features/forbidden/forbidden.component').then((m) => m.ForbiddenComponent),
       },

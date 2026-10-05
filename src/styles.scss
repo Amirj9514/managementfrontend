@@ -1,4 +1,5 @@
 @use 'styles/variables';
+@use 'styles/fonts';
 @use 'styles/layout';
 
 @import "../node_modules/primeicons/primeicons.css";
@@ -21,4 +22,16 @@
         border-top-right-radius: 0.5rem;
         border-bottom-right-radius: 0.5rem;
     }
+}
+
+// Nastaliq's taller, diagonally-stacked letterforms clip against this rule's fixed 16px/600
+// weight (visible as cramped, overlapping header text in the bookings/guests/etc. tables) —
+// give Urdu mode more line-height/padding and a lighter weight that the script can actually
+// render cleanly at. Needs the same !important + the extra [dir='rtl'] attribute selector to
+// win specificity over the rule above (which is also !important).
+[dir='rtl'] .p-datatable-thead th {
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+    line-height: 2.2 !important;
+    padding: 1rem 0.75rem !important;
 }

@@ -9,16 +9,30 @@ import { TableModule } from 'primeng/table';
 import type { BranchListRow } from '../../core/models/branch-admin.model';
 import type { BookingUnitRow } from '../../core/models/booking.model';
 import { AuthService } from '../../core/services/auth.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { TranslationService } from '../../core/i18n/translation.service';
 import { BranchesApiService } from '../branches/services/branches-api.service';
 import { HallsApiService } from '../halls/services/halls-api.service';
 import { ReportsApiService } from '../reports/services/reports-api.service';
 import { RoomsApiService } from '../rooms/services/rooms-api.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/stat-card/stat-card.component';
+import { DASHBOARD_DICTIONARY } from './dashboard.dictionary';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [AsyncPipe, DatePipe, FormsModule, Card, Select, Chart, TableModule, PageHeaderComponent, StatCardComponent],
+  imports: [
+    AsyncPipe,
+    DatePipe,
+    FormsModule,
+    Card,
+    Select,
+    Chart,
+    TableModule,
+    PageHeaderComponent,
+    StatCardComponent,
+    TranslatePipe,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,6 +43,7 @@ export class DashboardComponent {
   private readonly hallsApi = inject(HallsApiService);
   private readonly reportsApi = inject(ReportsApiService);
   private readonly router = inject(Router);
+  readonly i18n = inject(TranslationService);
 
   readonly user$ = inject(AuthService).user$;
 
@@ -48,7 +63,7 @@ export class DashboardComponent {
     labels: this.occupancyTrend().map((d) => d.date),
     datasets: [
       {
-        label: 'Occupancy %',
+        label: this.i18n.t('dashboard.chartLabel'),
         data: this.occupancyTrend().map((d) => d.occupancyPct),
         borderColor: '#6366f1',
         backgroundColor: 'rgba(99,102,241,0.15)',
@@ -61,6 +76,7 @@ export class DashboardComponent {
   readonly chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 
   constructor() {
+    this.i18n.register(DASHBOARD_DICTIONARY);
     this.branchesApi.list(1, 100, 'active').subscribe({
       next: ({ items }) => {
         this.branches.set(items);

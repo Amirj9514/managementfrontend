@@ -1,11 +1,13 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import type { AbstractControl } from '@angular/forms';
+import { TranslationService } from '../../core/i18n/translation.service';
 
 /**
  * Inline validation message shown under a form field once it's touched/dirty and invalid.
  * Deliberately NOT OnPush: reactive-form control state mutates in place (same object
  * reference), so it relies on the app's default zone-triggered change detection to
- * re-evaluate on every keystroke/blur — OnPush would miss those updates.
+ * re-evaluate on every keystroke/blur — OnPush would miss those updates. That same
+ * zone-triggered CD is also why this needs no special handling to pick up a language change.
  */
 @Component({
   selector: 'app-field-error',
@@ -24,10 +26,13 @@ import type { AbstractControl } from '@angular/forms';
   ],
 })
 export class FieldErrorComponent {
+  private readonly i18n = inject(TranslationService);
+
   /** The control to watch. Pass `form.controls.fieldName`. */
   readonly control = input<AbstractControl | null | undefined>(null);
-  /** Human label used in default messages, e.g. "Email" -> "Email is required." */
-  readonly label = input<string>('This field');
+  /** Human label used in default messages, e.g. "Email" -> "Email is required." — pass an
+   *  already-translated string (e.g. `i18n.t('guests.email')`). */
+  readonly label = input<string>();
   /** Override/add messages per error key, e.g. `{ email: 'Enter a valid email address.' }`. */
   readonly messages = input<Record<string, string>>({});
 
@@ -38,27 +43,27 @@ export class FieldErrorComponent {
     if (!errors) return null;
 
     const overrides = this.messages();
-    const label = this.label();
+    const label = this.label() ?? this.i18n.t('validation.defaultLabel');
     const firstKey = Object.keys(errors)[0];
     if (overrides[firstKey]) return overrides[firstKey];
 
     switch (firstKey) {
       case 'required':
-        return `${label} is required.`;
+        return this.i18n.t('validation.required', { label });
       case 'email':
-        return `Enter a valid email address.`;
+        return this.i18n.t('validation.email');
       case 'min':
-        return `${label} must be at least ${errors['min'].min}.`;
+        return this.i18n.t('validation.min', { label, min: errors['min'].min });
       case 'max':
-        return `${label} must be at most ${errors['max'].max}.`;
+        return this.i18n.t('validation.max', { label, max: errors['max'].max });
       case 'minlength':
-        return `${label} must be at least ${errors['minlength'].requiredLength} characters.`;
+        return this.i18n.t('validation.minlength', { label, length: errors['minlength'].requiredLength });
       case 'maxlength':
-        return `${label} must be at most ${errors['maxlength'].requiredLength} characters.`;
+        return this.i18n.t('validation.maxlength', { label, length: errors['maxlength'].requiredLength });
       case 'pattern':
-        return `${label} format is invalid.`;
+        return this.i18n.t('validation.pattern', { label });
       default:
-        return `${label} is invalid.`;
+        return this.i18n.t('validation.invalid', { label });
     }
   });
 }

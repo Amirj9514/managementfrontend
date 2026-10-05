@@ -6,7 +6,7 @@ export const usersRoutes: Routes = [
   {
     path: '',
     canActivate: [roleGuard],
-    data: { roles: USER_ADMIN_ROLES, breadcrumb: 'Users' },
+    data: { roles: USER_ADMIN_ROLES, breadcrumb: 'nav.users' },
     loadComponent: () =>
       import('./pages/users-list/users-list.component').then((m) => m.UsersListComponent),
   },

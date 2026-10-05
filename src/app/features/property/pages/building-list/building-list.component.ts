@@ -37,6 +37,9 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TranslationService } from '../../../../core/i18n/translation.service';
+import { PROPERTY_DICTIONARY } from '../../property.dictionary';
 import { BuildingsApiService } from '../../services/buildings-api.service';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
 import { FloorsApiService } from '../../services/floors-api.service';
@@ -64,6 +67,7 @@ import type { BranchListRow } from '../../../../core/models/branch-admin.model';
     Menu,
     NgIcon,
     FieldErrorComponent,
+    TranslatePipe,
   ],
   templateUrl: './building-list.component.html',
   styleUrl: './building-list.component.scss',
@@ -77,6 +81,7 @@ export class BuildingListComponent {
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
+  readonly i18n = inject(TranslationService);
 
   readonly rows = signal<BuildingListRow[]>([]);
   readonly branches = signal<BranchListRow[]>([]);
@@ -116,7 +121,17 @@ export class BuildingListComponent {
     label: ['', Validators.required],
   });
 
+  readonly statusFilterOptions = computed(() => {
+    this.i18n.currentLang();
+    return [
+      { label: this.i18n.t('property.filter.active'), value: 'active' },
+      { label: this.i18n.t('property.filter.inactive'), value: 'inactive' },
+      { label: this.i18n.t('property.filter.all'), value: 'all' },
+    ];
+  });
+
   constructor() {
+    this.i18n.register(PROPERTY_DICTIONARY);
     this.reload();
     this.loadBranches();
   }
@@ -178,7 +193,7 @@ export class BuildingListComponent {
   // --- Building Methods ---
   openCreate(): void {
     this.buildingForm.reset({
-      branchId: this.currentBranchId() || '',
+      branchId: this.currentBranchId() || (this.branches().length === 1 ? this.branches()[0]._id : ''),
       name: '',
     });
     this.createVisible.set(true);
@@ -193,12 +208,12 @@ export class BuildingListComponent {
     this.savingCreate.set(true);
     this.api.create(body).subscribe({
       next: (res) => {
-        this.messages.add({ severity: 'success', summary: 'Building created', detail: res.name });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('property.buildingCreated'), detail: res.name });
         this.createVisible.set(false);
         this.reload();
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Creation failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.creationFailed') });
       },
       complete: () => this.savingCreate.set(false),
     });
@@ -224,13 +239,13 @@ export class BuildingListComponent {
     this.savingEdit.set(true);
     this.api.update(buildingRowId(row), body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Building details saved.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('property.buildingDetailsSaved') });
         this.editVisible.set(false);
         this.editTarget.set(null);
         this.reload();
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Update failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.updateFailed') });
       },
       complete: () => this.savingEdit.set(false),
     });
@@ -238,18 +253,18 @@ export class BuildingListComponent {
 
   onDelete(row: BuildingListRow): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate ${row.name}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('property.confirmDeactivateBuilding', { name: row.name }),
+      header: this.i18n.t('property.confirmDeactivationHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.api.delete(buildingRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'Building marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: this.i18n.t('property.buildingMarkedInactive') });
             this.reload();
           },
           error: (err) => {
             // This is where the "Cannot delete building with linked floors" error will be caught
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Deactivation failed' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.deactivationFailed') });
           }
         });
       },
@@ -259,29 +274,29 @@ export class BuildingListComponent {
   onRestore(row: BuildingListRow): void {
     this.api.restore(buildingRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'Building is now active again.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restored'), detail: this.i18n.t('property.buildingActiveAgain') });
         this.reload();
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Restoration failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.restorationFailed') });
       }
     });
   }
 
   onPermanentDelete(row: BuildingListRow): void {
     this.confirmation.confirm({
-      message: `PERMANENT DELETE: This will completely remove ${row.name} from the database. This action cannot be undone. Proceed?`,
-      header: 'PERMANENT DELETE',
+      message: this.i18n.t('property.confirmPermanentDeleteBuilding', { name: row.name }),
+      header: this.i18n.t('property.permanentDeleteHeader'),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.api.deletePermanent(buildingRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Permanently Deleted', detail: 'Building removed from system.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('property.permanentlyDeleted'), detail: this.i18n.t('property.buildingRemoved') });
             this.reload();
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Permanent deletion failed' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.permanentDeletionFailed') });
           }
         });
       },
@@ -314,12 +329,12 @@ export class BuildingListComponent {
     this.savingFloorCreate.set(true);
     this.floorsApi.create(body).subscribe({
       next: (res) => {
-        this.messages.add({ severity: 'success', summary: 'Floor added', detail: res.label });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('property.floorAdded'), detail: res.label });
         this.floorCreateVisible.set(false);
         this.reloadFloors(building._id);
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Floor creation failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.floorCreationFailed') });
       },
       complete: () => this.savingFloorCreate.set(false),
     });
@@ -364,13 +379,13 @@ export class BuildingListComponent {
     this.savingFloorEdit.set(true);
     this.floorsApi.update(floorRowId(row), body).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Updated', detail: 'Floor details saved.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('property.floorDetailsSaved') });
         this.floorEditVisible.set(false);
         this.floorEditTarget.set(null);
         this.reloadFloors(building._id);
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Update failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.updateFailed') });
       },
       complete: () => this.savingFloorEdit.set(false),
     });
@@ -378,17 +393,17 @@ export class BuildingListComponent {
 
   onDeleteFloor(row: FloorListRow, buildingId: string): void {
     this.confirmation.confirm({
-      message: `Are you sure you want to deactivate floor ${row.label}?`,
-      header: 'Confirm Deactivation',
+      message: this.i18n.t('property.confirmDeactivateFloor', { label: row.label }),
+      header: this.i18n.t('property.confirmDeactivationHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         this.floorsApi.delete(floorRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Deactivated', detail: 'Floor marked as inactive.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: this.i18n.t('property.floorMarkedInactive') });
             this.reloadFloors(buildingId);
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Deactivation failed' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.deactivationFailed') });
           }
         });
       },
@@ -398,29 +413,29 @@ export class BuildingListComponent {
   onRestoreFloor(row: FloorListRow, buildingId: string): void {
     this.floorsApi.restore(floorRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: 'Restored', detail: 'Floor is now active again.' });
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restored'), detail: this.i18n.t('property.floorActiveAgain') });
         this.reloadFloors(buildingId);
       },
       error: (err) => {
-        this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Restoration failed' });
+        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.restorationFailed') });
       }
     });
   }
 
   onPermanentDeleteFloor(row: FloorListRow, buildingId: string): void {
     this.confirmation.confirm({
-      message: `PERMANENT DELETE: This will completely remove floor ${row.label} from the database. Proceed?`,
-      header: 'PERMANENT DELETE',
+      message: this.i18n.t('property.confirmPermanentDeleteFloor', { label: row.label }),
+      header: this.i18n.t('property.permanentDeleteHeader'),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.floorsApi.deletePermanent(floorRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: 'Permanently Deleted', detail: 'Floor removed.' });
+            this.messages.add({ severity: 'success', summary: this.i18n.t('property.permanentlyDeleted'), detail: this.i18n.t('property.floorRemoved') });
             this.reloadFloors(buildingId);
           },
           error: (err) => {
-            this.messages.add({ severity: 'error', summary: 'Error', detail: err.message || 'Permanent deletion failed' });
+            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.permanentDeletionFailed') });
           }
         });
       },
@@ -439,12 +454,12 @@ export class BuildingListComponent {
   prepareActions(event: Event, row: BuildingListRow, menu: any): void {
     const items: MenuItem[] = [
       {
-        label: 'Add Floor',
+        label: this.i18n.t('property.menu.addFloor'),
         icon: 'pi pi-plus',
         command: () => this.openCreateFloor(row),
       },
       {
-        label: 'Edit Building',
+        label: this.i18n.t('property.menu.editBuilding'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
       },
@@ -452,21 +467,21 @@ export class BuildingListComponent {
 
     if (row.deletedAt || row.status === 'inactive') {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('property.menu.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestore(row),
       });
 
       if (this.isAuthorizedForPermanentDelete()) {
         items.push({
-          label: 'Delete Forever',
+          label: this.i18n.t('property.menu.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDelete(row),
         });
       }
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });
@@ -479,7 +494,7 @@ export class BuildingListComponent {
   prepareFloorActions(event: Event, floor: FloorListRow, buildingId: string, menu: any): void {
     const items: MenuItem[] = [
       {
-        label: 'Edit',
+        label: this.i18n.t('property.menu.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEditFloor(floor, buildingId),
       },
@@ -487,21 +502,21 @@ export class BuildingListComponent {
 
     if (floor.deletedAt || floor.status === 'inactive') {
       items.push({
-        label: 'Restore',
+        label: this.i18n.t('property.menu.restore'),
         icon: 'pi pi-refresh',
         command: () => this.onRestoreFloor(floor, buildingId),
       });
 
       if (this.isAuthorizedForPermanentDelete()) {
         items.push({
-          label: 'Delete Forever',
+          label: this.i18n.t('property.menu.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDeleteFloor(floor, buildingId),
         });
       }
     } else {
       items.push({
-        label: 'Deactivate',
+        label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDeleteFloor(floor, buildingId),
       });

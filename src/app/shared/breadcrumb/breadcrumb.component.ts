@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 export interface Breadcrumb {
+  /** A translation key (see core/i18n), not a literal label. */
   label: string;
   /** null for the last crumb — it's the current page and shouldn't be a link. */
   url: string | null;
@@ -17,7 +19,7 @@ const DASHBOARD_URL = '/dashboard';
  */
 @Component({
   selector: 'app-breadcrumb',
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe],
   templateUrl: './breadcrumb.component.html',
   styleUrl: './breadcrumb.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,7 +68,7 @@ export class BreadcrumbComponent {
       return [{ label: crumbs[0].label, url: null }];
     }
 
-    const trail: Breadcrumb[] = [{ label: 'Dashboard', url: DASHBOARD_URL }, ...crumbs];
+    const trail: Breadcrumb[] = [{ label: 'nav.dashboard', url: DASHBOARD_URL }, ...crumbs];
     const lastIndex = trail.length - 1;
     return trail.map((crumb, i) => (i === lastIndex ? { ...crumb, url: null } : crumb));
   }

@@ -9,7 +9,7 @@ export const hrRoutes: Routes = [
   {
     path: 'employees',
     canActivate: [roleGuard],
-    data: { roles: HR_ROLES, breadcrumb: 'HR' },
+    data: { roles: HR_ROLES, breadcrumb: 'nav.hr' },
     loadComponent: () =>
       import('./pages/employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
   },

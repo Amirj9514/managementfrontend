@@ -1,27 +1,29 @@
-<app-page-header title="Halls" subtitle="Shared accommodation — track live capacity and manage group check-in/check-out." />
+<app-page-header [title]="'nav.halls' | translate" [subtitle]="'halls.subtitle' | translate" />
 
 <p-toolbar styleClass="mb-4 flex-wrap gap-3">
   <ng-template #start>
     <div class="flex flex-wrap align-items-center gap-2">
-      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
-        (ngModelChange)="onBranchChange($event)" placeholder="Select branch" [showClear]="true" styleClass="w-14rem" />
+      @if (branches().length > 1) {
+        <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
+          (ngModelChange)="onBranchChange($event)" [placeholder]="'halls.selectBranch' | translate" [showClear]="true" styleClass="w-14rem" />
+      }
       <p-select [options]="buildings()" optionLabel="name" optionValue="_id" [ngModel]="buildingId()"
-        (ngModelChange)="onBuildingChange($event)" placeholder="Building" [showClear]="true"
+        (ngModelChange)="onBuildingChange($event)" [placeholder]="'common.building' | translate" [showClear]="true"
         [disabled]="!branchId()" styleClass="w-12rem" />
       <p-select [options]="floors()" optionLabel="label" optionValue="_id" [ngModel]="floorId()"
-        (ngModelChange)="onFloorChange($event)" placeholder="Floor" [showClear]="true"
+        (ngModelChange)="onFloorChange($event)" [placeholder]="'common.floor' | translate" [showClear]="true"
         [disabled]="!buildingId()" styleClass="w-12rem" />
     </div>
   </ng-template>
   <ng-template #end>
-    <p-button label="New hall" icon="pi pi-plus" [disabled]="!canCreate()" (onClick)="openCreate()" />
+    <p-button [label]="'halls.newHall' | translate" icon="pi pi-plus" [disabled]="!canCreate()" (onClick)="openCreate()" />
   </ng-template>
 </p-toolbar>
 
 @if (!branchId()) {
-  <app-empty-state title="Select a branch to get started" description="Choose a branch above to see its halls." icon="lucideBuilding2" />
+  <app-empty-state [title]="'halls.emptyBranch.title' | translate" [description]="'halls.emptyBranch.description' | translate" icon="lucideBuilding2" />
 } @else if (!loading() && halls().length === 0) {
-  <app-empty-state title="No halls found" description="Add a public hall / dormitory to this floor." actionLabel="New hall"
+  <app-empty-state [title]="'halls.emptyHalls.title' | translate" [description]="'halls.emptyHalls.description' | translate" [actionLabel]="'halls.newHall' | translate"
     (actionClick)="openCreate()" />
 } @else {
   <div class="hall-board">
@@ -29,7 +31,12 @@
       @for (hall of halls(); track hall._id) {
         <p-card styleClass="hall-card" [class.hall-card--active]="hall._id === selectedHallId()" (click)="selectHall(hall)">
           <div class="hall-card__header">
-            <span class="hall-card__code">{{ hall.code }}</span>
+            <span class="hall-card__code">
+              {{ hall.code }}
+              @if (hall.audience && hall.audience !== 'mixed') {
+                <span class="hall-audience" [class]="'hall-audience--' + hall.audience">{{ 'hallAudience.' + hall.audience | translate }}</span>
+              }
+            </span>
             <app-status-badge [status]="hall.status" />
           </div>
           <app-capacity-gauge [capacity]="hall.occupancy?.maxCapacity ?? hall.maxCapacity" [occupied]="hall.occupancy?.occupied ?? 0" />
@@ -46,25 +53,25 @@
               <p class="text-sm text-color-secondary m-0">{{ amenityNames(hall.amenityIds) }}</p>
             </div>
             <div class="flex gap-2">
-              <p-button label="Group check-in" icon="pi pi-users" (onClick)="openGroupCheckIn()" />
+              <p-button [label]="'halls.groupCheckIn' | translate" icon="pi pi-users" (onClick)="openGroupCheckIn()" />
               <p-button icon="pi pi-pencil" [outlined]="true" (onClick)="openEdit(hall)" />
               <p-button icon="pi pi-trash" severity="danger" [outlined]="true" (onClick)="remove(hall)" />
             </div>
           </div>
 
-          <app-capacity-gauge label="Live occupancy" [capacity]="hall.occupancy?.maxCapacity ?? hall.maxCapacity"
+          <app-capacity-gauge [label]="'halls.liveOccupancy' | translate" [capacity]="hall.occupancy?.maxCapacity ?? hall.maxCapacity"
             [occupied]="hall.occupancy?.occupied ?? 0" />
 
-          <h4 class="mt-4 mb-2">Current parties</h4>
+          <h4 class="mt-4 mb-2">{{ 'halls.currentParties' | translate }}</h4>
           @if (!loadingParties() && parties().current.length === 0) {
-            <p class="text-color-secondary">No one currently checked in.</p>
+            <p class="text-color-secondary">{{ 'halls.noCurrentParties' | translate }}</p>
           } @else {
             <p-table [value]="parties().current" [loading]="loadingParties()">
               <ng-template #header>
                 <tr>
-                  <th>Party size</th>
-                  <th>Checked in</th>
-                  <th>Expected checkout</th>
+                  <th>{{ 'halls.partySize' | translate }}</th>
+                  <th>{{ 'halls.checkedInAt' | translate }}</th>
+                  <th>{{ 'halls.expectedCheckout' | translate }}</th>
                   <th style="width: 8rem"></th>
                 </tr>
               </ng-template>
@@ -73,22 +80,22 @@
                   <td>{{ line.occupancy.partySize }}</td>
                   <td>{{ line.actualCheckIn | date: 'short' }}</td>
                   <td>{{ line.expectedCheckOut | date: 'short' }}</td>
-                  <td><p-button label="Check out" size="small" [outlined]="true" (onClick)="checkOutParty(line)" /></td>
+                  <td><p-button [label]="'halls.checkOut' | translate" size="small" [outlined]="true" (onClick)="checkOutParty(line)" /></td>
                 </tr>
               </ng-template>
             </p-table>
           }
 
-          <h4 class="mt-4 mb-2">Upcoming reservations</h4>
+          <h4 class="mt-4 mb-2">{{ 'halls.upcomingReservations' | translate }}</h4>
           @if (parties().upcoming.length === 0) {
-            <p class="text-color-secondary">No upcoming reservations.</p>
+            <p class="text-color-secondary">{{ 'halls.noUpcomingReservations' | translate }}</p>
           } @else {
             <p-table [value]="parties().upcoming">
               <ng-template #header>
                 <tr>
-                  <th>Party size</th>
-                  <th>Arrival</th>
-                  <th>Departure</th>
+                  <th>{{ 'halls.partySize' | translate }}</th>
+                  <th>{{ 'halls.arrival' | translate }}</th>
+                  <th>{{ 'halls.departure' | translate }}</th>
                 </tr>
               </ng-template>
               <ng-template #body let-line>
@@ -106,63 +113,68 @@
   </div>
 }
 
-<p-dialog [header]="isEdit() ? 'Edit hall' : 'New hall'" [(visible)]="formVisible" [modal]="true"
+<p-dialog [header]="(isEdit() ? 'halls.formHeaderEdit' : 'halls.formHeaderNew') | translate" [(visible)]="formVisible" [modal]="true"
   [style]="{ width: 'min(32rem, 100vw)' }">
   <form [formGroup]="form" (ngSubmit)="submit()">
     <p-fluid>
       <div class="field mb-3">
-        <label for="h-code">Hall name / code</label>
-        <input pInputText id="h-code" formControlName="code" placeholder="e.g. Dormitory A" autocomplete="off" />
-        <app-field-error [control]="form.controls.code" label="Hall name" />
+        <label for="h-code">{{ 'halls.hallNameCode' | translate }}</label>
+        <input pInputText id="h-code" formControlName="code" [placeholder]="'halls.hallNamePlaceholder' | translate" autocomplete="off" />
+        <app-field-error [control]="form.controls.code" [label]="'halls.hallNameCode' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="h-capacity">Max capacity</label>
+        <label for="h-capacity">{{ 'halls.maxCapacity' | translate }}</label>
         <p-inputnumber id="h-capacity" formControlName="maxCapacity" [min]="1" />
-        <app-field-error [control]="form.controls.maxCapacity" label="Max capacity" />
+        <app-field-error [control]="form.controls.maxCapacity" [label]="'halls.maxCapacity' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="h-amenities">Amenities</label>
+        <label>{{ 'hallAudience.label' | translate }}</label>
+        <p-selectbutton [options]="audienceOptions()" optionLabel="label" optionValue="value" formControlName="audience"
+          [allowEmpty]="false" />
+      </div>
+      <div class="field mb-3">
+        <label for="h-amenities">{{ 'common.amenities' | translate }}</label>
         <p-multiselect id="h-amenities" [options]="amenities()" optionLabel="name" optionValue="_id"
-          formControlName="amenityIds" placeholder="Select amenities" [filter]="true" appendTo="body" />
+          formControlName="amenityIds" [placeholder]="'halls.selectAmenities' | translate" [filter]="true" appendTo="body" />
       </div>
       <div class="field mb-3">
-        <label for="h-status">Status</label>
-        <p-select id="h-status" [options]="statusOptions" optionLabel="label" optionValue="value" formControlName="status"
+        <label for="h-status">{{ 'common.status' | translate }}</label>
+        <p-select id="h-status" [options]="statusOptionsT()" optionLabel="label" optionValue="value" formControlName="status"
           appendTo="body" />
       </div>
       <div class="flex justify-content-end gap-2">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="formVisible.set(false)" />
-        <p-button type="submit" [label]="isEdit() ? 'Save changes' : 'Create hall'" [loading]="saving()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="formVisible.set(false)" />
+        <p-button type="submit" [label]="(isEdit() ? 'common.saveChanges' : 'halls.createHall') | translate" [loading]="saving()" />
       </div>
     </p-fluid>
   </form>
 </p-dialog>
 
-<p-dialog header="Group check-in" [(visible)]="checkInVisible" [modal]="true" [style]="{ width: 'min(32rem, 100vw)' }">
+<p-dialog [header]="'halls.groupCheckInHeader' | translate" [(visible)]="checkInVisible" [modal]="true" [style]="{ width: 'min(32rem, 100vw)' }">
   <div [formGroup]="checkInForm">
     <p-fluid>
       <div class="field mb-3">
-        <label>Primary guest</label>
+        <label>{{ 'halls.primaryGuest' | translate }}</label>
         <app-guest-picker [(selected)]="checkInGuest" />
       </div>
       <div class="field mb-3">
-        <label for="ci-party">Party size</label>
+        <label for="ci-party">{{ 'halls.partySize' | translate }}</label>
         <p-inputnumber id="ci-party" formControlName="partySize" [min]="1" />
-        <app-field-error [control]="checkInForm.controls.partySize" label="Party size" />
+        <app-field-error [control]="checkInForm.controls.partySize" [label]="'halls.partySize' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="ci-checkout">Expected checkout</label>
+        <label for="ci-checkout">{{ 'halls.expectedCheckout' | translate }}</label>
         <p-datepicker id="ci-checkout" formControlName="expectedCheckOut" [showIcon]="true" dateFormat="yy-mm-dd"
           appendTo="body" />
-        <app-field-error [control]="checkInForm.controls.expectedCheckOut" label="Expected checkout" />
+        <app-field-error [control]="checkInForm.controls.expectedCheckOut" [label]="'halls.expectedCheckout' | translate" />
       </div>
       <div class="field mb-3">
-        <label for="ci-notes">Notes (optional)</label>
+        <label for="ci-notes">{{ 'halls.notesOptional' | translate }}</label>
         <input pInputText id="ci-notes" formControlName="notes" autocomplete="off" />
       </div>
       <div class="flex justify-content-end gap-2">
-        <p-button type="button" label="Cancel" [outlined]="true" (onClick)="checkInVisible.set(false)" />
-        <p-button type="button" label="Check in" [loading]="checkInSaving()" (onClick)="submitGroupCheckIn()" />
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="checkInVisible.set(false)" />
+        <p-button type="button" [label]="'halls.checkIn' | translate" [loading]="checkInSaving()" (onClick)="submitGroupCheckIn()" />
       </div>
     </p-fluid>
   </div>
