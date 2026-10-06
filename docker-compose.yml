@@ -3,6 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "4200:80"
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
