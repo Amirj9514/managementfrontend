@@ -197,6 +197,7 @@ export class BranchListComponent {
         this.createVisible.set(false);
         this.reload();
       },
+      error: () => this.savingCreate.set(false),
       complete: () => this.savingCreate.set(false),
     });
   }
@@ -230,6 +231,7 @@ export class BranchListComponent {
         this.editTarget.set(null);
         this.reload();
       },
+      error: () => this.savingEdit.set(false),
       complete: () => this.savingEdit.set(false),
     });
   }
@@ -245,9 +247,7 @@ export class BranchListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.branchDeactivated') });
             this.reload();
           },
-          error: (err) => {
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotDeactivate') });
-          }
+          error: () => undefined
         });
       },
     });
@@ -274,9 +274,7 @@ export class BranchListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.permanentlyDeleted'), detail: this.i18n.t('branches.toast.branchPermanentlyDeleted') });
             this.reload();
           },
-          error: (err) => {
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotPermanentDelete') });
-          }
+          error: () => undefined
         });
       },
     });
@@ -345,6 +343,7 @@ export class BranchListComponent {
         this.buildingCreateVisible.set(false);
         this.reloadBuildings(branch._id);
       },
+      error: () => this.savingBuilding.set(false),
       complete: () => this.savingBuilding.set(false),
     });
   }
@@ -373,6 +372,7 @@ export class BranchListComponent {
         this.buildingEditVisible.set(false);
         this.reloadBuildings(branch._id);
       },
+      error: () => this.savingBuilding.set(false),
       complete: () => this.savingBuilding.set(false),
     });
   }
@@ -388,7 +388,7 @@ export class BranchListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.buildingDeactivated') });
             this.reloadBuildings(branchId);
           },
-          error: (err) => this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('branches.toast.couldNotDeactivateBuilding') })
+          error: () => undefined,
         });
       },
     });

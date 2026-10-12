@@ -212,9 +212,7 @@ export class BuildingListComponent {
         this.createVisible.set(false);
         this.reload();
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.creationFailed') });
-      },
+      error: () => this.savingCreate.set(false),
       complete: () => this.savingCreate.set(false),
     });
   }
@@ -244,9 +242,7 @@ export class BuildingListComponent {
         this.editTarget.set(null);
         this.reload();
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.updateFailed') });
-      },
+      error: () => this.savingEdit.set(false),
       complete: () => this.savingEdit.set(false),
     });
   }
@@ -262,10 +258,7 @@ export class BuildingListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: this.i18n.t('property.buildingMarkedInactive') });
             this.reload();
           },
-          error: (err) => {
-            // This is where the "Cannot delete building with linked floors" error will be caught
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.deactivationFailed') });
-          }
+          error: () => undefined,
         });
       },
     });
@@ -277,9 +270,7 @@ export class BuildingListComponent {
         this.messages.add({ severity: 'success', summary: this.i18n.t('common.restored'), detail: this.i18n.t('property.buildingActiveAgain') });
         this.reload();
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.restorationFailed') });
-      }
+      error: () => undefined
     });
   }
 
@@ -295,9 +286,7 @@ export class BuildingListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('property.permanentlyDeleted'), detail: this.i18n.t('property.buildingRemoved') });
             this.reload();
           },
-          error: (err) => {
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.permanentDeletionFailed') });
-          }
+          error: () => undefined
         });
       },
     });
@@ -333,9 +322,7 @@ export class BuildingListComponent {
         this.floorCreateVisible.set(false);
         this.reloadFloors(building._id);
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.floorCreationFailed') });
-      },
+      error: () => this.savingFloorCreate.set(false),
       complete: () => this.savingFloorCreate.set(false),
     });
   }
@@ -384,9 +371,7 @@ export class BuildingListComponent {
         this.floorEditTarget.set(null);
         this.reloadFloors(building._id);
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.updateFailed') });
-      },
+      error: () => this.savingFloorEdit.set(false),
       complete: () => this.savingFloorEdit.set(false),
     });
   }
@@ -402,9 +387,7 @@ export class BuildingListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: this.i18n.t('property.floorMarkedInactive') });
             this.reloadFloors(buildingId);
           },
-          error: (err) => {
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.deactivationFailed') });
-          }
+          error: () => undefined
         });
       },
     });
@@ -416,9 +399,7 @@ export class BuildingListComponent {
         this.messages.add({ severity: 'success', summary: this.i18n.t('common.restored'), detail: this.i18n.t('property.floorActiveAgain') });
         this.reloadFloors(buildingId);
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.restorationFailed') });
-      }
+      error: () => undefined
     });
   }
 
@@ -434,9 +415,7 @@ export class BuildingListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('property.permanentlyDeleted'), detail: this.i18n.t('property.floorRemoved') });
             this.reloadFloors(buildingId);
           },
-          error: (err) => {
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('property.permanentDeletionFailed') });
-          }
+          error: () => undefined
         });
       },
     });

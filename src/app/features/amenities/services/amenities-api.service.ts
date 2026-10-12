@@ -9,9 +9,10 @@ import { ApiClientService } from '../../../core/services/api-client.service';
 export class AmenitiesApiService {
   private readonly api = inject(ApiClientService);
 
-  list(page = 1, limit = 100, branchId?: string): Observable<PaginatedListPayload<AmenityRow>> {
+  list(page = 1, limit = 100, branchId?: string, active?: boolean): Observable<PaginatedListPayload<AmenityRow>> {
     let params = new HttpParams().set('page', String(page)).set('limit', String(limit));
     if (branchId) params = params.set('branchId', branchId);
+    if (active !== undefined) params = params.set('active', String(active));
     return this.api.getPaginatedList<AmenityRow>('amenities', params);
   }
 

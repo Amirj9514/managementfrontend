@@ -5,13 +5,24 @@ export interface ApiSuccess<T> {
   statusCode: number;
 }
 
+/** Localized field-level validation detail from the API. */
+export interface ApiFieldError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+export interface ApiValidationDetails {
+  fields: ApiFieldError[];
+}
+
 export interface ApiErrorBody {
   success: false;
   data: null;
   message: string;
   statusCode: number;
   code?: string;
-  details?: unknown;
+  details?: ApiValidationDetails | unknown;
 }
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiErrorBody;

@@ -1,0 +1,18 @@
+[
+  {
+    status_from: 'INCOMPLETE',
+    status_to: 'SCHEDULED',
+  },
+  {
+    status_from: 'SCHEDULED',
+    status_to: 'CONFIRMED',
+  },
+  {
+    status_from: 'PROCESSED',
+    status_to: 'PUBLISHED',
+  },
+  {
+    status_from: 'PROCESSED',
+    status_to: 'CANCELLED',
+  },
+]

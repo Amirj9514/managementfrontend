@@ -50,6 +50,54 @@ body {
   font-weight: 500;
 }
 
+/* Icon fonts / SVG icons must NOT inherit Noto Nastaliq Urdu. Icon fonts live in the
+   Private Use Area — if the Urdu face is used (even as a fallback), glyphs become empty
+   boxes or odd placeholders. Keep icons on their own face, isolate bidi, and reset the
+   taller RTL body line-height that otherwise clips ng-icon (overflow:hidden + 1em box). */
+[dir='rtl'] .pi,
+[dir='rtl'] .pi:before {
+  font-family: 'primeicons' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  font-variant: normal !important;
+  line-height: 1 !important;
+  letter-spacing: normal !important;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+[dir='rtl'] ng-icon,
+[dir='rtl'] .ng-icon {
+  font-family: var(--app-font-sans) !important;
+  font-weight: normal !important;
+  line-height: 1 !important;
+  letter-spacing: normal !important;
+  direction: ltr;
+  unicode-bidi: isolate;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+[dir='rtl'] .p-button-icon,
+[dir='rtl'] .p-select-dropdown-icon,
+[dir='rtl'] .p-icon,
+[dir='rtl'] .p-datepicker-dropdown-icon {
+  font-family: 'primeicons' !important;
+  line-height: 1 !important;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+[dir='rtl'] .app-sidebar__link {
+  line-height: 1.45;
+}
+
+[dir='rtl'] .app-sidebar__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  overflow: visible;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: var(--app-sidebar-width) 1fr;

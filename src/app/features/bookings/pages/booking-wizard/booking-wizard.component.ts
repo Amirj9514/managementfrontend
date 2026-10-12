@@ -18,6 +18,7 @@ import { DatePicker } from 'primeng/datepicker';
 import { FileUpload, type FileSelectEvent } from 'primeng/fileupload';
 import { InputNumber } from 'primeng/inputnumber';
 import { InputText } from 'primeng/inputtext';
+import { MultiSelect } from 'primeng/multiselect';
 import { Select } from 'primeng/select';
 import { SelectButton } from 'primeng/selectbutton';
 import { Textarea } from 'primeng/textarea';
@@ -148,6 +149,7 @@ const MAX_COMPANIONS = 20;
     SelectButton,
     InputNumber,
     InputText,
+    MultiSelect,
     Textarea,
     DatePicker,
     FileUpload,
@@ -187,6 +189,8 @@ export class BookingWizardComponent implements OnDestroy {
   readonly notes = signal('');
   readonly referenceBy = signal('');
   readonly committingGuest = signal(false);
+  /** After the user tries Next on step 1, show under-field errors for incomplete companions. */
+  readonly step1Attempted = signal(false);
 
   /** People staying with the primary guest — the count input grows/shrinks this list, keeping
    *  whatever was already typed into the surviving rows. */
@@ -268,8 +272,14 @@ export class BookingWizardComponent implements OnDestroy {
   readonly allFloors = signal<FloorListRow[]>([]);
   /** Room types for the selected branch — used to label room cards (e.g. "Deluxe Double"). */
   readonly roomTypes = signal<RoomTypeRow[]>([]);
-  /** All amenities — used to label room/hall amenity chips. */
+  /** All amenities — used to label room/hall amenity chips and as stay-service options. */
   readonly amenities = signal<AmenityRow[]>([]);
+  /** Amenity IDs allowed/enabled for this stay (sent as booking.serviceIds). */
+  readonly serviceIds = signal<string[]>([]);
+  /** Who authorized the selected stay services — required when any service is selected. */
+  readonly allowedBy = signal('');
+  /** Active amenities for the selected branch (global + branch-scoped). */
+  readonly stayServiceOptions = computed(() => this.amenities().filter((a) => a.active));
   readonly branchId = signal<string | undefined>(undefined);
   /** Midnight today — the floor for the check-in picker, computed once (the wizard is a
    *  single-sitting flow, so "today" doesn't need to be reactive). */
@@ -310,7 +320,6 @@ export class BookingWizardComponent implements OnDestroy {
         if (!this.branchId() && items.length) this.onBranchChange(items[0]._id);
       },
     });
-    this.amenitiesApi.list().subscribe({ next: ({ items }) => this.amenities.set(items) });
   }
 
   onNightsChange(value: number | null): void {
@@ -524,6 +533,8 @@ export class BookingWizardComponent implements OnDestroy {
     this.roomTypes.set([]);
     this.filterBuildingId.set(undefined);
     this.filterFloorId.set(undefined);
+    this.serviceIds.set([]);
+    this.allowedBy.set('');
     if (branchId) {
       this.buildingsApi.list(1, 100, 'active', branchId).subscribe({
         next: ({ items }) => {
@@ -532,6 +543,9 @@ export class BookingWizardComponent implements OnDestroy {
         },
       });
       this.roomTypesApi.list(branchId).subscribe({ next: ({ items }) => this.roomTypes.set(items) });
+      this.amenitiesApi.list(1, 100, branchId, true).subscribe({ next: ({ items }) => this.amenities.set(items) });
+    } else {
+      this.amenities.set([]);
     }
   }
 
@@ -593,8 +607,17 @@ export class BookingWizardComponent implements OnDestroy {
     const missing: string[] = [];
     if (!this.branchId()) missing.push(this.i18n.t('bookings.missing.branch'));
     if (!this.checkInDate()) missing.push(this.i18n.t('bookings.missing.checkInDate'));
+    if (this.serviceIds().length > 0 && !this.allowedBy().trim()) {
+      missing.push(this.i18n.t('bookings.missing.allowedBy'));
+    }
     return missing;
   });
+
+  onServiceIdsChange(ids: string[] | null): void {
+    const next = ids ?? [];
+    this.serviceIds.set(next);
+    if (!next.length) this.allowedBy.set('');
+  }
 
   canProceed(): boolean {
     if (this.committingGuest()) return false;
@@ -631,6 +654,7 @@ export class BookingWizardComponent implements OnDestroy {
   /** Next from step 1: creates the pending new guest (if the picker's create form is open), then
    * advances to stay details once the guest step is complete. */
   private commitGuestStep(): void {
+    this.step1Attempted.set(true);
     const picker = this.guestPicker();
     if (!picker) return;
     this.committingGuest.set(true);
@@ -638,8 +662,15 @@ export class BookingWizardComponent implements OnDestroy {
       this.committingGuest.set(false);
       if (guest) this.guest.set(guest);
       if (this.guestStepMissing().length > 0) return;
+      this.step1Attempted.set(false);
       this.step.set(2);
     });
+  }
+
+  companionNameMissing(index: number): boolean {
+    if (!this.step1Attempted()) return false;
+    const name = this.companions()[index]?.fullName?.trim() ?? '';
+    return !name;
   }
 
   back(): void {
@@ -714,6 +745,8 @@ export class BookingWizardComponent implements OnDestroy {
         bookingType: this.bookingType(),
         source: checkInNow ? 'walk_in' : 'reservation',
         primaryGuestId: guest._id,
+        serviceIds: this.serviceIds().length ? this.serviceIds() : undefined,
+        allowedBy: this.serviceIds().length ? this.allowedBy().trim() : undefined,
         notes: this.notes() || undefined,
         referenceBy: this.referenceBy().trim() || undefined,
         companions: this.companionsPayload(),
@@ -730,12 +763,7 @@ export class BookingWizardComponent implements OnDestroy {
             this.step.set(4);
           });
         },
-        error: (err) => {
-          this.messages.add({
-            severity: 'error',
-            summary: this.i18n.t('common.error'),
-            detail: err.message || this.i18n.t('bookings.toast.bookingFailed'),
-          });
+        error: () => {
           this.creating.set(false);
         },
       });
@@ -761,12 +789,7 @@ export class BookingWizardComponent implements OnDestroy {
         this.documentFileUpload()?.clear();
         this.uploadingDocuments.set(false);
       },
-      error: (err) => {
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.documentUploadFailed'),
-        });
+      error: () => {
         this.documentFileUpload()?.clear();
         this.uploadingDocuments.set(false);
       },
@@ -778,12 +801,7 @@ export class BookingWizardComponent implements OnDestroy {
     if (!bookingId) return;
     this.bookingsApi.deleteDocument(bookingId, doc._id).subscribe({
       next: (updated) => this.bookingDocuments.set(updated.documents ?? []),
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.removeDocumentFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -798,12 +816,7 @@ export class BookingWizardComponent implements OnDestroy {
         window.open(url, '_blank');
         setTimeout(() => this.revokeUrl(url), 60_000);
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.openDocumentFailed'),
-        }),
+      error: () => undefined,
     });
   }
 

@@ -758,6 +758,12 @@
   margin-top: 1rem;
 }
 
+.required-mark {
+  color: var(--p-red-500, #ef4444);
+  font-weight: 700;
+  margin-inline-start: 0.15rem;
+}
+
 .input-with-icon {
   position: relative;
   display: block;

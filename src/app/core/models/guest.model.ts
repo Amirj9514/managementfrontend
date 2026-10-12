@@ -41,9 +41,9 @@ export interface GuestSearchParams {
 
 export interface GuestPayload {
   fullName: string;
+  cnic: string;
   email?: string;
   phone?: string;
-  cnic?: string;
   address?: string;
   country?: string;
   state?: string;

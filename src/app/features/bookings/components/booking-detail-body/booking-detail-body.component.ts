@@ -117,6 +117,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
   // Documents — same rules as the check-in wizard (images/PDF, 5 MB each).
   readonly documents = computed(() => this.data()?.booking.documents ?? []);
   readonly companions = computed(() => this.data()?.booking.companions ?? []);
+  readonly stayServices = computed(() => this.data()?.booking.services ?? []);
   readonly uploadingDocuments = signal(false);
   readonly maxDocumentSize = 5 * 1024 * 1024;
   readonly documentAccept = 'image/*,application/pdf';
@@ -220,12 +221,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.messages.add({ severity: 'success', summary: this.i18n.t('status.checkedIn') });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.checkInFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -235,12 +231,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.messages.add({ severity: 'success', summary: this.i18n.t('status.checkedOut') });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.checkOutFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -250,12 +241,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.messages.add({ severity: 'success', summary: this.i18n.t('bookings.toast.lineCancelled') });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.cancelFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -265,12 +251,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.messages.add({ severity: 'success', summary: this.i18n.t('bookings.toast.bookingCancelled') });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.cancelFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -291,12 +272,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.extendVisible.set(false);
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.extensionFailed'),
-        }),
+      error: () => this.extendSaving.set(false),
       complete: () => this.extendSaving.set(false),
     });
   }
@@ -325,12 +301,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.transferVisible.set(false);
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('bookings.toast.transferFailed'),
-        }),
+      error: () => this.transferSaving.set(false),
       complete: () => this.transferSaving.set(false),
     });
   }
@@ -372,12 +343,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
         this.patchBooking(updated);
         this.uploadingDocuments.set(false);
       },
-      error: (err) => {
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.documentUploadFailed'),
-        });
+      error: () => {
         this.uploadingDocuments.set(false);
       },
     });
@@ -386,12 +352,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
   removeDocument(doc: BookingDocument): void {
     this.api.deleteDocument(this.bookingId(), doc._id).subscribe({
       next: (updated) => this.patchBooking(updated),
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.removeDocumentFailed'),
-        }),
+      error: () => undefined,
     });
   }
 
@@ -406,12 +367,7 @@ export class BookingDetailBodyComponent implements OnDestroy {
           if (this.objectUrls.delete(url)) URL.revokeObjectURL(url);
         }, 60_000);
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err?.message || this.i18n.t('bookings.toast.openDocumentFailed'),
-        }),
+      error: () => undefined,
     });
   }
 

@@ -20,6 +20,55 @@
   white-space: pre-wrap;
 }
 
+.stay-services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    color: var(--app-text-primary);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 28%, transparent);
+
+    i {
+      color: var(--app-accent);
+      font-size: 0.85rem;
+    }
+  }
+
+  &__allowed-by {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--app-border-subtle);
+    font-size: 0.88rem;
+    color: var(--app-text-primary);
+
+    i {
+      color: var(--app-accent);
+    }
+  }
+
+  &__allowed-by-label {
+    font-weight: 600;
+    color: var(--app-text-muted);
+  }
+
+  &__allowed-by-value {
+    font-weight: 700;
+  }
+}
+
 .guest-list {
   display: flex;
   flex-direction: column;

@@ -36,6 +36,12 @@ export interface BookingUnitRow {
   transferHistory?: BookingUnitTransfer[];
 }
 
+/** Amenity catalog entry resolved on booking GET/create for stay-service chips. */
+export interface BookingServiceSummary {
+  _id: string;
+  name: string;
+}
+
 export interface BookingRow {
   _id: string;
   bookingNumber: string;
@@ -45,10 +51,18 @@ export interface BookingRow {
   primaryGuestId: string;
   guestIds: string[];
   status: BookingStatus;
+  /** Amenity IDs enabled for this stay. */
+  serviceIds?: string[];
+  /** Resolved names for `serviceIds` (populated on create/GET). */
+  services?: BookingServiceSummary[];
+  /** Who authorized the stay services (required when services are selected). */
+  allowedBy?: string;
   notes?: string;
   referenceBy?: string;
   companions?: BookingCompanion[];
   documents?: BookingDocument[];
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
   createdAt?: string;
   // List-only summaries (GET /bookings) — resolved server-side so a card/table row can show who,
   // where and when without fetching the full booking. Absent on single-booking responses.
@@ -114,6 +128,8 @@ export interface BookingCreateRequest {
   source?: BookingSource;
   primaryGuestId: string;
   guestIds?: string[];
+  serviceIds?: string[];
+  allowedBy?: string;
   notes?: string;
   referenceBy?: string;
   companions?: BookingCompanion[];

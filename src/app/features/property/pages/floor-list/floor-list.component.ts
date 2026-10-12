@@ -128,8 +128,7 @@ export class FloorListComponent implements OnInit {
   loadBuilding(id: string): void {
     this.buildingsApi.getById(id).subscribe({
       next: (res) => this.building.set(res),
-      error: () =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: this.i18n.t('property.couldNotLoadBuilding') }),
+      error: () => undefined,
     });
   }
 
@@ -174,6 +173,7 @@ export class FloorListComponent implements OnInit {
         this.createVisible.set(false);
         this.loadFloors(bId);
       },
+      error: () => this.saving.set(false),
       complete: () => this.saving.set(false),
     });
   }
@@ -203,6 +203,7 @@ export class FloorListComponent implements OnInit {
         this.editVisible.set(false);
         this.loadFloors(bId);
       },
+      error: () => this.saving.set(false),
       complete: () => this.saving.set(false),
     });
   }

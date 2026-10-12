@@ -226,6 +226,7 @@ export class UsersListComponent {
         this.createVisible.set(false);
         this.reload();
       },
+      error: () => this.savingCreate.set(false),
       complete: () => this.savingCreate.set(false),
     });
   }
@@ -264,6 +265,7 @@ export class UsersListComponent {
         this.editTarget.set(null);
         this.reload();
       },
+      error: () => this.savingEdit.set(false),
       complete: () => this.savingEdit.set(false),
     });
   }
@@ -300,6 +302,7 @@ export class UsersListComponent {
         this.assignTarget.set(null);
         this.reload();
       },
+      error: () => this.savingAssign.set(false),
       complete: () => this.savingAssign.set(false),
     });
   }

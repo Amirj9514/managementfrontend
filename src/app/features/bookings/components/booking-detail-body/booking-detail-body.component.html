@@ -24,6 +24,26 @@
     </p-card>
   }
 
+  @if (stayServices().length > 0) {
+    <p-card [header]="'bookings.stayServicesTitle' | translate" styleClass="mb-3">
+      <div class="stay-services">
+        @for (svc of stayServices(); track svc._id) {
+          <span class="stay-services__chip">
+            <i class="pi pi-check-circle"></i>
+            {{ svc.name }}
+          </span>
+        }
+      </div>
+      @if (d.booking.allowedBy) {
+        <div class="stay-services__allowed-by">
+          <i class="pi pi-verified"></i>
+          <span class="stay-services__allowed-by-label">{{ 'bookings.allowedBy' | translate }}:</span>
+          <span class="stay-services__allowed-by-value">{{ d.booking.allowedBy }}</span>
+        </div>
+      }
+    </p-card>
+  }
+
   <p-card [header]="'entity.guests' | translate" styleClass="mb-3">
     <div class="guest-list">
       @for (guest of orderedGuests(); track guest._id) {

@@ -95,6 +95,7 @@
       <div class="field mb-3">
         <label for="g-email">{{ 'common.email' | translate }}</label>
         <input pInputText id="g-email" type="email" formControlName="email" autocomplete="off" />
+        <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
       </div>
       <div class="field mb-3">
         <label for="g-phone">{{ 'common.phone' | translate }}</label>
@@ -103,6 +104,7 @@
       <div class="field mb-3">
         <label for="g-cnic">{{ 'common.cnic' | translate }}</label>
         <input pInputText id="g-cnic" formControlName="cnic" autocomplete="off" />
+        <app-field-error [control]="form.controls.cnic" [label]="'common.cnic' | translate" />
       </div>
       <div class="field mb-3">
         <label for="g-address">{{ 'common.address' | translate }}</label>

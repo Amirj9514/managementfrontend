@@ -35,3 +35,11 @@
     line-height: 2.2 !important;
     padding: 1rem 0.75rem !important;
 }
+
+/* Inline field validation (used by app-field-error and wizard/ngModel hints). */
+.app-field-error {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--p-red-500);
+  font-size: 0.8rem;
+}

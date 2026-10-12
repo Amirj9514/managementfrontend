@@ -290,8 +290,7 @@ export class HallBoardComponent {
         this.formVisible.set(false);
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.saveFailed') }),
+      error: () => this.saving.set(false),
       complete: () => this.saving.set(false),
     });
   }
@@ -307,12 +306,7 @@ export class HallBoardComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: hall.code });
             this.reload();
           },
-          error: (err) =>
-            this.messages.add({
-              severity: 'error',
-              summary: this.i18n.t('common.error'),
-              detail: err.message || this.i18n.t('halls.deactivationFailed'),
-            }),
+          error: () => undefined,
         });
       },
     });
@@ -363,8 +357,7 @@ export class HallBoardComponent {
           this.reload();
           this.selectHall(hall);
         },
-        error: (err) =>
-          this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.checkInFailed') }),
+        error: () => this.checkInSaving.set(false),
         complete: () => this.checkInSaving.set(false),
       });
   }
@@ -386,8 +379,7 @@ export class HallBoardComponent {
             const hall = this.selectedHall();
             if (hall) this.selectHall(hall);
           },
-          error: (err) =>
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('halls.checkOutFailed') }),
+          error: () => undefined,
         });
       },
     });

@@ -126,8 +126,7 @@ export class GuestDetailComponent {
         this.newNoteText.set('');
         this.addingNote.set(false);
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err?.message || this.i18n.t('guests.toast.addNoteFailed') });
+      error: () => {
         this.addingNote.set(false);
       },
     });
@@ -141,8 +140,7 @@ export class GuestDetailComponent {
       accept: () => {
         this.guestApi.deleteNote(this.guestId, noteId).subscribe({
           next: (guest) => this.guest.set(guest),
-          error: (err) =>
-            this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err?.message || this.i18n.t('guests.toast.deleteNoteFailed') }),
+          error: () => undefined,
         });
       },
     });

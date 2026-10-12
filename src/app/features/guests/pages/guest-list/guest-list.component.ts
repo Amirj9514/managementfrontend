@@ -27,6 +27,7 @@ import { TranslationService } from '../../../../core/i18n/translation.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { applyApiFieldErrors, clearServerFieldErrors } from '../../../../core/http/api-error.util';
 import { GuestApiService } from '../../services/guest-api.service';
 import { GUESTS_DICTIONARY } from '../../guests.dictionary';
 
@@ -104,15 +105,15 @@ export class GuestListComponent {
   readonly viewTarget = signal<Guest | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    fullName: ['', Validators.required],
-    email: [''],
-    phone: [''],
-    cnic: [''],
-    address: [''],
-    country: [DEFAULT_COUNTRY],
-    state: [''],
+    fullName: ['', [Validators.required, Validators.maxLength(120)]],
+    email: ['', [Validators.email, Validators.maxLength(120)]],
+    phone: ['', [Validators.maxLength(40)]],
+    cnic: ['', [Validators.required, Validators.maxLength(40)]],
+    address: ['', [Validators.maxLength(500)]],
+    country: [DEFAULT_COUNTRY, [Validators.maxLength(80)]],
+    state: ['', [Validators.maxLength(80)]],
     dateOfBirth: [null as Date | null],
-    notes: [''],
+    notes: ['', [Validators.maxLength(2000)]],
   });
 
   constructor() {
@@ -205,7 +206,7 @@ export class GuestListComponent {
       fullName: v.fullName,
       email: v.email || undefined,
       phone: v.phone || undefined,
-      cnic: v.cnic || undefined,
+      cnic: v.cnic.trim(),
       address: v.address || undefined,
       country: v.country || undefined,
       state: v.state?.trim() || undefined,
@@ -213,6 +214,7 @@ export class GuestListComponent {
       notes: v.notes || undefined,
     };
     const target = this.editTarget();
+    clearServerFieldErrors(this.form);
     this.saving.set(true);
     const req = target ? this.guestsApi.update(guestRowId(target), payload) : this.guestsApi.create(payload);
     req.subscribe({
@@ -226,8 +228,10 @@ export class GuestListComponent {
         this.editVisible.set(false);
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('guests.toast.saveFailed') }),
+      error: (err) => {
+        this.saving.set(false);
+        applyApiFieldErrors(this.form, err);
+      },
       complete: () => this.saving.set(false),
     });
   }
@@ -243,12 +247,7 @@ export class GuestListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('guests.toast.deactivated'), detail: row.fullName });
             this.reload();
           },
-          error: (err) =>
-            this.messages.add({
-              severity: 'error',
-              summary: this.i18n.t('common.error'),
-              detail: err.message || this.i18n.t('guests.toast.deactivationFailed'),
-            }),
+          error: () => undefined,
         });
       },
     });
@@ -260,12 +259,7 @@ export class GuestListComponent {
         this.messages.add({ severity: 'success', summary: this.i18n.t('guests.toast.restored'), detail: row.fullName });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({
-          severity: 'error',
-          summary: this.i18n.t('common.error'),
-          detail: err.message || this.i18n.t('guests.toast.restoreFailed'),
-        }),
+      error: () => undefined,
     });
   }
 }

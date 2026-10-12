@@ -1,13 +1,14 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import type { AbstractControl } from '@angular/forms';
 import { TranslationService } from '../../core/i18n/translation.service';
 
 /**
  * Inline validation message shown under a form field once it's touched/dirty and invalid.
- * Deliberately NOT OnPush: reactive-form control state mutates in place (same object
- * reference), so it relies on the app's default zone-triggered change detection to
- * re-evaluate on every keystroke/blur — OnPush would miss those updates. That same
- * zone-triggered CD is also why this needs no special handling to pick up a language change.
+ *
+ * Control state (touched/errors) mutates in place and is not a signal — so we subscribe to
+ * `control.events` (value/status/touched/pristine) and bump an epoch signal, otherwise a
+ * `computed()` would cache the initial empty message and never show errors after Submit
+ * calls `markAllAsTouched()`.
  */
 @Component({
   selector: 'app-field-error',
@@ -36,7 +37,24 @@ export class FieldErrorComponent {
   /** Override/add messages per error key, e.g. `{ email: 'Enter a valid email address.' }`. */
   readonly messages = input<Record<string, string>>({});
 
+  /** Incremented whenever the bound control emits, so `message` recomputes. */
+  private readonly controlEpoch = signal(0);
+
+  constructor() {
+    effect((onCleanup) => {
+      const c = this.control();
+      this.controlEpoch.update((n) => n + 1);
+      if (!c) return;
+      const sub = c.events.subscribe(() => this.controlEpoch.update((n) => n + 1));
+      onCleanup(() => sub.unsubscribe());
+    });
+  }
+
   readonly message = computed<string | null>(() => {
+    this.controlEpoch();
+    // Re-read language so messages update when the user toggles EN/UR.
+    this.i18n.currentLang();
+
     const c = this.control();
     if (!c || c.valid || !(c.touched || c.dirty)) return null;
     const errors = c.errors;
@@ -46,6 +64,11 @@ export class FieldErrorComponent {
     const label = this.label() ?? this.i18n.t('validation.defaultLabel');
     const firstKey = Object.keys(errors)[0];
     if (overrides[firstKey]) return overrides[firstKey];
+
+    // Server-provided message (already localized by the API)
+    if (firstKey === 'server' && typeof errors['server'] === 'string') {
+      return errors['server'];
+    }
 
     switch (firstKey) {
       case 'required':

@@ -103,6 +103,12 @@ export const COMMON_DICTIONARY: Record<string, DictionaryEntry> = {
   'common.noData': { en: 'No data available', ur: 'کوئی ڈیٹا دستیاب نہیں' },
   'common.error': { en: 'Error', ur: 'خرابی' },
   'common.success': { en: 'Success', ur: 'کامیابی' },
+  'common.accessDenied': { en: 'Access denied', ur: 'رسائی مسترد' },
+  'common.accessDeniedDetail': {
+    en: 'You do not have permission for this action or resource.',
+    ur: 'آپ کو اس عمل یا وسائل کی اجازت نہیں ہے۔',
+  },
+  'common.requestFailed': { en: 'The request could not be completed.', ur: 'درخواست مکمل نہیں ہو سکی۔' },
   'common.confirmDeleteTitle': { en: 'Confirm deletion', ur: 'حذف کرنے کی تصدیق' },
   'common.confirmDeleteMessage': {
     en: 'This cannot be undone.',

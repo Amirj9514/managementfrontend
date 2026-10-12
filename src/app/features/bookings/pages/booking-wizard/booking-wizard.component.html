@@ -96,6 +96,9 @@
                       <label [for]="'w-c-name-' + i">{{ 'common.fullName' | translate }} *</label>
                       <input pInputText [id]="'w-c-name-' + i" type="text" maxlength="120" [ngModel]="c.fullName"
                         (ngModelChange)="updateCompanion(i, { fullName: $event })" />
+                      @if (companionNameMissing(i)) {
+                        <small class="app-field-error">{{ 'validation.required' | translate: { label: ('common.fullName' | translate) } }}</small>
+                      }
                     </div>
                     <div class="field">
                       <label [for]="'w-c-rel-' + i">{{ 'bookings.relationWithPrimary' | translate }}</label>
@@ -238,6 +241,50 @@
 
           <textarea pTextarea id="w-notes" rows="4" class="w-full" [ngModel]="notes()" (ngModelChange)="notes.set($event)"
             [placeholder]="'bookings.notesPlaceholder' | translate" [attr.aria-label]="'bookings.notesSectionTitle' | translate"></textarea>
+
+          <div class="field mt-3">
+            <label for="w-services">{{ 'bookings.allowTheseServices' | translate }}</label>
+            <p class="wizard-section__subtitle mb-2">{{ 'bookings.allowTheseServicesHint' | translate }}</p>
+            <p-multiselect
+              id="w-services"
+              [options]="stayServiceOptions()"
+              optionLabel="name"
+              optionValue="_id"
+              [ngModel]="serviceIds()"
+              (ngModelChange)="onServiceIdsChange($event)"
+              [placeholder]="'bookings.selectServices' | translate"
+              [filter]="true"
+              [showClear]="true"
+              display="chip"
+              styleClass="w-full"
+              appendTo="body"
+            />
+          </div>
+
+          @if (serviceIds().length > 0) {
+            <div class="field mt-3">
+              <label for="w-allowed-by">
+                {{ 'bookings.allowedBy' | translate }}
+                <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <span class="input-with-icon">
+                <i class="pi pi-verified"></i>
+                <input
+                  pInputText
+                  id="w-allowed-by"
+                  type="text"
+                  maxlength="120"
+                  [ngModel]="allowedBy()"
+                  (ngModelChange)="allowedBy.set($event)"
+                  [placeholder]="'bookings.allowedByPlaceholder' | translate"
+                  [attr.aria-required]="true"
+                />
+              </span>
+              @if (!allowedBy().trim()) {
+                <small class="app-field-error">{{ 'bookings.allowedByRequired' | translate }}</small>
+              }
+            </div>
+          }
 
           <div class="arrival-note" [class.arrival-note--future]="!isCheckInToday()">
             <i class="pi" [class.pi-sign-in]="isCheckInToday()" [class.pi-calendar-clock]="!isCheckInToday()"></i>

@@ -117,9 +117,7 @@ export class AmenityListComponent {
         this.formVisible.set(false);
         this.reload();
       },
-      error: (err) => {
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('amenities.saveFailed') });
-      },
+      error: () => this.saving.set(false),
       complete: () => this.saving.set(false),
     });
   }
@@ -135,13 +133,7 @@ export class AmenityListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('amenities.removed'), detail: row.name });
             this.reload();
           },
-          error: (err) => {
-            this.messages.add({
-              severity: 'error',
-              summary: this.i18n.t('common.error'),
-              detail: err.message || this.i18n.t('amenities.removalFailed'),
-            });
-          },
+          error: () => undefined,
         });
       },
     });

@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, model, output, si
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AutoComplete, type AutoCompleteCompleteEvent, type AutoCompleteSelectEvent } from 'primeng/autocomplete';
-import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { Fluid } from 'primeng/fluid';
@@ -11,9 +10,10 @@ import { InputText } from 'primeng/inputtext';
 import { DatePicker } from 'primeng/datepicker';
 import { Textarea } from 'primeng/textarea';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Observable, catchError, of, tap } from 'rxjs';
+import { Observable, catchError, finalize, of, tap } from 'rxjs';
 import type { Guest } from '../../core/models/guest.model';
 import { BOOKING_STATUS_SEVERITY, type BookingRow } from '../../core/models/booking.model';
+import { applyApiFieldErrors, clearServerFieldErrors } from '../../core/http/api-error.util';
 import { GuestApiService } from '../../features/guests/services/guest-api.service';
 import { BookingsApiService } from '../../features/bookings/services/bookings-api.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -65,7 +65,6 @@ export class GuestPickerComponent {
   private readonly guestApi = inject(GuestApiService);
   private readonly bookingsApi = inject(BookingsApiService);
   private readonly fb = inject(FormBuilder);
-  private readonly messages = inject(MessageService);
   private readonly router = inject(Router);
   readonly i18n = inject(TranslationService);
 
@@ -109,15 +108,15 @@ export class GuestPickerComponent {
   readonly hasPendingGuestInput = computed(() => this.selected() !== null || this.newGuestVisible());
 
   readonly newGuestForm = this.fb.nonNullable.group({
-    fullName: ['', Validators.required],
-    email: [''],
-    phone: [''],
-    cnic: [''],
-    address: [''],
-    country: [DEFAULT_COUNTRY],
-    state: [''],
+    fullName: ['', [Validators.required, Validators.maxLength(120)]],
+    email: ['', [Validators.email, Validators.maxLength(120)]],
+    phone: ['', [Validators.maxLength(40)]],
+    cnic: ['', [Validators.required, Validators.maxLength(40)]],
+    address: ['', [Validators.maxLength(500)]],
+    country: [DEFAULT_COUNTRY, [Validators.maxLength(80)]],
+    state: ['', [Validators.maxLength(80)]],
     dateOfBirth: [null as Date | null],
-    notes: [''],
+    notes: ['', [Validators.maxLength(2000)]],
   });
 
   constructor() {
@@ -251,6 +250,7 @@ export class GuestPickerComponent {
   }
 
   private createGuest(): Observable<Guest | null> {
+    clearServerFieldErrors(this.newGuestForm);
     this.saving.set(true);
     const v = this.newGuestForm.getRawValue();
     return this.guestApi
@@ -258,7 +258,7 @@ export class GuestPickerComponent {
         fullName: v.fullName!,
         email: v.email || undefined,
         phone: v.phone || undefined,
-        cnic: v.cnic || undefined,
+        cnic: v.cnic.trim(),
         address: v.address || undefined,
         country: v.country || undefined,
         state: v.state?.trim() || undefined,
@@ -270,17 +270,12 @@ export class GuestPickerComponent {
           this.guestCreated.emit(guest);
           this.setSelected(guest);
           this.newGuestVisible.set(false);
-          this.saving.set(false);
         }),
         catchError((err) => {
-          this.saving.set(false);
-          this.messages.add({
-            severity: 'error',
-            summary: this.i18n.t('common.error'),
-            detail: err?.message || this.i18n.t('guestPicker.createGuestFailed'),
-          });
+          applyApiFieldErrors(this.newGuestForm, err);
           return of(null);
         }),
+        finalize(() => this.saving.set(false)),
       );
   }
 }

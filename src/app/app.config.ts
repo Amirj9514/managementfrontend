@@ -14,6 +14,7 @@ import { routes } from './app.routes';
 import { appIconProviders } from './core/icons/app-icons.provider';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { langInterceptor } from './core/interceptors/lang.interceptor';
 import { ngrokInterceptor } from './core/interceptors/ngrok.interceptor';
 
 const MyPreset = definePreset(Aura, {
@@ -39,7 +40,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([ngrokInterceptor, authInterceptor, errorInterceptor])),
+    provideHttpClient(
+      withInterceptors([ngrokInterceptor, langInterceptor, authInterceptor, errorInterceptor]),
+    ),
     provideAnimationsAsync(),
     providePrimeNG({
       ripple: true,

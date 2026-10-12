@@ -225,6 +225,7 @@ export class RoomListComponent {
     if (buildingId) {
       this.floorsApi.list(buildingId, 1, 100, 'active').subscribe({ next: ({ items }) => this.floors.set(items) });
     }
+    this.reload();
   }
 
   onFloorChange(floorId: string | null): void {
@@ -245,7 +246,12 @@ export class RoomListComponent {
     }
     this.loading.set(true);
     this.roomsApi
-      .list({ branchId, floorId: this.floorId(), status: this.statusFilter() })
+      .list({
+        branchId,
+        buildingId: this.buildingId(),
+        floorId: this.floorId(),
+        status: this.statusFilter(),
+      })
       .subscribe({
         next: ({ items }) => {
           this.rows.set(items);
@@ -341,8 +347,7 @@ export class RoomListComponent {
         this.formVisible.set(false);
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.saveFailed') }),
+      error: () => this.saving.set(false),
       complete: () => this.saving.set(false),
     });
   }
@@ -357,8 +362,7 @@ export class RoomListComponent {
         });
         this.reload();
       },
-      error: (err) =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.updateFailed') }),
+      error: () => undefined,
     });
   }
 
@@ -373,12 +377,7 @@ export class RoomListComponent {
             this.messages.add({ severity: 'success', summary: this.i18n.t('common.deactivated'), detail: row.code });
             this.reload();
           },
-          error: (err) =>
-            this.messages.add({
-              severity: 'error',
-              summary: this.i18n.t('common.error'),
-              detail: err.message || this.i18n.t('rooms.deactivationFailed'),
-            }),
+          error: () => undefined,
         });
       },
     });
@@ -413,8 +412,7 @@ export class RoomListComponent {
           this.roomTypes.update((rows) => [...rows, created]);
           this.typeForm.reset({ name: '', category: 'single', maxAdults: 2, maxChildren: 0, maxOccupancy: 2, allowsShared: false });
         },
-        error: (err) =>
-          this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.saveFailed') }),
+        error: () => this.savingType.set(false),
         complete: () => this.savingType.set(false),
       });
   }
@@ -428,8 +426,7 @@ export class RoomListComponent {
           rows.map((r) => (r._id === type._id ? { ...r, deletedAt: isActive ? new Date().toISOString() : null } : r)),
         );
       },
-      error: (err) =>
-        this.messages.add({ severity: 'error', summary: this.i18n.t('common.error'), detail: err.message || this.i18n.t('rooms.updateFailed') }),
+      error: () => undefined,
     });
   }
 
