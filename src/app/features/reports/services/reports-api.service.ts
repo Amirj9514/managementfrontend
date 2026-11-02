@@ -4,9 +4,9 @@ import { type Observable } from 'rxjs';
 import type {
   HallOccupancyReportRow,
   OccupancyDayRow,
+  ReportLineRow,
   RoomUtilizationReportResponse,
 } from '../../../core/models/report.model';
-import type { BookingUnitRow } from '../../../core/models/booking.model';
 import { ApiClientService } from '../../../core/services/api-client.service';
 
 export interface DateRange {
@@ -33,16 +33,17 @@ export class ReportsApiService {
     return this.api.get<HallOccupancyReportRow[]>('reports/hall-occupancy', this.rangeParams(branchId, range));
   }
 
-  arrivals(branchId: string, date?: string): Observable<BookingUnitRow[]> {
+  /** `date` is a calendar day, "YYYY-MM-DD" (read in the branch's timezone). */
+  arrivals(branchId: string, date?: string): Observable<ReportLineRow[]> {
     let params = new HttpParams().set('branchId', branchId);
     if (date) params = params.set('date', date);
-    return this.api.get<BookingUnitRow[]>('reports/arrivals', params);
+    return this.api.get<ReportLineRow[]>('reports/arrivals', params);
   }
 
-  departures(branchId: string, date?: string): Observable<BookingUnitRow[]> {
+  departures(branchId: string, date?: string): Observable<ReportLineRow[]> {
     let params = new HttpParams().set('branchId', branchId);
     if (date) params = params.set('date', date);
-    return this.api.get<BookingUnitRow[]>('reports/departures', params);
+    return this.api.get<ReportLineRow[]>('reports/departures', params);
   }
 
   utilization(branchId: string, range?: DateRange): Observable<RoomUtilizationReportResponse> {

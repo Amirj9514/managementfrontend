@@ -43,6 +43,7 @@ import {
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { AmenitiesApiService } from '../../../amenities/services/amenities-api.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
 import { BuildingsApiService } from '../../../property/services/buildings-api.service';
 import { FloorsApiService } from '../../../property/services/floors-api.service';
@@ -160,6 +161,7 @@ const MAX_COMPANIONS = 20;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BookingWizardComponent implements OnDestroy {
+  private readonly auth = inject(AuthService);
   private readonly branchesApi = inject(BranchesApiService);
   private readonly buildingsApi = inject(BuildingsApiService);
   private readonly floorsApi = inject(FloorsApiService);
@@ -304,6 +306,10 @@ export class BookingWizardComponent implements OnDestroy {
 
   /** Confirming a stay that starts today checks the guest in on the spot; a future-dated one is
    *  saved as a reservation and checked in from the check-in details when they arrive. */
+  /** Same-day stays are checked in on confirm only for users holding `checkout.checkin`. */
+  readonly canCheckIn = computed(() => this.auth.can('checkout.checkin'));
+  readonly autoCheckIn = computed(() => this.isCheckInToday() && this.canCheckIn());
+
   readonly isCheckInToday = computed(() => {
     const d = this.checkInDate();
     if (!d) return false;
@@ -737,13 +743,14 @@ export class BookingWizardComponent implements OnDestroy {
     const branchId = this.branchId();
     if (!guest || !branchId || !this.selectedUnitId()) return;
     this.creating.set(true);
-    // No manual toggle: a stay starting today is checked in automatically on confirm.
-    const checkInNow = this.isCheckInToday();
+    // No manual toggle: a stay starting today is checked in automatically on confirm — but only
+    // when this user may check in; otherwise it is saved as a reservation for someone who can.
+    const checkInNow = this.autoCheckIn();
     this.bookingsApi
       .create({
         branchId,
         bookingType: this.bookingType(),
-        source: checkInNow ? 'walk_in' : 'reservation',
+        source: this.isCheckInToday() ? 'walk_in' : 'reservation',
         primaryGuestId: guest._id,
         serviceIds: this.serviceIds().length ? this.serviceIds() : undefined,
         allowedBy: this.serviceIds().length ? this.allowedBy().trim() : undefined,

@@ -14,6 +14,8 @@ export const NAV_DICTIONARY: Record<string, DictionaryEntry> = {
   'nav.bookings': { en: 'Check-ins', ur: 'چیک اِنز' },
   'nav.guests': { en: 'Guests', ur: 'مہمانین' },
   'nav.stays': { en: 'Stays', ur: 'قیام' },
+  'nav.announcements': { en: 'Announcements', ur: 'اعلانات' },
+  'nav.checkout': { en: 'Stays', ur: 'قیام' },
   'nav.branches': { en: 'Branches', ur: 'برانچیں' },
   'nav.rooms': { en: 'Rooms', ur: 'کمرے' },
   'nav.halls': { en: 'Halls', ur: 'ہال' },

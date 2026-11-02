@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Toast } from 'primeng/toast';
+import { ConfirmService } from './core/services/confirm.service';
 
 @Component({
   selector: 'app-root',
@@ -10,4 +11,6 @@ import { Toast } from 'primeng/toast';
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {}
+export class App {
+  readonly confirm = inject(ConfirmService);
+}

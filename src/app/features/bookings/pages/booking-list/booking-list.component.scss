@@ -37,6 +37,15 @@
     outline-offset: 2px;
   }
 
+  &--static {
+    cursor: default;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
   &--checked_in {
     --card-accent: var(--p-green-500);
   }
@@ -245,4 +254,29 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+// The card is a div[role=button] (it holds the Check out button, and a button can't nest a button).
+div.checkin-card {
+  cursor: pointer;
+  text-align: start;
+
+  &.checkin-card--static {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.checkin-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.row-action {
+  display: inline-block;
 }

@@ -12,6 +12,13 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
+/** Roles limited to specific floors once floors are assigned — same set as backend `FLOOR_SCOPED_ROLES`. */
+export const FLOOR_SCOPED_ROLES: readonly string[] = ['front_desk'];
+
+export function isFloorScopedRole(role: string | null | undefined): boolean {
+  return !!role && FLOOR_SCOPED_ROLES.includes(role);
+}
+
 /** Same set as backend `STAFF_ROLES` — no dedicated API; keep in sync. */
 export const STAFF_ROLES = USER_ROLES;
 

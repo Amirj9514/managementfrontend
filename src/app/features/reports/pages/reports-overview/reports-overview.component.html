@@ -1,95 +1,234 @@
 <app-page-header [title]="'entity.reports' | translate" [subtitle]="'reports.subtitle' | translate" />
 
-<p-card styleClass="mb-4">
-  <div class="flex flex-wrap align-items-center gap-3">
+<!-- Filters -->
+<section class="filters">
+  <div class="filters__row">
     @if (branches().length > 1) {
-      <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
-        (ngModelChange)="onBranchChange($event)" [placeholder]="'reports.selectBranch' | translate" styleClass="w-14rem" />
+      <p-select
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="_id"
+        [ngModel]="branchId()"
+        (ngModelChange)="onBranchChange($event)"
+        [placeholder]="'reports.selectBranch' | translate"
+        styleClass="w-14rem"
+      />
     }
-    <p-selectbutton [options]="viewOptions()" optionLabel="label" optionValue="value" [ngModel]="view()"
-      (ngModelChange)="onViewChange($event)" />
-    @if (view() === 'occupancy') {
-      <p-datepicker [ngModel]="from()" (ngModelChange)="from.set($event); onDateChange()" dateFormat="yy-mm-dd" />
-      <span>{{ 'reports.dateTo' | translate }}</span>
-      <p-datepicker [ngModel]="to()" (ngModelChange)="to.set($event); onDateChange()" dateFormat="yy-mm-dd" />
-    }
-    <p-button [label]="'reports.exportCsv' | translate" icon="pi pi-download" [outlined]="true" (onClick)="exportCsv()" class="ml-auto" />
+    <p-selectbutton
+      [options]="viewOptions()"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="view()"
+      (ngModelChange)="onViewChange($event)"
+      [allowEmpty]="false"
+    />
+    <p-button
+      class="filters__export"
+      [label]="'reports.exportCsv' | translate"
+      icon="pi pi-download"
+      [outlined]="true"
+      [disabled]="loading()"
+      (onClick)="exportCsv()"
+    />
   </div>
-</p-card>
+
+  <div class="filters__row filters__row--dates">
+    @if (view() === 'occupancy') {
+      <div class="date-field">
+        <label for="rp-from">{{ 'reports.dateFrom' | translate }}</label>
+        <p-datepicker inputId="rp-from" [ngModel]="from()" (ngModelChange)="setFrom($event)" [maxDate]="maxDate" [showIcon]="true" dateFormat="d M yy" />
+      </div>
+      <div class="date-field">
+        <label for="rp-to">{{ 'reports.dateTo' | translate }}</label>
+        <p-datepicker inputId="rp-to" [ngModel]="to()" (ngModelChange)="setTo($event)" [maxDate]="maxDate" [showIcon]="true" dateFormat="d M yy" />
+      </div>
+      <div class="quick">
+        <p-button size="small" [text]="true" [label]="'reports.last7' | translate" (onClick)="setLastDays(7)" />
+        <p-button size="small" [text]="true" [label]="'reports.last30' | translate" (onClick)="setLastDays(30)" />
+        <p-button size="small" [text]="true" [label]="'reports.last90' | translate" (onClick)="setLastDays(90)" />
+      </div>
+    } @else {
+      <div class="date-field">
+        <label for="rp-day">{{ 'common.date' | translate }}</label>
+        <p-datepicker inputId="rp-day" [ngModel]="day()" (ngModelChange)="setDay($event)" [showIcon]="true" dateFormat="d M yy" />
+      </div>
+      <div class="quick">
+        <p-button size="small" [text]="true" icon="pi pi-chevron-left" [label]="'reports.prevDay' | translate" (onClick)="shiftDay(-1)" />
+        <p-button size="small" [text]="true" [label]="'reports.today' | translate" (onClick)="setDay(maxDate)" />
+        <p-button size="small" [text]="true" icon="pi pi-chevron-right" iconPos="right" [label]="'reports.nextDay' | translate" (onClick)="shiftDay(1)" />
+      </div>
+    }
+  </div>
+</section>
 
 @if (!branchId()) {
   <app-empty-state [title]="'reports.selectBranchTitle' | translate" [description]="'reports.selectBranchDesc' | translate" />
 } @else {
   @switch (view()) {
+    <!-- ============================== OCCUPANCY ============================== -->
     @case ('occupancy') {
-      <div class="stat-row mb-4">
+      <div class="stat-row">
         <app-stat-card [label]="'reports.stat.avgOccupancy' | translate" [value]="avgOccupancyPct() + '%'" icon="lucideBedDouble" />
         @if (utilization(); as u) {
-          <app-stat-card [label]="'reports.stat.avgLengthOfStay' | translate" [value]="('reports.nights' | translate: { count: u.averageLengthOfStayNights })" icon="lucideCalendarDays" />
+          <app-stat-card [label]="'reports.stat.nightsSold' | translate" [value]="u.roomNightsSold + ' / ' + u.roomNightsAvailable" icon="lucideCalendarDays" tone="success" />
+          <app-stat-card [label]="'reports.stat.avgLengthOfStay' | translate" [value]="('reports.nights' | translate: { count: u.averageLengthOfStayNights })" icon="lucideActivity" />
         }
+        <app-stat-card [label]="'reports.stat.peak' | translate" [value]="peakOccupancy() + '%'" icon="lucideChartBar" tone="warn" />
       </div>
-      <p-card [header]="'reports.occupancyTrend' | translate" styleClass="mb-4">
-        <div class="chart-wrap"><p-chart type="line" [data]="occupancyChartData()" [options]="chartOptions" /></div>
-      </p-card>
-      <p-card [header]="'reports.hallOccupancy' | translate">
-        @for (hall of hallOccupancy(); track hall.hallId) {
-          <h4>{{ hall.code }} ({{ 'reports.hallCapacityLabel' | translate: { capacity: hall.maxCapacity } }})</h4>
-          <p-table [value]="hall.perDay" styleClass="mb-3">
-            <ng-template #header>
-              <tr><th>{{ 'common.date' | translate }}</th><th>{{ 'reports.occupied' | translate }}</th><th>{{ 'reports.remaining' | translate }}</th></tr>
-            </ng-template>
-            <ng-template #body let-d>
-              <tr><td>{{ d.date }}</td><td>{{ d.occupied }}</td><td>{{ d.remaining }}</td></tr>
-            </ng-template>
-          </p-table>
-        } @empty {
-          <p class="text-color-secondary">{{ 'reports.noHalls' | translate }}</p>
+
+      <section class="panel">
+        <header class="panel__head">
+          <h2>{{ 'reports.occupancyTrend' | translate }}</h2>
+          <span class="panel__hint">{{ 'reports.daysCount' | translate: { count: occupancy().length } }}</span>
+        </header>
+        @if (loading() && occupancy().length === 0) {
+          <p-skeleton width="100%" height="18rem" borderRadius="12px" />
+        } @else {
+          <div class="chart-wrap"><p-chart type="line" [data]="occupancyChartData()" [options]="chartOptions" /></div>
         }
-      </p-card>
+      </section>
+
+      <section class="panel">
+        <header class="panel__head">
+          <div>
+            <h2>{{ 'reports.hallOccupancy' | translate }}</h2>
+            <p class="panel__sub">{{ 'reports.hallOnlyDays' | translate }}</p>
+          </div>
+          <p-button
+            size="small"
+            icon="pi pi-download"
+            [outlined]="true"
+            [label]="'reports.exportHalls' | translate"
+            [disabled]="hallOccupancy().length === 0"
+            (onClick)="exportHallsCsv()"
+          />
+        </header>
+
+        @if (loading() && hallOccupancy().length === 0) {
+          @for (i of skeletons; track i) {
+            <p-skeleton width="100%" height="3rem" styleClass="mb-2" borderRadius="10px" />
+          }
+        } @else if (hallOccupancy().length === 0) {
+          <app-empty-state [title]="'reports.noHallStaysTitle' | translate" [description]="'reports.noHallStaysDesc' | translate" />
+        } @else {
+          @for (hall of hallOccupancy(); track hall.hallId) {
+            <article class="hall">
+              <header class="hall__head">
+                <div class="hall__title">
+                  <span class="hall__icon"><i class="pi pi-building"></i></span>
+                  <div>
+                    <h3>{{ hall.code }}</h3>
+                    <span class="hall__cap">{{ 'reports.hallCapacityLabel' | translate: { capacity: hall.maxCapacity } }}</span>
+                  </div>
+                  <p-tag [value]="'hall.audience.' + hall.audience | translate" severity="secondary" [rounded]="true" />
+                </div>
+                <div class="hall__stats">
+                  <span class="pill"><strong>{{ hall.daysWithStays }}</strong> {{ 'reports.daysUsed' | translate }}</span>
+                  <span class="pill"><strong>{{ hall.peakOccupied }}</strong> / {{ hall.maxCapacity }} {{ 'reports.peakGuests' | translate }}</span>
+                </div>
+              </header>
+
+              <p-table [value]="hall.perDay" dataKey="date" styleClass="hall-table" [tableStyle]="{ 'min-width': '40rem' }">
+                <ng-template #header>
+                  <tr>
+                    <th style="width: 11rem">{{ 'common.date' | translate }}</th>
+                    <th>{{ 'reports.whoStayed' | translate }}</th>
+                    <th class="num">{{ 'reports.occupied' | translate }}</th>
+                    <th class="num">{{ 'reports.remaining' | translate }}</th>
+                    <th style="width: 10rem">{{ 'reports.usage' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template #body let-d>
+                  <tr>
+                    <td class="date">{{ d.date | date: 'EEE, d MMM y' }}</td>
+                    <td>
+                      <ul class="parties">
+                        @for (p of d.parties; track p.bookingId) {
+                          <li>
+                            <span class="parties__name">{{ p.guestName ?? '—' }}</span>
+                            <span class="parties__meta">
+                              {{ p.bookingNumber }} · {{ 'reports.partyOf' | translate: { count: p.partySize } }}
+                            </span>
+                            <app-status-badge [status]="p.status" [severityMap]="statusSeverityMap" />
+                          </li>
+                        }
+                      </ul>
+                    </td>
+                    <td class="num">{{ d.occupied }}</td>
+                    <td class="num">{{ d.remaining }}</td>
+                    <td>
+                      <div class="usage" [attr.data-tone]="meterTone(d.utilizationPct)">
+                        <div class="meter" role="progressbar" [attr.aria-valuenow]="d.utilizationPct" aria-valuemin="0" aria-valuemax="100">
+                          <span class="meter__fill" [style.width.%]="d.utilizationPct"></span>
+                        </div>
+                        <span class="usage__pct">{{ d.utilizationPct }}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-template>
+              </p-table>
+            </article>
+          }
+        }
+      </section>
     }
 
-    @case ('arrivals') {
-      <p-card [header]="'reports.todaysArrivals' | translate">
-        @if (arrivals().length === 0) {
-          <app-empty-state [title]="'reports.noArrivalsTitle' | translate" [description]="'reports.noArrivalsDesc' | translate" />
+    <!-- ============================== ARRIVALS / DEPARTURES ============================== -->
+    @default {
+      <section class="panel">
+        <header class="panel__head">
+          <div>
+            <h2>
+              {{ (view() === 'arrivals' ? 'reports.arrivalsOn' : 'reports.departuresOn') | translate: { date: ((day() | date: 'EEE, d MMM y') ?? '') } }}
+            </h2>
+            <p class="panel__sub">{{ 'reports.lineCount' | translate: { count: activeLines().length } }}</p>
+          </div>
+        </header>
+
+        @if (loading() && activeLines().length === 0) {
+          @for (i of skeletons; track i) {
+            <p-skeleton width="100%" height="3rem" styleClass="mb-2" borderRadius="10px" />
+          }
+        } @else if (activeLines().length === 0) {
+          <app-empty-state
+            [title]="(view() === 'arrivals' ? 'reports.noArrivalsTitle' : 'reports.noDeparturesTitle') | translate"
+            [description]="(view() === 'arrivals' ? 'reports.noArrivalsDesc' : 'reports.noDeparturesDesc') | translate"
+          />
         } @else {
-          <p-table [value]="arrivals()">
+          <p-table [value]="activeLines()" dataKey="_id" styleClass="hall-table" [tableStyle]="{ 'min-width': '44rem' }">
             <ng-template #header>
-              <tr><th>{{ 'reports.unit' | translate }}</th><th>{{ 'common.type' | translate }}</th><th>{{ 'reports.checkIn' | translate }}</th><th>{{ 'common.status' | translate }}</th></tr>
+              <tr>
+                <th>{{ 'bookings.bookingNumber' | translate }}</th>
+                <th>{{ 'common.guest' | translate }}</th>
+                <th>{{ 'reports.unit' | translate }}</th>
+                <th>{{ (view() === 'arrivals' ? 'reports.checkIn' : 'reports.checkOut') | translate }}</th>
+                <th>{{ 'common.status' | translate }}</th>
+              </tr>
             </ng-template>
             <ng-template #body let-line>
               <tr>
-                <td>{{ line.unitId }}</td>
-                <td class="capitalize">{{ (line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate }}</td>
-                <td>{{ line.checkInDate | date: 'short' }}</td>
-                <td><app-status-badge [status]="line.status" /></td>
+                <td class="date">{{ line.bookingNumber ?? '—' }}</td>
+                <td>
+                  <div class="cell-stack">
+                    <span class="cell-stack__main">{{ line.primaryGuestName ?? '—' }}</span>
+                    @if (line.primaryGuestPhone) {
+                      <span class="cell-stack__sub">{{ line.primaryGuestPhone }}</span>
+                    }
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-stack">
+                    <span class="cell-stack__main">{{ line.unitCode ?? '—' }}</span>
+                    <span class="cell-stack__sub">{{ (line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate }}</span>
+                  </div>
+                </td>
+                <td>{{ (view() === 'arrivals' ? line.checkInDate : line.expectedCheckOut) | date: 'h:mm a' }}</td>
+                <td><app-status-badge [status]="line.status" [severityMap]="statusSeverityMap" /></td>
               </tr>
             </ng-template>
           </p-table>
         }
-      </p-card>
-    }
-
-    @case ('departures') {
-      <p-card [header]="'reports.todaysDepartures' | translate">
-        @if (departures().length === 0) {
-          <app-empty-state [title]="'reports.noDeparturesTitle' | translate" [description]="'reports.noDeparturesDesc' | translate" />
-        } @else {
-          <p-table [value]="departures()">
-            <ng-template #header>
-              <tr><th>{{ 'reports.unit' | translate }}</th><th>{{ 'common.type' | translate }}</th><th>{{ 'reports.checkOut' | translate }}</th><th>{{ 'common.status' | translate }}</th></tr>
-            </ng-template>
-            <ng-template #body let-line>
-              <tr>
-                <td>{{ line.unitId }}</td>
-                <td class="capitalize">{{ (line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate }}</td>
-                <td>{{ line.expectedCheckOut | date: 'short' }}</td>
-                <td><app-status-badge [status]="line.status" /></td>
-              </tr>
-            </ng-template>
-          </p-table>
-        }
-      </p-card>
+      </section>
     }
   }
 }

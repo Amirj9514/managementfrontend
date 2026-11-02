@@ -1,0 +1,86 @@
+<p-dialog
+  [visible]="notifier.popupVisible()"
+  (visibleChange)="!$event && notifier.dismissPopup()"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [dismissableMask]="false"
+  [style]="{ width: 'min(42rem, 94vw)' }"
+  styleClass="announcement-dialog"
+>
+  <ng-template #header>
+    <div class="ann-popup-head">
+      <i class="pi pi-megaphone"></i>
+      <span class="ann-popup-title">{{ 'announcements.popup.title' | translate }}</span>
+      <p-tag [value]="'' + notifier.unreadCount()" severity="danger" [rounded]="true" />
+    </div>
+  </ng-template>
+
+  <div class="ann-popup-list">
+    @for (a of notifier.unread(); track a._id) {
+      <article class="ann-card" [class.ann-card--important]="a.priority === 'important'">
+        <header class="ann-card__head">
+          <h3>{{ a.title }}</h3>
+          @if (a.priority === 'important') {
+            <p-tag [value]="'announcements.badge.important' | translate" severity="warn" [rounded]="true" />
+          }
+        </header>
+        <p class="ann-card__meta">{{ 'announcements.publishedOn' | translate: { date: ((a.publishAt | date: 'd MMM y, h:mm a') ?? '') } }}</p>
+        <p class="ann-card__body">{{ a.body }}</p>
+        @if (a.images.length) {
+          <div class="ann-card__images">
+            @for (img of a.images; track img._id) {
+              <div class="ann-card__image">
+                <app-secure-image [announcementId]="a._id" [imageId]="img._id" [alt]="img.originalName" />
+              </div>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+
+  <ng-template #footer>
+    <div class="ann-popup-actions">
+      <p-button
+        type="button"
+        [label]="'announcements.popup.openAll' | translate"
+        icon="pi pi-external-link"
+        [text]="true"
+        (onClick)="openAll()"
+      />
+      <p-button
+        type="button"
+        [label]="'announcements.popup.later' | translate"
+        [outlined]="true"
+        severity="secondary"
+        (onClick)="notifier.dismissPopup()"
+      />
+      <p-button
+        type="button"
+        icon="pi pi-check"
+        [label]="'announcements.popup.gotIt' | translate"
+        (onClick)="notifier.markAllViewed()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Reminder toast (every 10 minutes while anything is unread) -->
+<p-toast [key]="toastKey" position="bottom-right">
+  <ng-template #message let-message>
+    <div class="ann-toast">
+      <i class="pi pi-megaphone ann-toast__icon"></i>
+      <div class="ann-toast__text">
+        <strong>{{ message.summary }}</strong>
+        <span>{{ message.detail }}</span>
+        <p-button
+          type="button"
+          size="small"
+          [label]="'announcements.reminder.view' | translate"
+          (onClick)="openAll()"
+        />
+      </div>
+    </div>
+  </ng-template>
+</p-toast>

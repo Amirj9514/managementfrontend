@@ -2,10 +2,10 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
 import { Fluid } from 'primeng/fluid';
@@ -19,7 +19,7 @@ import { Tag } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
 import { Textarea } from 'primeng/textarea';
 import { Toolbar } from 'primeng/toolbar';
-import { GUEST_DELETE_ROLES, GUEST_WRITE_ROLES } from '../../../../core/models/roles.model';
+import { CanDirective } from '../../../../core/directives/can.directive';
 import { guestRowId, type Guest } from '../../../../core/models/guest.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
@@ -51,11 +51,11 @@ import { GUESTS_DICTIONARY } from '../../guests.dictionary';
     CountryStateFieldsComponent,
     Tag,
     Paginator,
-    ConfirmDialog,
     EmptyStateComponent,
     PageHeaderComponent,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './guest-list.component.html',
   styleUrl: './guest-list.component.scss',
@@ -64,7 +64,7 @@ import { GUESTS_DICTIONARY } from '../../guests.dictionary';
 export class GuestListComponent {
   private readonly guestsApi = inject(GuestApiService);
   private readonly auth = inject(AuthService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly messages = inject(MessageService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
@@ -91,8 +91,7 @@ export class GuestListComponent {
   readonly pageSize = signal(20);
   readonly first = computed(() => (this.page() - 1) * this.pageSize());
 
-  readonly canWrite = signal(false);
-  readonly canDelete = signal(false);
+  readonly canCreate = computed(() => this.auth.can('guests.create'));
 
   // Create/edit drawer
   readonly createVisible = signal(false);
@@ -118,9 +117,6 @@ export class GuestListComponent {
 
   constructor() {
     this.i18n.register(GUESTS_DICTIONARY);
-    const user = this.auth.getUser();
-    this.canWrite.set(!!user && GUEST_WRITE_ROLES.includes(user.role));
-    this.canDelete.set(!!user && GUEST_DELETE_ROLES.includes(user.role));
     this.reload();
   }
 

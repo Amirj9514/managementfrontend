@@ -10,10 +10,10 @@ import {
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
-import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Drawer } from 'primeng/drawer';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
@@ -36,6 +36,7 @@ import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { PROPERTY_DICTIONARY } from '../../property.dictionary';
@@ -58,7 +59,6 @@ import { FloorsApiService } from '../../services/floors-api.service';
     Button,
     Fluid,
     InputText,
-    ConfirmDialog,
     Drawer,
     Tag,
     Menu,
@@ -68,6 +68,7 @@ import { FloorsApiService } from '../../services/floors-api.service';
     TableSkeletonComponent,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './floor-list.component.html',
   styleUrl: './floor-list.component.scss',
@@ -79,9 +80,10 @@ export class FloorListComponent implements OnInit {
   private readonly floorsApi = inject(FloorsApiService);
   private readonly buildingsApi = inject(BuildingsApiService);
   private readonly auth = inject(AuthService);
+  readonly canCreateFloor = computed(() => this.auth.can('buildings.edit'));
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   readonly i18n = inject(TranslationService);
 
   readonly buildingId = signal<string | null>(null);
@@ -234,26 +236,34 @@ export class FloorListComponent implements OnInit {
   }
 
   prepareActions(event: Event, row: FloorListRow, menu: any): void {
-    const items: MenuItem[] = [
-      {
+    const items: MenuItem[] = [];
+    if (this.auth.can('buildings.edit')) {
+      items.push({
         label: this.i18n.t('property.menu.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
-      },
-    ];
+      });
+    }
+    const canDelete = this.auth.can('buildings.delete');
 
     if (row.deletedAt || row.status === 'inactive') {
-      items.push({
-        label: this.i18n.t('property.menu.restore'),
-        icon: 'pi pi-refresh',
-        command: () => this.onRestore(row),
-      });
-    } else {
+      if (canDelete) {
+        items.push({
+          label: this.i18n.t('property.menu.restore'),
+          icon: 'pi pi-refresh',
+          command: () => this.onRestore(row),
+        });
+      }
+    } else if (canDelete) {
       items.push({
         label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });
+    }
+
+    if (items.length === 0) {
+      return;
     }
 
     this.menuItems.set(items);

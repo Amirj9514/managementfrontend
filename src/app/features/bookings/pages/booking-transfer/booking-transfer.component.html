@@ -1,0 +1,242 @@
+<app-page-header
+  [title]="'bookings.transferRoomHeader' | translate"
+  [subtitle]="data() ? (data()!.booking.bookingNumber + ' · ' + (data()!.booking.primaryGuestName ?? ('bookings.unknownGuest' | translate))) : ''"
+>
+  <div actions>
+    <p-button type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" (onClick)="back()" />
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <div class="layout">
+    <div class="layout__main">
+      <p-skeleton width="100%" height="6rem" borderRadius="16px" />
+      <div class="tiles">
+        @for (i of skeletons; track i) {
+          <p-skeleton width="100%" height="5.5rem" borderRadius="14px" />
+        }
+      </div>
+    </div>
+    <aside class="layout__side"><p-skeleton width="100%" height="18rem" borderRadius="16px" /></aside>
+  </div>
+} @else if (data(); as d) {
+  <div class="layout">
+    <div class="layout__main">
+      <!-- Current stay -->
+      <section class="stay">
+        <div class="stay__room">
+          <span class="stay__label">{{ 'transfer.currentRoom' | translate }}</span>
+          <span class="stay__code">{{ d.current?.code ?? '—' }}</span>
+          <span class="stay__where">
+            {{ d.current?.buildingName }}@if (d.current?.floorLabel) { › {{ d.current?.floorLabel }}}
+          </span>
+        </div>
+        <div class="stay__facts">
+          <div>
+            <span class="stay__label">{{ 'bookings.stayColumn' | translate }}</span>
+            <strong>{{ d.line.checkInDate | date: 'd MMM' }} → {{ d.line.expectedCheckOut | date: 'd MMM y' }}</strong>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'transfer.guests' | translate }}</span>
+            <strong><i class="pi pi-users"></i> {{ d.guests }}</strong>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'common.status' | translate }}</span>
+            <p-tag
+              [value]="(isCheckedIn() ? 'status.checkedIn' : 'status.reserved') | translate"
+              [severity]="isCheckedIn() ? 'success' : 'info'"
+              [rounded]="true"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Filters -->
+      <section class="filters">
+        <p-iconfield class="filters__search">
+          <p-inputicon class="pi pi-search" />
+          <input
+            pInputText
+            type="search"
+            [ngModel]="search()"
+            (ngModelChange)="search.set($event)"
+            [placeholder]="'transfer.searchRoom' | translate"
+            [attr.aria-label]="'transfer.searchRoom' | translate"
+            autocomplete="off"
+          />
+        </p-iconfield>
+        @if (buildingOptions().length > 1) {
+          <p-select
+            [options]="buildingOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="buildingFilter()"
+            (ngModelChange)="buildingFilter.set($event)"
+            [placeholder]="'transfer.allBuildings' | translate"
+            [showClear]="true"
+            styleClass="w-12rem"
+          />
+        }
+        @if (typeOptions().length > 1) {
+          <p-select
+            [options]="typeOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="typeFilter()"
+            (ngModelChange)="typeFilter.set($event)"
+            [placeholder]="'transfer.allTypes' | translate"
+            [showClear]="true"
+            styleClass="w-12rem"
+          />
+        }
+        <label class="filters__switch" for="tr-only">
+          <p-toggleswitch inputId="tr-only" [ngModel]="onlyAvailable()" (ngModelChange)="onlyAvailable.set($event)" />
+          <span>{{ 'transfer.onlyAvailable' | translate }}</span>
+        </label>
+        <span class="filters__count">{{ 'transfer.availableCount' | translate: { free: availableCount(), total: rooms().length } }}</span>
+      </section>
+
+      <!-- Legend -->
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot dot--ok"></i> {{ 'transfer.legend.free' | translate }}</span>
+        <span><i class="dot dot--sel"></i> {{ 'transfer.legend.selected' | translate }}</span>
+        <span><i class="dot dot--blocked"></i> {{ 'transfer.legend.blocked' | translate }}</span>
+        <span><i class="pi pi-exclamation-triangle legend__warn"></i> {{ 'transfer.legend.small' | translate }}</span>
+      </div>
+
+      <!-- Rooms by building › floor -->
+      @if (groups().length === 0) {
+        <div class="empty">
+          @if (hasFilters()) {
+            <app-empty-state
+              [title]="'transfer.noMatchTitle' | translate"
+              [description]="'transfer.noMatchDesc' | translate"
+              [actionLabel]="'transfer.clearFilters' | translate"
+              (actionClick)="clearFilters()"
+            />
+          } @else {
+            <app-empty-state [title]="'transfer.noRoomsTitle' | translate" [description]="'transfer.noRoomsDesc' | translate" />
+          }
+        </div>
+      } @else {
+        @for (g of groups(); track g.key) {
+          <section class="floor">
+            <header class="floor__head">
+              <h3>
+                <i class="pi pi-building"></i>
+                {{ g.building }}@if (g.floor) { <span class="floor__sep">›</span> {{ g.floor }} }
+              </h3>
+              <span class="floor__free">{{ 'transfer.floorFree' | translate: { free: g.free, total: g.rooms.length } }}</span>
+            </header>
+
+            <div class="tiles">
+              @for (r of g.rooms; track r._id) {
+                <div class="tile-wrap" [pTooltip]="tooltipFor(r)" tooltipPosition="top" [tooltipDisabled]="!tooltipFor(r)">
+                  <button
+                    type="button"
+                    class="tile"
+                    [class.tile--selected]="selectedId() === r._id"
+                    [class.tile--blocked]="!r.selectable"
+                    [class.tile--current]="r.reason === 'current'"
+                    [disabled]="!r.selectable"
+                    [attr.aria-pressed]="selectedId() === r._id"
+                    [attr.aria-label]="r.code + (r.reason ? ' — ' + blockedLabel(r) : '')"
+                    (click)="select(r)"
+                  >
+                    <span class="tile__top">
+                      <span class="tile__code">{{ r.code }}</span>
+                      @if (selectedId() === r._id) {
+                        <i class="pi pi-check-circle tile__check"></i>
+                      } @else if (r.tooSmall && r.selectable) {
+                        <i class="pi pi-exclamation-triangle tile__warn"></i>
+                      }
+                    </span>
+                    <span class="tile__type">{{ r.roomTypeName ?? '' }}</span>
+                    <span class="tile__meta">
+                      <span><i class="pi pi-users"></i> {{ r.capacity.total }}</span>
+                      @if (r.reason) {
+                        <span class="badge" [attr.data-reason]="r.reason">{{ blockedLabel(r) }}</span>
+                      } @else {
+                        <span class="state"><i class="dot dot--{{ r.status }}"></i>{{ 'status.' + r.status | translate }}</span>
+                      }
+                    </span>
+                  </button>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+    </div>
+
+    <!-- Summary / confirm -->
+    <aside class="layout__side">
+      <section class="summary">
+        <h2>{{ 'transfer.summary' | translate }}</h2>
+
+        <div class="move">
+          <div class="move__room">
+            <span class="move__label">{{ 'transfer.from' | translate }}</span>
+            <span class="move__code">{{ d.current?.code ?? '—' }}</span>
+          </div>
+          <i class="pi pi-arrow-right move__arrow"></i>
+          <div class="move__room" [class.move__room--empty]="!selected()">
+            <span class="move__label">{{ 'transfer.to' | translate }}</span>
+            <span class="move__code">{{ selected()?.code ?? '?' }}</span>
+          </div>
+        </div>
+
+        @if (selected(); as s) {
+          <p class="summary__where">
+            {{ s.buildingName }}@if (s.floorLabel) { › {{ s.floorLabel }}} · {{ s.roomTypeName }} · <i class="pi pi-users"></i> {{ s.capacity.total }}
+          </p>
+          @if (s.tooSmall) {
+            <p class="note note--warn">
+              <i class="pi pi-exclamation-triangle"></i>
+              {{ 'transfer.tooSmallHint' | translate: { beds: s.capacity.total, guests: d.guests } }}
+            </p>
+          }
+        } @else {
+          <p class="summary__hint">{{ 'transfer.pickRoom' | translate }}</p>
+        }
+
+        <div class="reason">
+          <span class="reason__label">{{ 'transfer.reason' | translate }}</span>
+          <div class="reason__chips">
+            @for (k of reasons; track k) {
+              <button type="button" class="chip" [class.chip--on]="reasonKey() === k" (click)="reasonKey.set(reasonKey() === k ? null : k)">
+                {{ 'transfer.reason.' + k | translate }}
+              </button>
+            }
+          </div>
+          <textarea
+            pTextarea
+            rows="2"
+            [ngModel]="note()"
+            (ngModelChange)="note.set($event)"
+            [placeholder]="'transfer.notePlaceholder' | translate"
+            [attr.aria-label]="'transfer.notePlaceholder' | translate"
+            maxlength="200"
+          ></textarea>
+        </div>
+
+        <p class="note">
+          <i class="pi pi-info-circle"></i>
+          {{ (isCheckedIn() ? 'transfer.effectCheckedIn' : 'transfer.effectReserved') | translate }}
+        </p>
+
+        <div class="summary__actions">
+          <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" severity="secondary" (onClick)="back()" />
+          <p-button
+            type="button"
+            icon="pi pi-arrow-right-arrow-left"
+            [label]="'bookings.action.transfer' | translate"
+            [disabled]="!selected()"
+            [loading]="saving()"
+            (onClick)="askConfirm()"
+          />
+        </div>
+      </section>
+    </aside>
+  </div>
+}

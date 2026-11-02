@@ -1,9 +1,4 @@
-import {
-  AUDIT_ROLES,
-  GUEST_READ_ROLES,
-  USER_ADMIN_ROLES,
-  type UserRole,
-} from '../models/roles.model';
+import { AUDIT_ROLES, USER_ADMIN_ROLES, type UserRole } from '../models/roles.model';
 
 export interface NavItem {
   /** Translation key (see core/i18n/dictionaries/nav.dictionary.ts), not a literal label. */
@@ -11,7 +6,10 @@ export interface NavItem {
   routerLink: string;
   /** Lucide icon name registered with provideIcons (e.g. lucideLayoutDashboard) */
   icon: string;
-  roles: readonly UserRole[];
+  /** Shown when the user holds at least one of these permissions (admins always see it). */
+  permissions?: readonly string[];
+  /** Role allow-list for admin-only screens that have no configurable permission. */
+  roles?: readonly UserRole[];
 }
 
 export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
@@ -22,17 +20,13 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: 'nav.dashboard',
         routerLink: '/dashboard',
         icon: 'lucideLayoutDashboard',
-        roles: [
-          'super_admin',
-          'admin',
-          'branch_admin',
-          'building_admin',
-          'booking_admin',
-          'employee_admin',
-          'front_desk',
-          'housekeeping',
-          'staff',
-        ],
+        permissions: ['dashboard.view'],
+      },
+      {
+        // No permissions/roles: every signed-in user gets their announcements.
+        label: 'nav.announcements',
+        routerLink: '/announcements',
+        icon: 'lucideMegaphone',
       },
     ],
   },
@@ -43,19 +37,19 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: 'nav.bookings',
         routerLink: '/bookings',
         icon: 'lucideCalendarCheck',
-        roles: GUEST_READ_ROLES,
+        permissions: ['bookings.view'],
       },
       {
         label: 'nav.guests',
         routerLink: '/guests',
         icon: 'lucideUsers',
-        roles: GUEST_READ_ROLES,
+        permissions: ['guests.view'],
       },
       {
-        label: 'nav.stays',
+        label: 'nav.checkout',
         routerLink: '/stays',
         icon: 'lucideBedDouble',
-        roles: GUEST_READ_ROLES,
+        permissions: ['checkout.view'],
       },
     ],
   },
@@ -66,25 +60,25 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: 'nav.branches',
         routerLink: '/branches',
         icon: 'lucideBuilding2',
-        roles: ['super_admin', 'admin', 'branch_admin', 'building_admin'],
+        permissions: ['branches.view'],
       },
       {
         label: 'nav.rooms',
         routerLink: '/rooms',
         icon: 'lucideDoorOpen',
-        roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
+        permissions: ['rooms.view'],
       },
       {
         label: 'nav.halls',
         routerLink: '/halls',
         icon: 'lucideUsers',
-        roles: ['super_admin', 'admin', 'branch_admin', 'building_admin', 'booking_admin'],
+        permissions: ['halls.view'],
       },
       {
         label: 'nav.amenities',
         routerLink: '/amenities',
         icon: 'lucideTag',
-        roles: ['super_admin', 'admin', 'branch_admin'],
+        permissions: ['amenities.view'],
       },
     ],
   },
@@ -95,7 +89,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: 'nav.hr',
         routerLink: '/hr/employees',
         icon: 'lucideBriefcase',
-        roles: ['super_admin', 'admin', 'employee_admin', 'branch_admin'],
+        permissions: ['hr.view'],
       },
       {
         label: 'nav.users',
@@ -112,7 +106,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: 'nav.reports',
         routerLink: '/reports',
         icon: 'lucideChartBar',
-        roles: ['super_admin', 'admin', 'branch_admin', 'booking_admin'],
+        permissions: ['reports.view'],
       },
     ],
   },

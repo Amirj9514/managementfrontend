@@ -6,11 +6,6 @@ import { forkJoin } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { DatePicker } from 'primeng/datepicker';
-import { Dialog } from 'primeng/dialog';
-import { Fluid } from 'primeng/fluid';
-import { InputText } from 'primeng/inputtext';
-import { Select } from 'primeng/select';
 import {
   BOOKING_STATUS_SEVERITY,
   type BookingDocument,
@@ -23,8 +18,8 @@ import type { BuildingListRow } from '../../../../core/models/building-admin.mod
 import type { FloorListRow } from '../../../../core/models/floor-admin.model';
 import type { RoomTypeRow } from '../../../../core/models/room-type-admin.model';
 import type { PrivateRoomRow, PublicHallRow } from '../../../../core/models/unit-admin.model';
-import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { BuildingsApiService } from '../../../property/services/buildings-api.service';
@@ -50,13 +45,8 @@ import { BOOKINGS_DICTIONARY } from '../../bookings.dictionary';
     Card,
     StatusBadgeComponent,
     Button,
-    Select,
-    Fluid,
-    InputText,
-    DatePicker,
-    Dialog,
-    FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './booking-detail-body.component.html',
   styleUrl: './booking-detail-body.component.scss',
@@ -102,17 +92,6 @@ export class BookingDetailBodyComponent implements OnDestroy {
       .map((g) => ({ ...g, isPrimary: g._id === primaryId }))
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
   });
-
-  readonly extendVisible = signal(false);
-  readonly extendTarget = signal<BookingUnitRow | null>(null);
-  readonly extendDate = signal<Date | null>(null);
-  readonly extendSaving = signal(false);
-
-  readonly transferVisible = signal(false);
-  readonly transferTarget = signal<BookingUnitRow | null>(null);
-  readonly transferRooms = signal<PrivateRoomRow[]>([]);
-  readonly transferForm = this.fb.nonNullable.group({ toUnitId: ['', Validators.required], reason: [''] });
-  readonly transferSaving = signal(false);
 
   // Documents — same rules as the check-in wizard (images/PDF, 5 MB each).
   readonly documents = computed(() => this.data()?.booking.documents ?? []);
@@ -255,55 +234,16 @@ export class BookingDetailBodyComponent implements OnDestroy {
     });
   }
 
+  /** Opens the full extend-stay screen (availability, next booking, live check) for this line. */
   openExtend(line: BookingUnitRow): void {
-    this.extendTarget.set(line);
-    this.extendDate.set(new Date(line.expectedCheckOut));
-    this.extendVisible.set(true);
+    this.drawerSvc.close();
+    void this.router.navigate(['/bookings', this.bookingId(), 'extend', line._id]);
   }
 
-  submitExtend(): void {
-    const line = this.extendTarget();
-    const date = this.extendDate();
-    if (!line || !date) return;
-    this.extendSaving.set(true);
-    this.api.extend(this.bookingId(), line._id, date.toISOString()).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('bookings.toast.extended') });
-        this.extendVisible.set(false);
-        this.reload();
-      },
-      error: () => this.extendSaving.set(false),
-      complete: () => this.extendSaving.set(false),
-    });
-  }
-
+  /** Opens the full transfer screen (rooms grouped by floor) for this room line. */
   openTransfer(line: BookingUnitRow): void {
-    this.transferTarget.set(line);
-    this.transferForm.reset({ toUnitId: '', reason: '' });
-    const branchId = this.data()?.booking.branchId;
-    if (branchId) {
-      this.roomsApi.list({ branchId, status: 'available' }).subscribe({ next: ({ items }) => this.transferRooms.set(items) });
-    }
-    this.transferVisible.set(true);
-  }
-
-  submitTransfer(): void {
-    const line = this.transferTarget();
-    if (!line || this.transferForm.invalid) {
-      this.transferForm.markAllAsTouched();
-      return;
-    }
-    const v = this.transferForm.getRawValue();
-    this.transferSaving.set(true);
-    this.api.transfer(this.bookingId(), line._id, v.toUnitId!, v.reason || undefined).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('bookings.toast.transferred') });
-        this.transferVisible.set(false);
-        this.reload();
-      },
-      error: () => this.transferSaving.set(false),
-      complete: () => this.transferSaving.set(false),
-    });
+    this.drawerSvc.close();
+    void this.router.navigate(['/bookings', this.bookingId(), 'transfer', line._id]);
   }
 
   relationLabel(value: string | null | undefined): string {

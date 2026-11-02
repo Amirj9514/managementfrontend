@@ -1,0 +1,46 @@
+@if (catalog(); as cat) {
+  <div class="perm-toolbar">
+    <p-button type="button" icon="pi pi-check-square" [label]="'perm.selectAll' | translate" [text]="true" size="small" [disabled]="disabled()" (onClick)="selectAll()" />
+    <p-button type="button" icon="pi pi-stop" [label]="'perm.clearAll' | translate" [text]="true" size="small" [disabled]="disabled()" (onClick)="clearAll()" />
+    @if (roleForDefaults()) {
+      <p-button type="button" icon="pi pi-refresh" [label]="'perm.resetDefaults' | translate" [text]="true" size="small" [disabled]="disabled()" (onClick)="resetDefaults()" />
+    }
+    <span class="perm-summary">{{ value().length }} / {{ totalCount() }}</span>
+  </div>
+
+  <div class="perm-grid">
+    @for (m of cat.modules; track m.module) {
+      <section class="perm-card" [class.perm-card--on]="selectedCount(m.module, m.actions) > 0">
+        <header class="perm-card__head">
+          <p-checkbox
+            [binary]="true"
+            [inputId]="uid + '-' + m.module + '-all'"
+            [disabled]="disabled()"
+            [indeterminate]="selectedCount(m.module, m.actions) > 0 && !moduleAll(m.module, m.actions)"
+            [ngModel]="moduleAll(m.module, m.actions)"
+            (ngModelChange)="toggleModule(m.module, m.actions, $event)"
+          />
+          <label class="perm-card__title" [for]="uid + '-' + m.module + '-all'">
+            {{ 'perm.module.' + m.module | translate }}
+          </label>
+          <span class="perm-card__count">{{ selectedCount(m.module, m.actions) }}/{{ m.actions.length }}</span>
+        </header>
+
+        <div class="perm-card__actions">
+          @for (action of m.actions; track action) {
+            <div class="perm-item">
+              <p-checkbox
+                [binary]="true"
+                [inputId]="uid + '-' + m.module + '-' + action"
+                [disabled]="disabled()"
+                [ngModel]="has(m.module, action)"
+                (ngModelChange)="toggle(m.module, action, $event)"
+              />
+              <label [for]="uid + '-' + m.module + '-' + action">{{ 'perm.action.' + action | translate }}</label>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+}

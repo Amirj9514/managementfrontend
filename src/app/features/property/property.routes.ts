@@ -1,20 +1,19 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from '../../core/guards/role.guard';
-import { BRANCH_ADMIN_ROLES } from '../../core/models/roles.model';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const propertyRoutes: Routes = [
   {
     path: 'buildings',
-    canActivate: [roleGuard],
-    data: { roles: BRANCH_ADMIN_ROLES, breadcrumb: 'nav.buildings' },
+    canActivate: [permissionGuard],
+    data: { permissions: ['buildings.view'], breadcrumb: 'nav.buildings' },
     loadComponent: () =>
       import('./pages/building-list/building-list.component').then((m) => m.BuildingListComponent),
   },
   {
     path: 'buildings/:buildingId/floors',
-    canActivate: [roleGuard],
+    canActivate: [permissionGuard],
     data: {
-      roles: BRANCH_ADMIN_ROLES,
+      permissions: ['buildings.view'],
       breadcrumb: 'nav.floors',
       breadcrumbParent: { label: 'nav.buildings', url: '/property/buildings' },
     },

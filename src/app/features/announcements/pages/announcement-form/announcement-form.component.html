@@ -1,0 +1,299 @@
+<app-page-header
+  [title]="(isEdit ? 'announcements.form.editTitle' : 'announcements.form.newTitle') | translate"
+  [subtitle]="'announcements.form.subtitle' | translate"
+>
+  <div actions class="head-actions">
+    <p-button type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" (onClick)="cancel()" />
+    <p-button
+      type="button"
+      icon="pi pi-send"
+      [label]="(isEdit ? 'announcements.form.save' : 'announcements.form.publish') | translate"
+      [loading]="saving()"
+      [disabled]="loading()"
+      (onClick)="submit()"
+    />
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <div class="composer">
+    <div class="composer__main"><p-skeleton width="100%" height="22rem" borderRadius="16px" /></div>
+    <aside class="composer__preview"><p-skeleton width="100%" height="12rem" borderRadius="16px" /></aside>
+  </div>
+} @else {
+  <form class="composer" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="composer__main">
+      <!-- 1 · Content -->
+      <section class="panel">
+        <header class="panel__head">
+          <span class="panel__icon"><i class="pi pi-pencil"></i></span>
+          <div>
+            <h2>{{ 'announcements.form.content' | translate }}</h2>
+            <p>{{ 'announcements.form.contentHint' | translate }}</p>
+          </div>
+        </header>
+
+        <div class="field">
+          <label for="an-title">{{ 'announcements.form.title' | translate }} <span class="req">*</span></label>
+          <input
+            pInputText
+            id="an-title"
+            class="title-input"
+            formControlName="title"
+            [maxlength]="limits.titleMax"
+            [placeholder]="'announcements.form.titlePlaceholder' | translate"
+            autocomplete="off"
+          />
+          @if (fieldInvalid('title')) {
+            <small class="field-error">{{ 'validation.field.required' | translate: { label: ('announcements.form.title' | translate) } }}</small>
+          }
+        </div>
+
+        <div class="field">
+          <label for="an-body">{{ 'announcements.form.body' | translate }} <span class="req">*</span></label>
+          <textarea
+            pTextarea
+            id="an-body"
+            formControlName="body"
+            rows="7"
+            [maxlength]="limits.bodyMax"
+            [placeholder]="'announcements.form.bodyPlaceholder' | translate"
+          ></textarea>
+          <div class="field-row">
+            <small class="field-hint">{{ 'announcements.form.bodyHint' | translate }}</small>
+            <small class="field-hint counter" [class.counter--warn]="bodyLength() > limits.bodyMax * 0.9">{{ bodyLength() }} / {{ limits.bodyMax }}</small>
+          </div>
+          @if (fieldInvalid('body')) {
+            <small class="field-error">{{ 'validation.field.required' | translate: { label: ('announcements.form.body' | translate) } }}</small>
+          }
+        </div>
+
+        <div class="field">
+          <label>{{ 'announcements.form.priority' | translate }}</label>
+          <p-selectbutton
+            class="priority"
+            formControlName="priority"
+            [options]="priorityOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [allowEmpty]="false"
+          />
+        </div>
+      </section>
+
+      <!-- 2 · Audience -->
+      <section class="panel">
+        <header class="panel__head">
+          <span class="panel__icon"><i class="pi pi-users"></i></span>
+          <div>
+            <h2>{{ 'announcements.form.audience' | translate }} <span class="req">*</span></h2>
+            <p>{{ 'announcements.form.audienceHint' | translate }}</p>
+          </div>
+          <span class="panel__tools">
+            <span class="selected-count">{{ 'announcements.form.selected' | translate: { count: selectedRoleCount() } }}</span>
+            <p-button type="button" size="small" [text]="true" [label]="'announcements.form.allRoles' | translate" (onClick)="selectAllRoles()" />
+            <p-button type="button" size="small" [text]="true" severity="secondary" [label]="'perm.clearAll' | translate" (onClick)="clearRoles()" />
+          </span>
+        </header>
+
+        <div class="pills" role="group" [attr.aria-label]="'announcements.form.roles' | translate">
+          @for (o of roleOptions(); track o.value) {
+            <button
+              type="button"
+              class="pill"
+              [class.pill--on]="isRoleOn(o.value)"
+              [attr.aria-pressed]="isRoleOn(o.value)"
+              (click)="toggleRole(o.value)"
+            >
+              <i class="pi" [class.pi-check]="isRoleOn(o.value)" [class.pi-plus]="!isRoleOn(o.value)"></i>
+              {{ o.label }}
+            </button>
+          }
+        </div>
+        @if (rolesInvalid) {
+          <small class="field-error">{{ 'announcements.form.rolesRequired' | translate }}</small>
+        }
+      </section>
+
+      <!-- 3 · Schedule -->
+      <section class="panel">
+        <header class="panel__head">
+          <span class="panel__icon"><i class="pi pi-calendar-clock"></i></span>
+          <div>
+            <h2>{{ 'announcements.form.schedule' | translate }}</h2>
+            <p>{{ 'announcements.form.scheduleHint' | translate }}</p>
+          </div>
+        </header>
+
+        <div class="schedule">
+          @if (!isEdit) {
+            <label class="switch-row" for="an-now">
+              <p-toggleswitch inputId="an-now" formControlName="publishNow" />
+              <span>
+                <strong>{{ 'announcements.form.publishNow' | translate }}</strong>
+                <small>{{ 'announcements.form.publishNowHint' | translate }}</small>
+              </span>
+            </label>
+          }
+
+          <div class="schedule__dates">
+            @if (showPublishAt()) {
+              <div class="field">
+                <label for="an-publish">{{ 'announcements.form.publishAt' | translate }}</label>
+                <p-datepicker
+                  inputId="an-publish"
+                  formControlName="publishAt"
+                  [showTime]="true"
+                  hourFormat="12"
+                  [showIcon]="true"
+                  [showClear]="!isEdit"
+                  dateFormat="d M yy"
+                  appendTo="body"
+                  styleClass="w-full"
+                />
+              </div>
+            }
+            <div class="field">
+              <label for="an-expire">{{ 'announcements.form.expiresAt' | translate }}</label>
+              <p-datepicker
+                inputId="an-expire"
+                formControlName="expiresAt"
+                [showTime]="true"
+                hourFormat="12"
+                [showIcon]="true"
+                [showClear]="true"
+                dateFormat="d M yy"
+                appendTo="body"
+                styleClass="w-full"
+              />
+              <small class="field-hint">{{ 'announcements.form.expiresHint' | translate }}</small>
+              @if (expiryInvalid) {
+                <small class="field-error">{{ 'announcements.form.expiryBeforePublish' | translate }}</small>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · Images -->
+      <section class="panel">
+        <header class="panel__head">
+          <span class="panel__icon"><i class="pi pi-images"></i></span>
+          <div>
+            <h2>{{ 'announcements.form.images' | translate }}</h2>
+            <p>{{ 'announcements.form.imagesHint' | translate: { max: limits.maxImages } }}</p>
+          </div>
+          <span class="panel__tools"><span class="selected-count">{{ imageCount() }} / {{ limits.maxImages }}</span></span>
+        </header>
+
+        <div
+          class="dropzone"
+          [class.dropzone--active]="dragging()"
+          [class.dropzone--full]="imageCount() >= limits.maxImages"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave()"
+          (drop)="onDrop($event)"
+        >
+          <span class="dropzone__badge"><i class="pi pi-cloud-upload"></i></span>
+          <p class="dropzone__text">{{ 'announcements.form.dropHere' | translate }}</p>
+          <p-button
+            type="button"
+            icon="pi pi-image"
+            [label]="'announcements.form.chooseImages' | translate"
+            [outlined]="true"
+            size="small"
+            [disabled]="imageCount() >= limits.maxImages"
+            (onClick)="fileInput.click()"
+          />
+        </div>
+        <input
+          #fileInput
+          class="visually-hidden"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          tabindex="-1"
+          (change)="onFilesSelected($event)"
+        />
+
+        @for (e of imageErrors(); track e) {
+          <small class="field-error">{{ e }}</small>
+        }
+
+        @if (existingImages().length || pendingImages().length) {
+          <div class="thumbs">
+            @for (img of existingImages(); track img._id) {
+              <div class="thumb">
+                <app-secure-image [announcementId]="id!" [imageId]="img._id" [alt]="img.originalName" />
+                <button type="button" class="thumb__remove" [attr.aria-label]="'announcements.form.removeImage' | translate" (click)="removeExisting(img)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+            @for (p of pendingImages(); track p.url; let i = $index) {
+              <div class="thumb thumb--pending">
+                <img [src]="p.url" [alt]="p.file.name" />
+                <span class="thumb__badge">{{ 'announcements.form.uploadOnSave' | translate }}</span>
+                <button type="button" class="thumb__remove" [attr.aria-label]="'announcements.form.removeImage' | translate" (click)="removePending(i)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <div class="composer__actions">
+        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" severity="secondary" (onClick)="cancel()" />
+        <p-button
+          type="submit"
+          icon="pi pi-send"
+          [label]="(saving() && hasPendingImages() ? 'announcements.form.uploading' : (isEdit ? 'announcements.form.save' : 'announcements.form.publish')) | translate"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    <!-- Live preview -->
+    <aside class="composer__preview">
+      <div class="preview-label"><i class="pi pi-eye"></i> {{ 'announcements.form.preview' | translate }}</div>
+      @if (preview().title || preview().body) {
+        <article class="preview-card" [class.preview-card--important]="preview().important">
+          <header>
+            <h3>{{ preview().title || '…' }}</h3>
+            <span class="preview-card__tags">
+              @if (preview().important) {
+                <p-tag [value]="'announcements.badge.important' | translate" severity="warn" [rounded]="true" />
+              }
+              <p-tag [value]="'announcements.badge.new' | translate" severity="danger" [rounded]="true" />
+            </span>
+          </header>
+          <p class="preview-card__meta">{{ 'announcements.publishedOn' | translate: { date: ((today | date: 'd MMM y, h:mm a') ?? '') } }}</p>
+          <p class="preview-card__body">{{ preview().body }}</p>
+          @if (pendingImages().length || existingImages().length) {
+            <div class="preview-card__images">
+              @for (img of existingImages(); track img._id) {
+                <div class="preview-card__image"><app-secure-image [announcementId]="id!" [imageId]="img._id" [alt]="img.originalName" /></div>
+              }
+              @for (p of pendingImages(); track p.url) {
+                <div class="preview-card__image"><img [src]="p.url" [alt]="p.file.name" /></div>
+              }
+            </div>
+          }
+          @if (preview().roles.length) {
+            <div class="preview-card__roles">
+              @for (r of preview().roles; track r) {
+                <span class="role-chip">{{ 'role.' + r | translate }}</span>
+              }
+            </div>
+          }
+        </article>
+      } @else {
+        <div class="preview-empty">
+          <i class="pi pi-megaphone"></i>
+          <p>{{ 'announcements.form.previewEmpty' | translate }}</p>
+        </div>
+      }
+    </aside>
+  </form>
+}

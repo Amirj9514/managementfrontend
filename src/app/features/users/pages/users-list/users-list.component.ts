@@ -8,11 +8,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { Subject, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';
@@ -27,10 +30,14 @@ import { TableModule } from 'primeng/table';
 import { Tag } from 'primeng/tag';
 import { Toolbar } from 'primeng/toolbar';
 import type { Branch } from '../../../../core/models/entity-stubs.model';
-import { STAFF_ROLE_OPTIONS } from '../../../../core/models/roles.model';
+import { buildingRowId } from '../../../../core/models/building-admin.model';
+import { hasFullAccess, type PermissionCatalog } from '../../../../core/models/permissions.model';
+import { PermissionsApiService } from '../../../../core/services/permissions-api.service';
+import { PermissionMatrixComponent } from '../../../../shared/permission-matrix/permission-matrix.component';
+import { floorRowId } from '../../../../core/models/floor-admin.model';
+import { STAFF_ROLE_OPTIONS, isFloorScopedRole } from '../../../../core/models/roles.model';
 import {
   adminUserRowId,
-  parseIdListCsv,
   type AdminUserListRow,
   type UserAssignmentPatchRequest,
   type UserCreateRequest,
@@ -41,6 +48,8 @@ import { FieldErrorComponent } from '../../../../shared/field-error/field-error.
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
 import { BranchesApiService } from '../../../branches/services/branches-api.service';
+import { BuildingsApiService } from '../../../property/services/buildings-api.service';
+import { FloorsApiService } from '../../../property/services/floors-api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { UsersApiService } from '../../services/users-api.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
@@ -67,13 +76,13 @@ import { USERS_DICTIONARY } from '../../users.dictionary';
     Select,
     MultiSelect,
     Checkbox,
-    ConfirmDialog,
     Drawer,
     Tag,
     Menu,
     NgIcon,
     TableSkeletonComponent,
     FieldErrorComponent,
+    PermissionMatrixComponent,
     TranslatePipe,
   ],
   templateUrl: './users-list.component.html',
@@ -83,10 +92,14 @@ import { USERS_DICTIONARY } from '../../users.dictionary';
 export class UsersListComponent {
   private readonly api = inject(UsersApiService);
   private readonly branchesApi = inject(BranchesApiService);
+  private readonly buildingsApi = inject(BuildingsApiService);
+  private readonly floorsApi = inject(FloorsApiService);
+  private readonly permissionsApi = inject(PermissionsApiService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly cdr = inject(ChangeDetectorRef);
   readonly i18n = inject(TranslationService);
 
@@ -111,27 +124,24 @@ export class UsersListComponent {
       .filter((o) => o.value),
   );
 
-  readonly createVisible = signal(false);
+  /** Floors ("Building › Floor") of the branches picked in whichever assignment form is open. */
+  readonly floorOptions = signal<{ label: string; value: string }[]>([]);
+  readonly buildingOptions = signal<{ label: string; value: string }[]>([]);
+  private readonly floorRefresh$ = new Subject<void>();
+  private readonly buildingSource$ = new Subject<string[]>();
+
+  readonly catalog = signal<PermissionCatalog | null>(null);
+  readonly assignPermissions = signal<string[]>([]);
+
   readonly assignVisible = signal(false);
   readonly assignTarget = signal<AdminUserListRow | null>(null);
   readonly editVisible = signal(false);
   readonly editTarget = signal<AdminUserListRow | null>(null);
-  readonly savingCreate = signal(false);
   readonly savingAssign = signal(false);
   readonly savingEdit = signal(false);
 
   readonly menuItems = signal<import('primeng/api').MenuItem[]>([]);
 
-  readonly createForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    name: [''],
-    role: ['front_desk', Validators.required],
-    branchIds: [[] as string[]],
-    buildingIdsText: [''],
-    withAssignment: [false],
-  });
-  
   readonly editForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     name: [''],
@@ -142,19 +152,103 @@ export class UsersListComponent {
   readonly assignForm = this.fb.group({
     role: ['', Validators.required],
     branchIds: [[] as string[]],
-    buildingIdsText: [''],
+    buildingIds: [[] as string[]],
+    floorIds: [[] as string[]],
     updateScopes: [false],
   });
 
   constructor() {
     this.i18n.register(USERS_DICTIONARY);
-    this.createForm.controls.withAssignment.valueChanges.subscribe(() => this.cdr.markForCheck());
     this.assignForm.controls.updateScopes.valueChanges.subscribe(() => this.cdr.markForCheck());
+    this.permissionsApi.getCatalog().subscribe({ next: (cat) => this.catalog.set(cat) });
+    // Picking a role pre-fills that role's default permissions; the admin can then tweak them.
+    this.assignForm.controls.role.valueChanges.subscribe((role) => {
+      this.assignPermissions.set(this.defaultsFor(role));
+      this.cdr.markForCheck();
+    });
+    // Branches -> buildings of those branches (the admin picks from a list, never types IDs).
+    this.assignForm.controls.branchIds.valueChanges.subscribe((ids) => this.buildingSource$.next(ids ?? []));
+    this.buildingSource$
+      .pipe(
+        switchMap((ids) => this.fetchBuildingOptions(ids)),
+        takeUntilDestroyed(),
+      )
+      .subscribe((options) => {
+        this.buildingOptions.set(options);
+        this.keepOnly(this.assignForm.controls.buildingIds, options);
+        this.floorRefresh$.next();
+      });
+    // Buildings (or the role) -> floors, for the floor-limited roles.
+    this.assignForm.controls.buildingIds.valueChanges.subscribe(() => this.floorRefresh$.next());
+    this.assignForm.controls.role.valueChanges.subscribe(() => this.floorRefresh$.next());
+    this.floorRefresh$
+      .pipe(
+        switchMap(() => this.fetchFloorOptions()),
+        takeUntilDestroyed(),
+      )
+      .subscribe((options) => {
+        this.floorOptions.set(options);
+        this.keepOnly(this.assignForm.controls.floorIds, options);
+      });
     this.branchesApi.list(1, 10).subscribe({
       next: ({ items }) => this.branches.set(items),
       error: () => this.branches.set([]),
     });
     this.reload();
+  }
+
+  isFullAccess(role: string | null | undefined): boolean {
+    return hasFullAccess(role);
+  }
+
+  private defaultsFor(role: string | null | undefined): string[] {
+    return [...(this.catalog()?.roleDefaults[role ?? ''] ?? [])];
+  }
+
+  isFloorScoped(role: string | null | undefined): boolean {
+    return isFloorScopedRole(role);
+  }
+
+  /** Drops selected values that are no longer offered (e.g. after removing a branch). */
+  private keepOnly(
+    control: { value: string[] | null; setValue: (v: string[]) => void },
+    options: { value: string }[],
+  ): void {
+    const valid = new Set(options.map((o) => o.value));
+    const current = control.value ?? [];
+    const next = current.filter((v) => valid.has(v));
+    if (next.length !== current.length) control.setValue(next);
+  }
+
+  private fetchBuildingOptions(branchIds: string[]): Observable<{ label: string; value: string }[]> {
+    if (!branchIds.length) return of([]);
+    const branchName = new Map(this.branches().map((b) => [branchRecordId(b), b.name]));
+    return forkJoin(branchIds.map((id) => this.buildingsApi.list(1, 100, 'active', id))).pipe(
+      map((pages) =>
+        pages.flatMap((p) =>
+          p.items.map((b) => ({
+            label: branchName.get(b.branchId) ? `${branchName.get(b.branchId)} › ${b.name}` : b.name,
+            value: buildingRowId(b),
+          })),
+        ),
+      ),
+    );
+  }
+
+  /** Floors of the chosen buildings — or of every building in the chosen branches when none is chosen. */
+  private fetchFloorOptions(): Observable<{ label: string; value: string }[]> {
+    if (!this.isFloorScoped(this.assignForm.controls.role.value)) return of([]);
+    const chosen = this.assignForm.controls.buildingIds.value ?? [];
+    const all = this.buildingOptions();
+    const targets = chosen.length ? all.filter((b) => chosen.includes(b.value)) : all;
+    if (!targets.length) return of([]);
+    return forkJoin(
+      targets.map((b) =>
+        this.floorsApi.list(b.value, 1, 100, 'active').pipe(
+          map(({ items }) => items.map((f) => ({ label: `${b.label} › ${f.label}`, value: floorRowId(f) }))),
+        ),
+      ),
+    ).pipe(map((groups) => groups.flat()));
   }
 
   reload(): void {
@@ -188,47 +282,8 @@ export class UsersListComponent {
     this.reload();
   }
 
-  openCreate(): void {
-    this.createForm.reset({
-      email: '',
-      password: '',
-      name: '',
-      role: 'front_desk',
-      branchIds: [],
-      buildingIdsText: '',
-      withAssignment: false,
-    });
-    this.createVisible.set(true);
-  }
-
-  submitCreate(): void {
-    if (this.createForm.invalid) {
-      this.createForm.markAllAsTouched();
-      return;
-    }
-    const v = this.createForm.getRawValue();
-    const body: UserCreateRequest = {
-      email: v.email!.trim(),
-      password: v.password!,
-      name: (v.name ?? '').trim() || undefined,
-      role: v.role!,
-    };
-    if (v.withAssignment) {
-      body.assignment = {
-        branchIds: v.branchIds ?? [],
-        buildingIds: parseIdListCsv(v.buildingIdsText ?? ''),
-      };
-    }
-    this.savingCreate.set(true);
-    this.api.create(body).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('users.toast.userCreated'), detail: body.email });
-        this.createVisible.set(false);
-        this.reload();
-      },
-      error: () => this.savingCreate.set(false),
-      complete: () => this.savingCreate.set(false),
-    });
+  goNew(): void {
+    void this.router.navigate(['/users/new']);
   }
 
   openEdit(row: AdminUserListRow): void {
@@ -275,9 +330,13 @@ export class UsersListComponent {
     this.assignForm.reset({
       role: row.role,
       branchIds: [],
-      buildingIdsText: '',
+      buildingIds: [],
+      floorIds: [],
       updateScopes: false,
     });
+    this.floorOptions.set([]);
+    this.buildingOptions.set([]);
+    this.assignPermissions.set(row.permissions ? [...row.permissions] : this.defaultsFor(row.role));
     this.assignVisible.set(true);
   }
 
@@ -292,10 +351,20 @@ export class UsersListComponent {
     const patch: UserAssignmentPatchRequest = { role: v.role! };
     if (v.updateScopes) {
       patch.branchIds = v.branchIds ?? [];
-      patch.buildingIds = parseIdListCsv(v.buildingIdsText ?? '');
+      patch.buildingIds = v.buildingIds ?? [];
+      patch.floorIds = isFloorScopedRole(v.role) ? (v.floorIds ?? []) : [];
     }
     this.savingAssign.set(true);
-    this.api.patchAssignment(adminUserRowId(row), patch).subscribe({
+    const userId = adminUserRowId(row);
+    const savePermissions = !hasFullAccess(v.role);
+    this.api
+      .patchAssignment(userId, patch)
+      .pipe(
+        switchMap(() =>
+          savePermissions ? this.api.patchPermissions(userId, this.assignPermissions()) : of(undefined),
+        ),
+      )
+      .subscribe({
       next: () => {
         this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('users.toast.roleAssignmentSaved') });
         this.assignVisible.set(false);

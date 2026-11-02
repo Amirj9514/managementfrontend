@@ -6,7 +6,7 @@
     </div>
     <div class="flex gap-2 align-items-center">
       <app-status-badge [status]="d.booking.status" [severityMap]="statusSeverityMap" />
-      <p-button [label]="'bookings.cancelBooking' | translate" severity="danger" [outlined]="true" size="small" (onClick)="cancelWholeBooking()" />
+      <p-button *appCan="'bookings.cancel'" [label]="'bookings.cancelBooking' | translate" severity="danger" [outlined]="true" size="small" (onClick)="cancelWholeBooking()" />
     </div>
   </div>
 
@@ -120,7 +120,7 @@
     <ng-template #title>
       <div class="docs-header">
         <span>{{ 'bookings.documentsTitle' | translate }}</span>
-        <label class="docs-upload-btn" [class.docs-upload-btn--busy]="uploadingDocuments()" [attr.for]="'detail-docs-' + bookingId()">
+        <label *appCan="'bookings.documents'" class="docs-upload-btn" [class.docs-upload-btn--busy]="uploadingDocuments()" [attr.for]="'detail-docs-' + bookingId()">
           <i class="pi" [class.pi-upload]="!uploadingDocuments()" [class.pi-spin]="uploadingDocuments()" [class.pi-spinner]="uploadingDocuments()"></i>
           {{ 'bookings.attachDocument' | translate }}
           <input #detailDocInput type="file" multiple [accept]="documentAccept" [id]="'detail-docs-' + bookingId()"
@@ -140,7 +140,7 @@
             </div>
             <p-button icon="pi pi-eye" [text]="true" [rounded]="true" size="small" [ariaLabel]="'bookings.viewDownload' | translate"
               [title]="'bookings.viewDownload' | translate" (onClick)="viewDocument(doc)" />
-            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" size="small" severity="danger"
+            <p-button *appCan="'bookings.documents'" icon="pi pi-trash" [text]="true" [rounded]="true" size="small" severity="danger"
               [ariaLabel]="'common.remove' | translate" [title]="'common.remove' | translate" (onClick)="removeDocument(doc)" />
           </li>
         }
@@ -194,17 +194,20 @@
 
           <div class="line-card__actions">
             @if (line.status === 'reserved') {
-              <p-button [label]="'bookings.action.checkIn' | translate" size="small" (onClick)="checkIn(line)" />
-              <p-button [label]="'common.cancel' | translate" size="small" severity="danger" [outlined]="true" (onClick)="cancelLine(line)" />
+              <p-button *appCan="'checkout.checkin'" [label]="'bookings.action.checkIn' | translate" size="small" (onClick)="checkIn(line)" />
+              <p-button *appCan="'bookings.cancel'" [label]="'common.cancel' | translate" size="small" severity="danger" [outlined]="true" (onClick)="cancelLine(line)" />
+              @if (line.unitType === 'private_room') {
+                <p-button *appCan="'checkout.transfer'" [label]="'bookings.action.transfer' | translate" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
+              }
             }
             @if (line.status === 'checked_in') {
-              <p-button [label]="'bookings.action.checkOut' | translate" size="small" (onClick)="checkOut(line)" />
+              <p-button *appCan="'checkout.checkout'" [label]="'bookings.action.checkOut' | translate" size="small" (onClick)="checkOut(line)" />
               @if (line.unitType === 'private_room') {
-                <p-button [label]="'bookings.action.transfer' | translate" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
+                <p-button *appCan="'checkout.transfer'" [label]="'bookings.action.transfer' | translate" size="small" [outlined]="true" (onClick)="openTransfer(line)" />
               }
             }
             @if (line.status === 'reserved' || line.status === 'checked_in') {
-              <p-button [label]="'bookings.action.extend' | translate" size="small" [outlined]="true" (onClick)="openExtend(line)" />
+              <p-button *appCan="'checkout.extend'" [label]="'bookings.action.extend' | translate" size="small" [outlined]="true" (onClick)="openExtend(line)" />
             }
             @if (line.status !== 'reserved' && line.status !== 'checked_in') {
               <span class="line-card__no-actions text-color-secondary">{{ 'bookings.noActionsAvailable' | translate }}</span>
@@ -216,37 +219,3 @@
   </p-card>
 }
 
-<p-dialog [header]="'bookings.extendStayHeader' | translate" [(visible)]="extendVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
-  <p-fluid>
-    <div class="field mb-3">
-      <label for="ext-date">{{ 'bookings.newExpectedCheckout' | translate }}</label>
-      <p-datepicker id="ext-date" [ngModel]="extendDate()" (ngModelChange)="extendDate.set($event)" [showIcon]="true"
-        dateFormat="yy-mm-dd" appendTo="body" />
-    </div>
-    <div class="flex justify-content-end gap-2">
-      <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="extendVisible.set(false)" />
-      <p-button type="button" [label]="'common.save' | translate" [loading]="extendSaving()" (onClick)="submitExtend()" />
-    </div>
-  </p-fluid>
-</p-dialog>
-
-<p-dialog [header]="'bookings.transferRoomHeader' | translate" [(visible)]="transferVisible" [modal]="true" [style]="{ width: 'min(28rem, 100vw)' }">
-  <div [formGroup]="transferForm">
-    <p-fluid>
-      <div class="field mb-3">
-        <label for="tr-room">{{ 'bookings.targetRoom' | translate }}</label>
-        <p-select id="tr-room" [options]="transferRooms()" optionLabel="code" optionValue="_id" formControlName="toUnitId"
-          [placeholder]="'bookings.selectAvailableRoom' | translate" appendTo="body" />
-        <app-field-error [control]="transferForm.controls.toUnitId" [label]="'bookings.targetRoom' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="tr-reason">{{ 'bookings.reasonOptional' | translate }}</label>
-        <input pInputText id="tr-reason" formControlName="reason" autocomplete="off" />
-      </div>
-      <div class="flex justify-content-end gap-2">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="transferVisible.set(false)" />
-        <p-button type="button" [label]="'bookings.action.transfer' | translate" [loading]="transferSaving()" (onClick)="submitTransfer()" />
-      </div>
-    </p-fluid>
-  </div>
-</p-dialog>

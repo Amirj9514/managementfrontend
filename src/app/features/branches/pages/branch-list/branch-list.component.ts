@@ -8,10 +8,10 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Drawer } from 'primeng/drawer';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
@@ -37,6 +37,7 @@ import { Ripple } from 'primeng/ripple';
 import { BuildingListRow, buildingRowId } from '../../../../core/models/building-admin.model';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { BRANCHES_DICTIONARY } from '../../branches.dictionary';
@@ -57,7 +58,6 @@ import { BRANCHES_DICTIONARY } from '../../branches.dictionary';
     Fluid,
     InputText,
     Select,
-    ConfirmDialog,
     Drawer,
     Tag,
     Menu,
@@ -67,6 +67,7 @@ import { BRANCHES_DICTIONARY } from '../../branches.dictionary';
     TableSkeletonComponent,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './branch-list.component.html',
   styleUrl: './branch-list.component.scss',
@@ -78,7 +79,7 @@ export class BranchListComponent {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly router = inject(Router);
   readonly i18n = inject(TranslationService);
 
@@ -97,6 +98,7 @@ export class BranchListComponent {
   readonly savingCreate = signal(false);
   readonly savingEdit = signal(false);
 
+  readonly canCreateBranch = computed(() => this.auth.can('branches.create'));
   readonly menuItems = signal<MenuItem[]>([]);
 
   readonly branchForm = this.fb.group({
@@ -285,34 +287,42 @@ export class BranchListComponent {
   }
 
   prepareActions(event: Event, row: BranchListRow, menu: any): void {
-    const items: MenuItem[] = [
-      {
+    const items: MenuItem[] = [];
+    if (this.auth.can('branches.edit')) {
+      items.push({
         label: this.i18n.t('common.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEdit(row),
-      },
-    ];
+      });
+    }
+    const canDelete = this.auth.can('branches.delete');
 
     if (row.deletedAt || !row.active) {
-      items.push({
-        label: this.i18n.t('common.restore'),
-        icon: 'pi pi-refresh',
-        command: () => this.onRestore(row),
-      });
+      if (canDelete) {
+        items.push({
+          label: this.i18n.t('common.restore'),
+          icon: 'pi pi-refresh',
+          command: () => this.onRestore(row),
+        });
+      }
 
-      if (this.isAuthorizedForPermanentDelete()) {
+      if (canDelete && this.isAuthorizedForPermanentDelete()) {
         items.push({
           label: this.i18n.t('branches.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDelete(row),
         });
       }
-    } else {
+    } else if (canDelete) {
       items.push({
         label: this.i18n.t('branches.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDelete(row),
       });
+    }
+
+    if (items.length === 0) {
+      return;
     }
 
     this.menuItems.set(items);
@@ -418,26 +428,34 @@ export class BranchListComponent {
   }
 
   prepareBuildingActions(event: Event, building: BuildingListRow, branch: BranchListRow, menu: any): void {
-    const items: MenuItem[] = [
-      {
+    const items: MenuItem[] = [];
+    if (this.auth.can('buildings.edit')) {
+      items.push({
         label: this.i18n.t('common.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEditBuilding(building, branch),
-      },
-    ];
+      });
+    }
+    const canDelete = this.auth.can('buildings.delete');
 
     if (building.deletedAt || building.status === 'inactive') {
-      items.push({
-        label: this.i18n.t('common.restore'),
-        icon: 'pi pi-refresh',
-        command: () => this.onRestoreBuilding(building, branch._id),
-      });
-    } else {
+      if (canDelete) {
+        items.push({
+          label: this.i18n.t('common.restore'),
+          icon: 'pi pi-refresh',
+          command: () => this.onRestoreBuilding(building, branch._id),
+        });
+      }
+    } else if (canDelete) {
       items.push({
         label: this.i18n.t('branches.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDeleteBuilding(building, branch._id),
       });
+    }
+
+    if (items.length === 0) {
+      return;
     }
 
     this.buildingMenuItems.set(items);

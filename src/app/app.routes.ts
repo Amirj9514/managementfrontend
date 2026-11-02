@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { homeGuard, permissionGuard } from './core/guards/permission.guard';
 
 export const routes: Routes = [
   {
@@ -31,12 +32,19 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell/shell.component').then((m) => m.ShellComponent),
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      // Lands each user on the first screen they are allowed to see.
+      { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
       {
         path: 'dashboard',
-        data: { breadcrumb: 'nav.dashboard' },
+        canActivate: [permissionGuard],
+        data: { breadcrumb: 'nav.dashboard', permissions: ['dashboard.view'] },
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
+        path: 'announcements',
+        loadChildren: () =>
+          import('./features/announcements/announcements.routes').then((m) => m.announcementsRoutes),
       },
       {
         path: 'guests',
@@ -76,8 +84,10 @@ export const routes: Routes = [
       },
       {
         path: 'stays',
-        loadChildren: () => import('./features/stays/stays.routes').then((m) => m.staysRoutes),
+        loadChildren: () =>
+          import('./features/checkout/checkout.routes').then((m) => m.checkoutRoutes),
       },
+      { path: 'checkout', redirectTo: 'stays', pathMatch: 'prefix' },
       {
         path: 'hr',
         loadChildren: () => import('./features/hr/hr.routes').then((m) => m.hrRoutes),
@@ -99,5 +109,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '**', redirectTo: '' },
 ];

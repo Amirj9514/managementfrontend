@@ -286,9 +286,9 @@
             </div>
           }
 
-          <div class="arrival-note" [class.arrival-note--future]="!isCheckInToday()">
-            <i class="pi" [class.pi-sign-in]="isCheckInToday()" [class.pi-calendar-clock]="!isCheckInToday()"></i>
-            <span>{{ (isCheckInToday() ? 'bookings.autoCheckInToday' : 'bookings.autoCheckInFuture') | translate }}</span>
+          <div class="arrival-note" [class.arrival-note--future]="!autoCheckIn()">
+            <i class="pi" [class.pi-sign-in]="autoCheckIn()" [class.pi-calendar-clock]="!autoCheckIn()"></i>
+            <span>{{ (autoCheckIn() ? 'bookings.autoCheckInToday' : isCheckInToday() ? 'bookings.reservedNoCheckIn' : 'bookings.autoCheckInFuture') | translate }}</span>
           </div>
         </section>
       </div>

@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Dialog } from 'primeng/dialog';
 import { Fluid } from 'primeng/fluid';
 import { InputNumber } from 'primeng/inputnumber';
@@ -36,6 +36,8 @@ import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { ROOMS_DICTIONARY } from '../../rooms.dictionary';
@@ -61,9 +63,9 @@ import { RoomsApiService } from '../../services/rooms-api.service';
     InputNumber,
     MultiSelect,
     Dialog,
-    ConfirmDialog,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './room-list.component.html',
   styleUrl: './room-list.component.scss',
@@ -78,7 +80,7 @@ export class RoomListComponent {
   private readonly floorsApi = inject(FloorsApiService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly route = inject(ActivatedRoute);
   readonly i18n = inject(TranslationService);
 
@@ -131,7 +133,9 @@ export class RoomListComponent {
    *  clears this. */
   readonly pendingUnitId = signal<string | null>(null);
 
+  private readonly auth = inject(AuthService);
   readonly canCreate = computed(() => !!this.floorId());
+  readonly canCreateRoom = computed(() => this.auth.can('rooms.create'));
 
   readonly formVisible = signal(false);
   readonly editTarget = signal<PrivateRoomRow | null>(null);

@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { type Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { PaginatedListPayload } from '../../../core/models/api.types';
+import type { ExtendCheck, ExtendOptions } from '../../../core/models/booking-extend.model';
+import type { TransferOptions } from '../../../core/models/booking-transfer.model';
 import type {
   BookingCreateRequest,
   BookingRow,
@@ -49,8 +51,24 @@ export class BookingsApiService {
     return this.api.post<BookingUnitRow>(`bookings/${bookingId}/units/${lineId}/check-in`, {});
   }
 
+  /** Checks out every in-house room/hall of a booking at once. */
+  checkOutBooking(bookingId: string): Observable<BookingWithLines> {
+    return this.api.post<BookingWithLines>(`bookings/${bookingId}/check-out`, {});
+  }
+
   checkOut(bookingId: string, lineId: string): Observable<BookingUnitRow> {
     return this.api.post<BookingUnitRow>(`bookings/${bookingId}/units/${lineId}/check-out`, {});
+  }
+
+  /** The stay, its room/hall and the bookings coming up behind it. */
+  extendOptions(bookingId: string, lineId: string): Observable<ExtendOptions> {
+    return this.api.get<ExtendOptions>(`bookings/${bookingId}/units/${lineId}/extend-options`);
+  }
+
+  /** Could this stay run until `checkOut`? Same rules as extending, but changes nothing. */
+  extendCheck(bookingId: string, lineId: string, checkOut: string): Observable<ExtendCheck> {
+    const params = new HttpParams().set('checkOut', checkOut);
+    return this.api.get<ExtendCheck>(`bookings/${bookingId}/units/${lineId}/extend-check`, params);
   }
 
   extend(bookingId: string, lineId: string, expectedCheckOut: string): Observable<BookingUnitRow> {
@@ -63,6 +81,11 @@ export class BookingsApiService {
 
   cancelBooking(bookingId: string, reason?: string): Observable<BookingRow> {
     return this.api.post<BookingRow>(`bookings/${bookingId}/cancel`, { reason });
+  }
+
+  /** Every room the stay could move to, each marked selectable or not (with the reason). */
+  transferOptions(bookingId: string, lineId: string): Observable<TransferOptions> {
+    return this.api.get<TransferOptions>(`bookings/${bookingId}/units/${lineId}/transfer-options`);
   }
 
   transfer(bookingId: string, lineId: string, toUnitId: string, reason?: string): Observable<BookingUnitRow> {

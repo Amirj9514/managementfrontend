@@ -22,6 +22,6 @@ export class ForbiddenComponent {
   }
 
   goHome(): void {
-    void this.router.navigate(['/dashboard']);
+    void this.router.navigate(['/']);
   }
 }

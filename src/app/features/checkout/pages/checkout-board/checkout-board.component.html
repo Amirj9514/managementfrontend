@@ -1,0 +1,186 @@
+<app-page-header [title]="'nav.checkout' | translate" [subtitle]="'checkout.subtitle' | translate" />
+
+<p-toolbar styleClass="mb-4 flex-wrap gap-3">
+  <ng-template #start>
+    <div class="flex flex-wrap align-items-center gap-2">
+      <p-selectbutton
+        [options]="tabOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="tab()"
+        (ngModelChange)="onTabChange($event)"
+        [allowEmpty]="false"
+      />
+      @if (branches().length > 1) {
+        <p-select
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="_id"
+          [ngModel]="branchId()"
+          (ngModelChange)="onBranchChange($event)"
+          [placeholder]="'bookings.selectBranch' | translate"
+          styleClass="w-14rem"
+        />
+      }
+    </div>
+  </ng-template>
+  <ng-template #end>
+    <form class="flex align-items-center gap-2" (ngSubmit)="applySearch()">
+      <input
+        pInputText
+        name="search"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        [placeholder]="'checkout.searchPlaceholder' | translate"
+        autocomplete="off"
+      />
+      <p-button type="submit" [label]="'common.search' | translate" [outlined]="true" />
+    </form>
+  </ng-template>
+</p-toolbar>
+
+@if (!loading() && rows().length === 0) {
+  <p-card>
+    @switch (tab()) {
+      @case ('arrivals') {
+        <app-empty-state
+          [title]="'checkout.emptyArrivalsTitle' | translate"
+          [description]="'checkout.emptyArrivalsDescription' | translate"
+        />
+      }
+      @case ('inHouse') {
+        <app-empty-state
+          [title]="'checkout.emptyInHouseTitle' | translate"
+          [description]="'checkout.emptyInHouseDescription' | translate"
+        />
+      }
+      @case ('cancelled') {
+        <app-empty-state
+          [title]="'checkout.emptyCancelledTitle' | translate"
+          [description]="'checkout.emptyCancelledDescription' | translate"
+        />
+      }
+      @case ('checkedOut') {
+        <app-empty-state
+          [title]="'checkout.emptyCheckedOutTitle' | translate"
+          [description]="'checkout.emptyCheckedOutDescription' | translate"
+        />
+      }
+      @default {
+        <app-empty-state
+          [title]="'checkout.emptyAllTitle' | translate"
+          [description]="'checkout.emptyAllDescription' | translate"
+        />
+      }
+    }
+  </p-card>
+} @else {
+  <p-card styleClass="checkout-table-card">
+    <p-table
+      [value]="rows()"
+      [loading]="loading()"
+      dataKey="_id"
+      [rowHover]="true"
+      styleClass="p-datatable-sm"
+      [tableStyle]="{ 'min-width': '56rem' }"
+    >
+      <ng-template #header>
+        <tr>
+          <th>{{ 'bookings.bookingNumber' | translate }}</th>
+          <th>{{ 'bookings.guestColumn' | translate }}</th>
+          <th>{{ 'bookings.unitColumn' | translate }}</th>
+          <th>{{ 'bookings.stayColumn' | translate }}</th>
+          <th>{{ 'common.status' | translate }}</th>
+          <th class="actions-col">{{ 'common.actions' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td class="font-semibold">{{ row.bookingNumber ?? '—' }}</td>
+          <td>
+            <div class="flex flex-column">
+              <span class="font-medium">{{ row.primaryGuestName ?? ('bookings.unknownGuest' | translate) }}</span>
+              @if (row.primaryGuestPhone) {
+                <small class="text-color-secondary">{{ row.primaryGuestPhone }}</small>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="flex flex-column">
+              <span class="font-medium">{{ row.unitCode ?? '—' }}</span>
+              <small class="text-color-secondary">
+                {{ (row.unitType === 'public_hall' ? 'common.hall' : 'common.room') | translate }}
+              </small>
+            </div>
+          </td>
+          <td>
+            <div class="flex flex-column">
+              <span>{{ row.checkInDate | date: 'd MMM' }} → {{ row.expectedCheckOut | date: 'd MMM y' }}</span>
+              @if (row.status === 'checked_in' && row.actualCheckIn) {
+                <small class="text-color-secondary">{{ 'status.checkedIn' | translate }} {{ row.actualCheckIn | date: 'd MMM, h:mm a' }}</small>
+              }
+              @if (row.status === 'checked_out' && row.actualCheckOut) {
+                <small class="text-color-secondary">{{ 'status.checkedOut' | translate }} {{ row.actualCheckOut | date: 'd MMM, h:mm a' }}</small>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="flex align-items-center gap-2">
+              <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+              @if (isOverdue(row)) {
+                <p-tag [value]="'checkout.overdue' | translate" severity="danger" [rounded]="true" />
+              }
+            </div>
+          </td>
+          <td class="actions-col">
+            <div class="flex align-items-center gap-1 justify-content-end">
+              @if (row.status === 'reserved') {
+                <span [pTooltip]="canCheckIn() ? '' : ('checkout.noCheckInAccess' | translate)" tooltipPosition="left">
+                  <p-button
+                    [label]="'checkout.checkInAction' | translate"
+                    icon="pi pi-sign-in"
+                    size="small"
+                    [loading]="busyId() === row._id"
+                    [disabled]="!canCheckIn() || busyId() !== null"
+                    (onClick)="checkIn(row)"
+                  />
+                </span>
+              }
+              @if (row.status === 'checked_in') {
+                <span [pTooltip]="canCheckOut() ? '' : ('checkout.noCheckOutAccess' | translate)" tooltipPosition="left">
+                  <p-button
+                    [label]="'checkout.checkOutAction' | translate"
+                    icon="pi pi-sign-out"
+                    size="small"
+                    severity="warn"
+                    [loading]="busyId() === row._id"
+                    [disabled]="!canCheckOut() || busyId() !== null"
+                    (onClick)="confirmCheckOut(row)"
+                  />
+                </span>
+              }
+              <p-button
+                icon="pi pi-eye"
+                [text]="true"
+                [rounded]="true"
+                [ariaLabel]="'checkout.details' | translate"
+                [title]="'checkout.details' | translate"
+                (onClick)="openDetails(row)"
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-paginator
+      [rows]="pageSize()"
+      [totalRecords]="totalRecords()"
+      [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="pageReportTemplate()"
+      (onPageChange)="onPaginatorChange($event)"
+    />
+  </p-card>
+}

@@ -106,6 +106,7 @@ body {
     'sidebar topbar'
     'sidebar main';
   height: 100vh;
+  height: 100dvh; /* tracks the real visible height (browser toolbars) so nothing overflows the window */
   overflow: hidden;
   transition: grid-template-columns 0.2s ease;
 
@@ -131,6 +132,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   background: var(--app-surface-sidebar);
   border-right: 1px solid var(--app-border-subtle);
   overflow: hidden;
@@ -166,8 +168,38 @@ body {
 .app-shell__main {
   grid-area: main;
   height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain; /* scrolling past the end never drags the page behind it */
   padding: var(--app-space-2) var(--app-space-3);
+}
+
+/* While the app shell is mounted, the shell's main area is the ONLY vertical scroller. Without this,
+   the document can scroll too and you get two scrollbars side by side. (Class set by ShellComponent.) */
+body.has-shell {
+  overflow: hidden;
+}
+
+/* Slim, quiet scrollbars for the app's own scroll areas. */
+.app-shell__main,
+.app-sidebar__nav {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--app-text-muted) 45%, transparent) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--app-text-muted) 45%, transparent);
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 .content-frame {
@@ -193,4 +225,10 @@ body {
 .disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* Destructive item in a PrimeNG popup menu (add styleClass: 'menu-danger' to the menu item). */
+.p-menu .menu-danger .p-menu-item-link,
+.p-menu .menu-danger .p-menu-item-icon,
+.p-menu .menu-danger .p-menu-item-label {
+  color: var(--p-red-500, #ef4444);
 }

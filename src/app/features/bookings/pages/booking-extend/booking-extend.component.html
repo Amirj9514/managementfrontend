@@ -1,0 +1,247 @@
+<app-page-header
+  [title]="'bookings.extendStayHeader' | translate"
+  [subtitle]="data() ? (data()!.booking.bookingNumber + ' · ' + (data()!.booking.primaryGuestName ?? ('bookings.unknownGuest' | translate))) : ''"
+>
+  <div actions>
+    <p-button type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" (onClick)="back()" />
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <div class="layout">
+    <div class="layout__main">
+      <p-skeleton width="100%" height="7rem" borderRadius="16px" />
+      <p-skeleton width="100%" height="22rem" borderRadius="16px" />
+    </div>
+    <aside class="layout__side"><p-skeleton width="100%" height="16rem" borderRadius="16px" /></aside>
+  </div>
+} @else if (data(); as d) {
+  <div class="layout">
+    <div class="layout__main">
+      <!-- Current stay -->
+      <section class="stay">
+        <div class="stay__unit">
+          <span class="stay__label">{{ (isRoom() ? 'common.room' : 'common.hall') | translate }}</span>
+          <span class="stay__code">{{ d.unit.code }}</span>
+          <span class="stay__where">
+            {{ d.unit.buildingName }}@if (d.unit.floorLabel) { › {{ d.unit.floorLabel }}}@if (d.unit.roomTypeName) { · {{ d.unit.roomTypeName }}}
+          </span>
+        </div>
+        <div class="stay__facts">
+          <div>
+            <span class="stay__label">{{ 'bookings.action.checkIn' | translate }}</span>
+            <strong>{{ d.line.checkInDate | date: 'EEE, d MMM' }}</strong>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'extend.currentCheckOut' | translate }}</span>
+            <strong>{{ d.line.expectedCheckOut | date: 'EEE, d MMM' }}</strong>
+            <small>{{ d.line.expectedCheckOut | date: 'h:mm a' }}</small>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'extend.nights' | translate }}</span>
+            <strong>{{ currentNights() }}</strong>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'transfer.guests' | translate }}</span>
+            <strong><i class="pi pi-users"></i> {{ guests() }}</strong>
+          </div>
+          <div>
+            <span class="stay__label">{{ 'common.status' | translate }}</span>
+            <p-tag
+              [value]="(isCheckedIn() ? 'status.checkedIn' : 'status.reserved') | translate"
+              [severity]="isCheckedIn() ? 'success' : 'info'"
+              [rounded]="true"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Choose the new check-out -->
+      <section class="panel">
+        <header class="panel__head">
+          <span class="panel__icon"><i class="pi pi-calendar-plus"></i></span>
+          <div>
+            <h2>{{ 'extend.chooseTitle' | translate }}</h2>
+            <p>{{ 'extend.chooseHint' | translate }}</p>
+          </div>
+        </header>
+
+        <div class="quick" role="group" [attr.aria-label]="'extend.quick' | translate">
+          @for (n of quickNights; track n) {
+            <button
+              type="button"
+              class="quick__btn"
+              [class.quick__btn--on]="isQuickSelected(n)"
+              [disabled]="quickDisabled(n)"
+              (click)="pickQuick(n)"
+            >
+              <span class="quick__plus">+{{ n }}</span>
+              <span class="quick__unit">{{ (n === 1 ? 'extend.night' : 'extend.nightsShort') | translate }}</span>
+              @if (quickDate(n); as q) {
+                <span class="quick__date">{{ q | date: 'd MMM' }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="pickers">
+          <div class="pickers__cal">
+            <label class="field-label">{{ 'extend.orPickDate' | translate }}</label>
+            <p-datepicker
+              [inline]="true"
+              [ngModel]="pickedDay()"
+              (ngModelChange)="onDay($event)"
+              [minDate]="minDate()"
+              [maxDate]="maxDate()"
+              [defaultDate]="minDate()"
+              [showOtherMonths]="false"
+              styleClass="ext-cal"
+            />
+          </div>
+
+          <div class="pickers__time">
+            <label class="field-label" for="ext-time">{{ 'extend.checkOutTime' | translate }}</label>
+            <p-datepicker
+              inputId="ext-time"
+              [timeOnly]="true"
+              hourFormat="12"
+              [showIcon]="true"
+              icon="pi pi-clock"
+              [ngModel]="pickedTime()"
+              (ngModelChange)="onTime($event)"
+              appendTo="body"
+            />
+            <p class="hint">{{ 'extend.timeHint' | translate }}</p>
+
+            @if (pickedDay()) {
+              <p-button
+                type="button"
+                size="small"
+                [text]="true"
+                severity="secondary"
+                icon="pi pi-times"
+                [label]="'extend.clear' | translate"
+                (onClick)="clearChoice()"
+              />
+            }
+          </div>
+        </div>
+
+        <!-- Live availability -->
+        <div class="status" aria-live="polite">
+          @if (!newCheckOut()) {
+            <div class="banner banner--idle"><i class="pi pi-info-circle"></i> {{ 'extend.pickPrompt' | translate }}</div>
+          } @else if (checking()) {
+            <div class="banner banner--checking"><i class="pi pi-spin pi-spinner"></i> {{ 'extend.checking' | translate }}</div>
+          } @else if (check(); as c) {
+            @if (c.available) {
+              <div class="banner banner--ok">
+                <i class="pi pi-check-circle"></i>
+                <div>
+                  <strong>{{ (isRoom() ? 'extend.okRoom' : 'extend.okHall') | translate }}</strong>
+                  <span>{{ 'extend.okDetail' | translate: { added: addedLabel(), total: newNights() } }}</span>
+                </div>
+              </div>
+            } @else {
+              <div class="banner banner--no">
+                <i class="pi pi-times-circle"></i>
+                <div>
+                  <strong>{{ c.message }}</strong>
+                  @if (c.conflict; as k) {
+                    <span>
+                      {{ 'extend.conflict' | translate: { guest: (k.guestName ?? '—'), number: (k.bookingNumber ?? ''), date: ((k.checkInDate | date: 'EEE, d MMM, h:mm a') ?? '') } }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="banner banner--no"><i class="pi pi-exclamation-triangle"></i> {{ 'extend.checkFailed' | translate }}</div>
+          }
+        </div>
+      </section>
+
+      <!-- What's coming up behind this stay -->
+      @if (isRoom()) {
+        <section class="panel">
+          <header class="panel__head">
+            <span class="panel__icon panel__icon--muted"><i class="pi pi-calendar"></i></span>
+            <div>
+              <h2>{{ 'extend.upcomingTitle' | translate }}</h2>
+              <p>{{ 'extend.upcomingHint' | translate: { code: d.unit.code } }}</p>
+            </div>
+          </header>
+
+          @if (d.upcoming.length === 0) {
+            <div class="free"><i class="pi pi-check-circle"></i> {{ 'extend.noUpcoming' | translate }}</div>
+          } @else {
+            <ul class="upcoming">
+              @for (u of d.upcoming; track u.bookingNumber + u.checkInDate; let i = $index) {
+                <li [class.upcoming__item--first]="i === 0">
+                  <span class="upcoming__when">{{ u.checkInDate | date: 'EEE, d MMM' }} → {{ u.expectedCheckOut | date: 'd MMM' }}</span>
+                  <span class="upcoming__who">{{ u.guestName ?? '—' }}</span>
+                  <span class="upcoming__num">{{ u.bookingNumber }}</span>
+                  @if (i === 0) {
+                    <p-tag [value]="'extend.limit' | translate" severity="warn" [rounded]="true" />
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </div>
+
+    <!-- Summary / confirm -->
+    <aside class="layout__side">
+      <section class="summary">
+        <h2>{{ 'extend.summary' | translate }}</h2>
+
+        <div class="move">
+          <div class="move__col">
+            <span class="move__label">{{ 'extend.currentCheckOut' | translate }}</span>
+            <span class="move__date">{{ d.line.expectedCheckOut | date: 'd MMM' }}</span>
+            <span class="move__time">{{ d.line.expectedCheckOut | date: 'h:mm a' }}</span>
+          </div>
+          <i class="pi pi-arrow-right move__arrow"></i>
+          <div class="move__col" [class.move__col--empty]="!newCheckOut()">
+            <span class="move__label">{{ 'extend.newCheckOut' | translate }}</span>
+            @if (newCheckOut(); as n) {
+              <span class="move__date">{{ n | date: 'd MMM' }}</span>
+              <span class="move__time">{{ n | date: 'h:mm a' }}</span>
+            } @else {
+              <span class="move__date">?</span>
+            }
+          </div>
+        </div>
+
+        @if (newCheckOut()) {
+          <dl class="numbers">
+            <div><dt>{{ 'extend.added' | translate }}</dt><dd>{{ addedLabel() || '—' }}</dd></div>
+            <div><dt>{{ 'extend.totalStay' | translate }}</dt><dd>{{ 'extend.addedNights' | translate: { count: newNights() } }}</dd></div>
+            <div><dt>{{ 'extend.newDay' | translate }}</dt><dd>{{ newCheckOut() | date: 'EEEE' }}</dd></div>
+          </dl>
+        } @else {
+          <p class="summary__hint">{{ 'extend.pickPrompt' | translate }}</p>
+        }
+
+        <p class="note">
+          <i class="pi pi-info-circle"></i>
+          {{ (isCheckedIn() ? 'extend.effectCheckedIn' : 'extend.effectReserved') | translate }}
+        </p>
+
+        <div class="summary__actions">
+          <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" severity="secondary" (onClick)="back()" />
+          <p-button
+            type="button"
+            icon="pi pi-calendar-plus"
+            [label]="'bookings.action.extend' | translate"
+            [disabled]="!canSave()"
+            [loading]="saving()"
+            (onClick)="askConfirm()"
+          />
+        </div>
+      </section>
+    </aside>
+  </div>
+}

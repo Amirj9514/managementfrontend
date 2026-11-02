@@ -2,10 +2,10 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { DatePicker } from 'primeng/datepicker';
 import { Dialog } from 'primeng/dialog';
 import { Fluid } from 'primeng/fluid';
@@ -38,6 +38,8 @@ import { FieldErrorComponent } from '../../../../shared/field-error/field-error.
 import { GuestPickerComponent } from '../../../../shared/guest-picker/guest-picker.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { HALLS_DICTIONARY } from '../../halls.dictionary';
@@ -66,9 +68,9 @@ import { HallsApiService } from '../../services/halls-api.service';
     InputNumber,
     DatePicker,
     Dialog,
-    ConfirmDialog,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './hall-board.component.html',
   styleUrl: './hall-board.component.scss',
@@ -83,7 +85,7 @@ export class HallBoardComponent {
   private readonly floorsApi = inject(FloorsApiService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly route = inject(ActivatedRoute);
   readonly i18n = inject(TranslationService);
 
@@ -104,7 +106,9 @@ export class HallBoardComponent {
 
   readonly halls = signal<PublicHallRow[]>([]);
   readonly loading = signal(true);
+  private readonly auth = inject(AuthService);
   readonly canCreate = computed(() => !!this.floorId());
+  readonly canCreateHall = computed(() => this.auth.can('halls.create'));
 
   /** Set when arriving via a deep link (e.g. "view this hall" from a booking) — once the
    *  matching hall shows up in `halls()`, the effect below selects it and clears this. */

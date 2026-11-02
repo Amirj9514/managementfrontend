@@ -7,7 +7,7 @@ import { UIChart as Chart } from 'primeng/chart';
 import { Select } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import type { BranchListRow } from '../../core/models/branch-admin.model';
-import type { BookingUnitRow } from '../../core/models/booking.model';
+import type { ReportLineRow } from '../../core/models/report.model';
 import { AuthService } from '../../core/services/auth.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationService } from '../../core/i18n/translation.service';
@@ -15,6 +15,7 @@ import { BranchesApiService } from '../branches/services/branches-api.service';
 import { HallsApiService } from '../halls/services/halls-api.service';
 import { ReportsApiService } from '../reports/services/reports-api.service';
 import { RoomsApiService } from '../rooms/services/rooms-api.service';
+import { toDateKey } from '../../core/utils/date-key';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/stat-card/stat-card.component';
 import { DASHBOARD_DICTIONARY } from './dashboard.dictionary';
@@ -53,8 +54,8 @@ export class DashboardComponent {
   readonly occupancyPct = signal(0);
   readonly availableRooms = signal(0);
   readonly hallCapacity = signal({ occupied: 0, total: 0 });
-  readonly arrivals = signal<BookingUnitRow[]>([]);
-  readonly departures = signal<BookingUnitRow[]>([]);
+  readonly arrivals = signal<ReportLineRow[]>([]);
+  readonly departures = signal<ReportLineRow[]>([]);
   readonly occupancyTrend = signal<{ date: string; occupancyPct: number }[]>([]);
 
   readonly hallRemaining = computed(() => Math.max(this.hallCapacity().total - this.hallCapacity().occupied, 0));
@@ -100,15 +101,13 @@ export class DashboardComponent {
     const now = new Date();
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    this.reportsApi.occupancy(branchId, { from: todayStart.toISOString(), to: todayEnd.toISOString() }).subscribe({
+    this.reportsApi.occupancy(branchId, { from: toDateKey(todayStart), to: toDateKey(todayStart) }).subscribe({
       next: (rows) => this.occupancyPct.set(rows[0]?.occupancyPct ?? 0),
     });
 
-    this.reportsApi.occupancy(branchId, { from: thirtyDaysAgo.toISOString(), to: now.toISOString() }).subscribe({
+    this.reportsApi.occupancy(branchId, { from: toDateKey(thirtyDaysAgo), to: toDateKey(now) }).subscribe({
       next: (rows) => this.occupancyTrend.set(rows),
     });
 

@@ -1,0 +1,79 @@
+:host {
+  display: block;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(8rem, 1fr)) minmax(16rem, 2.2fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .stat--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 12px;
+  background: var(--p-content-background);
+
+  &__label {
+    font-size: 0.78rem;
+    color: var(--p-text-muted-color);
+  }
+
+  &__value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  &--ok .stat__value {
+    color: var(--p-green-600, #16a34a);
+  }
+
+  &--warn .stat__value {
+    color: var(--p-orange-600, #d97706);
+  }
+}
+
+:host ::ng-deep .report-bar {
+  height: 0.55rem;
+}
+
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.role-chip {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  border: 1px solid var(--p-content-border-color);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.report-toolbar {
+  margin-bottom: 1rem;
+}

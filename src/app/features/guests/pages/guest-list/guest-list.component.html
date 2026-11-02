@@ -18,16 +18,14 @@
     </div>
   </ng-template>
   <ng-template #end>
-    @if (canWrite()) {
-      <p-button [label]="'guests.addGuest' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
-    }
+    <p-button *appCan="'guests.create'" [label]="'guests.addGuest' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
   </ng-template>
 </p-toolbar>
 
 <p-card>
   @if (!loading() && rows().length === 0) {
     <app-empty-state [title]="'guests.emptyTitle' | translate" [description]="'guests.emptyDescription' | translate"
-      [actionLabel]="canWrite() ? ('guests.addGuest' | translate) : undefined" (actionClick)="openCreate()" />
+      [actionLabel]="canCreate() ? ('guests.addGuest' | translate) : undefined" (actionClick)="openCreate()" />
   } @else {
     <p-table [value]="rows()" [loading]="loading()" dataKey="_id" [tableStyle]="{ 'min-width': '48rem' }"
       styleClass="p-datatable-sm" [stripedRows]="true">
@@ -39,13 +37,14 @@
           <th>{{ 'common.cnic' | translate }}</th>
           <th>{{ 'entity.bookings' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
-          <th style="width: 14rem">{{ 'common.actions' | translate }}</th>
+          <th *appCan="['guests.detail', 'guests.edit', 'guests.delete']" style="width: 14rem">{{ 'common.actions' | translate }}</th>
         </tr>
       </ng-template>
       <ng-template #body let-guest>
         <tr>
           <td class="font-medium">
-            <a class="guest-name-link" [routerLink]="['/guests', guest._id]">{{ guest.fullName }}</a>
+            <a *appCan="'guests.detail'; else plainName" class="guest-name-link" [routerLink]="['/guests', guest._id]">{{ guest.fullName }}</a>
+            <ng-template #plainName>{{ guest.fullName }}</ng-template>
           </td>
           <td>{{ guest.email ?? '—' }}</td>
           <td>{{ guest.phone ?? '—' }}</td>
@@ -58,17 +57,13 @@
               <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
             }
           </td>
-          <td>
-            <p-button [label]="'common.view' | translate" [text]="true" size="small" (onClick)="openView(guest)" />
-            @if (canWrite()) {
-              <p-button [label]="'common.edit' | translate" [text]="true" size="small" (onClick)="openEdit(guest)" />
-            }
+          <td *appCan="['guests.detail', 'guests.edit', 'guests.delete']">
+            <p-button *appCan="'guests.detail'" [label]="'common.view' | translate" [text]="true" size="small" (onClick)="openView(guest)" />
+            <p-button *appCan="'guests.edit'" [label]="'common.edit' | translate" [text]="true" size="small" (onClick)="openEdit(guest)" />
             @if (guest.deletedAt) {
-              @if (canWrite()) {
-                <p-button [label]="'common.restore' | translate" [text]="true" size="small" (onClick)="onRestore(guest)" />
-              }
-            } @else if (canDelete()) {
-              <p-button [label]="'guests.deactivate' | translate" [text]="true" size="small" severity="danger" (onClick)="onDelete(guest)" />
+              <p-button *appCan="'guests.delete'" [label]="'common.restore' | translate" [text]="true" size="small" (onClick)="onRestore(guest)" />
+            } @else {
+              <p-button *appCan="'guests.delete'" [label]="'guests.deactivate' | translate" [text]="true" size="small" severity="danger" (onClick)="onDelete(guest)" />
             }
           </td>
         </tr>
@@ -172,11 +167,7 @@
     </div>
     <div class="form-actions">
       <p-button [label]="'common.close' | translate" [outlined]="true" (onClick)="viewVisible.set(false)" />
-      @if (canWrite()) {
-        <p-button [label]="'common.edit' | translate" (onClick)="editFromView()" />
-      }
+      <p-button *appCan="'guests.edit'" [label]="'common.edit' | translate" (onClick)="editFromView()" />
     </div>
   }
 </p-drawer>
-
-<p-confirm-dialog />

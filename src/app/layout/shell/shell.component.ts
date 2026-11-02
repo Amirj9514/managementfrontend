@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { MenuItem } from 'primeng/api';
@@ -12,6 +13,8 @@ import type { NavItem } from '../../core/config/nav-items';
 import type { AuthUser } from '../../core/models/user.model';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationService } from '../../core/i18n/translation.service';
+import { AnnouncementNotifierService } from '../../core/services/announcement-notifier.service';
+import { AnnouncementPopupComponent } from '../../shared/announcement-popup/announcement-popup.component';
 import { BookingDetailDrawerComponent } from '../../shared/booking-detail-drawer/booking-detail-drawer.component';
 import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.component';
 
@@ -27,6 +30,7 @@ import { BreadcrumbComponent } from '../../shared/breadcrumb/breadcrumb.componen
     Drawer,
     Menu,
     BookingDetailDrawerComponent,
+    AnnouncementPopupComponent,
     BreadcrumbComponent,
     TranslatePipe,
   ],
@@ -39,6 +43,19 @@ export class ShellComponent {
   readonly i18n = inject(TranslationService);
 
   readonly user$ = this.auth.user$;
+
+  constructor() {
+    // Pick up permission changes an admin made since this user last signed in.
+    // Once the profile is fresh: surface unread announcements now and remind every 10 minutes.
+    const announcements = inject(AnnouncementNotifierService);
+    this.auth.ensureFresh().subscribe(() => announcements.start());
+    inject(DestroyRef).onDestroy(() => announcements.stop());
+
+    // Only the shell's main area scrolls while signed in (see body.has-shell in _layout.scss).
+    const body = inject(DOCUMENT).body;
+    body.classList.add('has-shell');
+    inject(DestroyRef).onDestroy(() => body.classList.remove('has-shell'));
+  }
   readonly navGroups = NAV_GROUPS;
   readonly sidebarCollapsed = signal(false);
   readonly mobileDrawerOpen = signal(false);
@@ -68,6 +85,6 @@ export class ShellComponent {
     if (!user) {
       return [];
     }
-    return items.filter((i) => i.roles.includes(user.role));
+    return items.filter((i) => this.auth.canSeeNavItem(i, user));
   }
 }

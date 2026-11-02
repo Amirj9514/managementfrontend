@@ -1,0 +1,87 @@
+<app-page-header [title]="'announcements.report.title' | translate" [subtitle]="report()?.announcement?.title ?? ('announcements.report.subtitle' | translate)">
+  <div actions class="report-actions">
+    <p-button type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" (onClick)="back()" />
+    <p-button type="button" icon="pi pi-refresh" [label]="'announcements.report.refresh' | translate" [outlined]="true" [loading]="loading()" (onClick)="load()" />
+    <p-button type="button" icon="pi pi-pencil" [label]="'announcements.edit' | translate" [outlined]="true" (onClick)="edit()" />
+  </div>
+</app-page-header>
+
+@if (!report()) {
+  <p-skeleton width="100%" height="10rem" />
+} @else {
+  @let r = report()!;
+  <div class="summary">
+    <div class="stat">
+      <span class="stat__label">{{ 'announcements.report.audience' | translate }}</span>
+      <span class="stat__value">{{ r.summary.total }}</span>
+    </div>
+    <div class="stat stat--ok">
+      <span class="stat__label">{{ 'announcements.report.viewed' | translate }}</span>
+      <span class="stat__value">{{ r.summary.viewed }}</span>
+    </div>
+    <div class="stat stat--warn">
+      <span class="stat__label">{{ 'announcements.report.pending' | translate }}</span>
+      <span class="stat__value">{{ r.summary.pending }}</span>
+    </div>
+    <div class="stat stat--wide">
+      <span class="stat__label">{{ 'announcements.report.completion' | translate: { pct: pct() } }}</span>
+      <p-progressbar [value]="pct()" [showValue]="false" styleClass="report-bar" />
+      <div class="role-chips">
+        @for (role of r.announcement.roles; track role) {
+          <span class="role-chip">{{ 'role.' + role | translate }}</span>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="report-toolbar">
+    <p-selectbutton
+      [options]="tabOptions()"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="tab()"
+      (ngModelChange)="onTab($event)"
+      [allowEmpty]="false"
+    />
+  </div>
+
+  @if (r.summary.total === 0) {
+    <p-card><app-empty-state [title]="'announcements.report.emptyTitle' | translate" [description]="'announcements.report.noUsers' | translate" /></p-card>
+  } @else if (rows().length === 0) {
+    <p-card><app-empty-state [title]="'announcements.report.emptyTitle' | translate" [description]="'announcements.report.emptyDescription' | translate" /></p-card>
+  } @else {
+    <p-card>
+      <p-table [value]="rows()" dataKey="userId" [rowHover]="true" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '40rem' }">
+        <ng-template #header>
+          <tr>
+            <th>{{ 'announcements.report.col.user' | translate }}</th>
+            <th>{{ 'common.role' | translate }}</th>
+            <th>{{ 'common.status' | translate }}</th>
+            <th>{{ 'announcements.report.col.viewedAt' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-u>
+          <tr>
+            <td>
+              <div class="flex flex-column">
+                <span class="font-medium">{{ u.name || u.email }}</span>
+                @if (u.name) {
+                  <small class="text-color-secondary">{{ u.email }}</small>
+                }
+              </div>
+            </td>
+            <td>{{ 'role.' + u.role | translate }}</td>
+            <td>
+              <p-tag
+                [value]="(u.viewed ? 'announcements.report.viewed' : 'announcements.report.pending') | translate"
+                [severity]="u.viewed ? 'success' : 'warn'"
+                [rounded]="true"
+              />
+            </td>
+            <td>{{ u.viewedAt ? (u.viewedAt | date: 'd MMM y, h:mm a') : '—' }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-card>
+  }
+}

@@ -4,7 +4,7 @@
 <p-toolbar styleClass="property-toolbar">
   <ng-template #start>
     <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" [label]="'property.newBuilding' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
+      <p-button *appCan="'buildings.create'" type="button" [label]="'property.newBuilding' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
       <p-select [options]="statusFilterOptions()" [ngModel]="status()" (ngModelChange)="onStatusChange($event)"
         [placeholder]="'property.filterByStatus' | translate" styleClass="w-12rem" />
       @if (branches().length > 1) {
@@ -30,7 +30,7 @@
         <th>{{ 'common.branch' | translate }}</th>
         <th>{{ 'common.status' | translate }}</th>
         <th>{{ 'common.created' | translate }}</th>
-        <th style="width: 4rem"></th>
+        <th *appCan="['buildings.edit', 'buildings.delete']" style="width: 4rem"></th>
       </tr>
     </ng-template>
     <ng-template #body let-row let-expanded="expanded">
@@ -50,7 +50,7 @@
           }
         </td>
         <td>{{ row.createdAt | date: 'short' }}</td>
-        <td style="text-align: right">
+        <td *appCan="['buildings.edit', 'buildings.delete']" style="text-align: right">
           <p-button type="button" [text]="true" [rounded]="true" (onClick)="prepareActions($event, row, rowMenu)">
             <ng-icon name="lucideMoreVertical" size="1.25rem" />
           </p-button>
@@ -65,7 +65,7 @@
           <div class="expansion-container p-4">
             <div class="flex justify-content-between align-items-center mb-3">
               <h4 class="text-lg font-semibold m-0">{{ 'property.floorsFor' | translate: { name: row.name } }}</h4>
-              <p-button [label]="'property.addFloor' | translate" icon="pi pi-plus" [text]="true" size="small"
+              <p-button *appCan="'buildings.edit'" [label]="'property.addFloor' | translate" icon="pi pi-plus" [text]="true" size="small"
                 (onClick)="openCreateFloor(row)" />
             </div>
 
@@ -78,7 +78,7 @@
         <th>{{ 'property.floorLabel' | translate }}</th>
         <th>{{ 'common.status' | translate }}</th>
         <th>{{ 'property.lastUpdated' | translate }}</th>
-        <th style="width: 4rem"></th>
+        <th *appCan="['buildings.edit', 'buildings.delete']" style="width: 4rem"></th>
       </tr>
     </ng-template>
     <ng-template #body let-floor>
@@ -93,7 +93,7 @@
           }
         </td>
         <td>{{ floor.updatedAt | date: 'short' }}</td>
-        <td style="text-align: right">
+        <td *appCan="['buildings.edit', 'buildings.delete']" style="text-align: right">
           <p-button type="button" [text]="true" [rounded]="true"
             (onClick)="prepareFloorActions($event, floor, row._id, floorMenu)">
             <ng-icon name="lucideMoreVertical" size="1.1rem" />
@@ -181,5 +181,3 @@
     </p-fluid>
   </form>
 </p-drawer>
-
-<p-confirm-dialog />

@@ -1,3 +1,8 @@
 <p-toast position="top-right" />
-<p-confirmdialog />
+<!-- The ONLY confirm dialog in the app. Screens ask through ConfirmService; never add another one. -->
+<p-confirmdialog
+  [style]="{ width: 'min(28rem, 92vw)' }"
+  [breakpoints]="{ '640px': '92vw' }"
+  (onHide)="confirm.closed()"
+/>
 <router-outlet />

@@ -46,6 +46,11 @@ export class UsersApiService {
     return this.api.post<void>(`users/${userId}/restore`, {});
   }
 
+  /** `null` resets the user to their role's default permissions. */
+  patchPermissions(userId: string, permissions: string[] | null): Observable<{ permissions: string[] }> {
+    return this.api.patch<{ permissions: string[] }>(`users/${userId}/permissions`, { permissions });
+  }
+
   patchAssignment(userId: string, body: UserAssignmentPatchRequest): Observable<void> {
     return this.api.patch<void>(`users/${userId}/assignment`, body);
   }

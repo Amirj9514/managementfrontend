@@ -1,0 +1,82 @@
+:host {
+  display: block;
+}
+
+.perm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.perm-summary {
+  margin-inline-start: auto;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+.perm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.875rem;
+}
+
+.perm-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 10px;
+  background: var(--p-content-background);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &--on {
+    border-color: var(--p-primary-color);
+    box-shadow: 0 0 0 1px var(--p-primary-color) inset;
+  }
+}
+
+.perm-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--p-content-hover-background);
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+
+.perm-card__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.perm-card__count {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.perm-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem 0.75rem;
+  padding: 0.875rem;
+}
+
+.perm-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+
+  label {
+    font-size: 0.875rem;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    user-select: none;
+  }
+}

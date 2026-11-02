@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Dialog } from 'primeng/dialog';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
@@ -15,6 +15,8 @@ import type { AmenityRow } from '../../../../core/models/unit-admin.model';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { AMENITIES_DICTIONARY } from '../../amenities.dictionary';
@@ -35,9 +37,9 @@ import { AmenitiesApiService } from '../../services/amenities-api.service';
     Dialog,
     Tag,
     ToggleSwitch,
-    ConfirmDialog,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './amenity-list.component.html',
   styleUrl: './amenity-list.component.scss',
@@ -45,9 +47,11 @@ import { AmenitiesApiService } from '../../services/amenities-api.service';
 })
 export class AmenityListComponent {
   private readonly api = inject(AmenitiesApiService);
+  private readonly auth = inject(AuthService);
+  readonly canCreate = computed(() => this.auth.can('amenities.create'));
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   readonly i18n = inject(TranslationService);
 
   readonly rows = signal<AmenityRow[]>([]);

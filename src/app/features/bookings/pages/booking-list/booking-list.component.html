@@ -21,15 +21,20 @@
           <i [class]="item.icon" [pTooltip]="item.label" tooltipPosition="bottom" [attr.aria-label]="item.label"></i>
         </ng-template>
       </p-selectbutton>
-      <p-button [label]="'nav.newBooking' | translate" icon="pi pi-plus" (onClick)="goNew()" />
+      <p-button *appCan="'bookings.create'" [label]="'nav.newBooking' | translate" icon="pi pi-plus" (onClick)="goNew()" />
     </div>
   </ng-template>
 </p-toolbar>
 
 @if (!loading() && rows().length === 0) {
   <p-card>
-    <app-empty-state [title]="'bookings.emptyTitle' | translate" [description]="'bookings.emptyDescription' | translate"
-      [actionLabel]="'nav.newBooking' | translate" (actionClick)="goNew()" />
+    @if (status() === 'checked_in') {
+      <app-empty-state [title]="'bookings.emptyActiveTitle' | translate" [description]="'bookings.emptyActiveDescription' | translate"
+        [actionLabel]="'bookings.showAll' | translate" (actionClick)="showAll()" />
+    } @else {
+      <app-empty-state [title]="'bookings.emptyTitle' | translate" [description]="'bookings.emptyDescription' | translate"
+        [actionLabel]="canCreate() ? ('nav.newBooking' | translate) : undefined" (actionClick)="goNew()" />
+    }
   </p-card>
 } @else if (view() === 'cards') {
   <div class="checkin-grid">
@@ -49,7 +54,7 @@
       }
     } @else {
       @for (row of rows(); track row._id) {
-        <button type="button" class="checkin-card" [class]="'checkin-card--' + row.status" (click)="open(row._id)">
+        <div role="button" tabindex="0" class="checkin-card" [class]="'checkin-card--' + row.status + (canOpen() ? '' : ' checkin-card--static')" (click)="open(row._id)" (keydown.enter)="open(row._id)">
           <div class="checkin-card__top">
             <span class="checkin-card__number"><i class="pi pi-hashtag"></i>{{ row.bookingNumber }}</span>
             <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
@@ -101,9 +106,24 @@
 
           <div class="checkin-card__footer">
             <span>{{ 'common.created' | translate }} {{ row.createdAt | date: 'd MMM, h:mm a' }}</span>
-            <i class="pi pi-chevron-right"></i>
+            <span class="checkin-card__actions">
+              @if (row.status === 'checked_in') {
+                <span class="row-action" [pTooltip]="canCheckOut() ? '' : ('checkout.noCheckOutAccess' | translate)" tooltipPosition="top" (click)="$event.stopPropagation()">
+                  <p-button
+                    size="small"
+                    severity="warn"
+                    icon="pi pi-sign-out"
+                    [label]="'bookings.action.checkOut' | translate"
+                    [loading]="busyId() === row._id"
+                    [disabled]="!canCheckOut() || busyId() !== null"
+                    (onClick)="confirmCheckOut(row)"
+                  />
+                </span>
+              }
+              <i class="pi pi-chevron-right"></i>
+            </span>
           </div>
-        </button>
+        </div>
       }
     }
   </div>
@@ -126,11 +146,12 @@
           <th>{{ 'bookings.source' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
           <th>{{ 'common.created' | translate }}</th>
-          <th style="width: 4rem"></th>
+          <th style="width: 9rem"></th>
+          <th *appCan="'bookings.detail'" style="width: 4rem"></th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
-        <tr class="cursor-pointer" (click)="open(row._id)">
+        <tr [class.cursor-pointer]="canOpen()" (click)="open(row._id)">
           <td class="font-semibold">{{ row.bookingNumber }}</td>
           <td>
             <div class="table-guest">
@@ -165,6 +186,21 @@
           <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
           <td>{{ row.createdAt | date: 'short' }}</td>
           <td>
+            @if (row.status === 'checked_in') {
+              <span class="row-action" [pTooltip]="canCheckOut() ? '' : ('checkout.noCheckOutAccess' | translate)" tooltipPosition="top" (click)="$event.stopPropagation()">
+                <p-button
+                  size="small"
+                  severity="warn"
+                  icon="pi pi-sign-out"
+                  [label]="'bookings.action.checkOut' | translate"
+                  [loading]="busyId() === row._id"
+                  [disabled]="!canCheckOut() || busyId() !== null"
+                  (onClick)="confirmCheckOut(row)"
+                />
+              </span>
+            }
+          </td>
+          <td *appCan="'bookings.detail'">
             <p-button icon="pi pi-eye" [text]="true" [rounded]="true" [ariaLabel]="'bookings.viewBooking' | translate"
               [title]="'bookings.viewBooking' | translate" (onClick)="open(row._id); $event.stopPropagation()" />
           </td>

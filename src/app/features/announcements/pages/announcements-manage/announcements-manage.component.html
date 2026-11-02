@@ -1,0 +1,203 @@
+<app-page-header [title]="'announcements.manage.title' | translate" [subtitle]="'announcements.manage.subtitle' | translate">
+  <div actions>
+    <p-button type="button" icon="pi pi-plus" [label]="'announcements.new' | translate" (onClick)="goNew()" />
+  </div>
+</app-page-header>
+
+<!-- Summary cards (also the status filter) -->
+<div class="stats" role="tablist">
+  @for (c of cards(); track c.key) {
+    <button
+      type="button"
+      class="stat"
+      role="tab"
+      [class.stat--on]="status() === c.key"
+      [attr.data-tone]="c.tone"
+      [attr.aria-selected]="status() === c.key"
+      (click)="setStatus(c.key)"
+    >
+      <span class="stat__icon"><i [class]="c.icon"></i></span>
+      <span class="stat__text">
+        <span class="stat__label">{{ (c.key ? 'announcements.filter.' + c.key : 'announcements.stat.total') | translate }}</span>
+        @if (c.value === undefined) {
+          <p-skeleton width="2.5rem" height="1.6rem" />
+        } @else {
+          <span class="stat__value">{{ c.value }}</span>
+        }
+      </span>
+    </button>
+  }
+</div>
+
+<section class="table-card">
+  <div class="table-card__bar">
+    <p-iconfield class="search">
+      <p-inputicon class="pi pi-search" />
+      <input
+        pInputText
+        type="search"
+        [ngModel]="search()"
+        (ngModelChange)="onSearch($event)"
+        [placeholder]="'announcements.search' | translate"
+        [attr.aria-label]="'announcements.search' | translate"
+        autocomplete="off"
+      />
+    </p-iconfield>
+    <span class="table-card__count">{{ 'announcements.resultCount' | translate: { count: totalRecords() } }}</span>
+  </div>
+
+  @if (loading()) {
+    <div class="skeleton-list">
+      @for (i of skeletonRows; track i) {
+        <div class="skeleton-row">
+          <p-skeleton shape="circle" size="2.5rem" />
+          <div class="skeleton-row__main">
+            <p-skeleton width="45%" height="1rem" />
+            <p-skeleton width="75%" height="0.8rem" />
+          </div>
+          <p-skeleton width="6rem" height="1.5rem" borderRadius="999px" />
+        </div>
+      }
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="empty">
+      @if (search() || status()) {
+        <app-empty-state
+          [title]="'announcements.noMatchTitle' | translate"
+          [description]="'announcements.noMatchDescription' | translate"
+          [actionLabel]="'announcements.clearFilters' | translate"
+          (actionClick)="clearFilters()"
+        />
+      } @else {
+        <app-empty-state
+          [title]="'announcements.emptyTitle' | translate"
+          [description]="'announcements.manage.subtitle' | translate"
+          [actionLabel]="'announcements.new' | translate"
+          (actionClick)="goNew()"
+        />
+      }
+    </div>
+  } @else {
+    <p-table [value]="rows()" dataKey="_id" [rowHover]="true" styleClass="ann-table" [tableStyle]="{ 'min-width': '62rem' }">
+      <ng-template #header>
+        <tr>
+          <th>{{ 'announcements.col.title' | translate }}</th>
+          <th>{{ 'announcements.col.audience' | translate }}</th>
+          <th>{{ 'announcements.col.status' | translate }}</th>
+          <th>{{ 'announcements.col.window' | translate }}</th>
+          <th class="col-views">{{ 'announcements.col.views' | translate }}</th>
+          <th class="col-actions"><span class="sr-only">{{ 'common.actions' | translate }}</span></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-row>
+        <tr>
+          <!-- Announcement -->
+          <td>
+            <div class="title-cell">
+              <span class="badge" [class.badge--important]="row.priority === 'important'">
+                <i class="pi" [class.pi-exclamation-circle]="row.priority === 'important'" [class.pi-megaphone]="row.priority !== 'important'"></i>
+              </span>
+              <div class="title-cell__text">
+                <button type="button" class="title-link" (click)="report(row)">{{ row.title }}</button>
+                <span class="excerpt">{{ excerpt(row) }}</span>
+                <span class="meta">
+                  @if (row.priority === 'important') {
+                    <span class="meta__important">{{ 'announcements.badge.important' | translate }}</span>
+                  }
+                  @if (row.images.length) {
+                    <span><i class="pi pi-image"></i> {{ row.images.length }}</span>
+                  }
+                  <span>{{ row.createdAt | date: 'd MMM y' }}</span>
+                </span>
+              </div>
+            </div>
+          </td>
+
+          <!-- Audience -->
+          <td>
+            <div class="chips">
+              @for (r of visibleRoles(row); track r) {
+                <span class="chip">{{ 'role.' + r | translate }}</span>
+              }
+              @if (hiddenRoleCount(row) > 0) {
+                <span class="chip chip--more" [pTooltip]="hiddenRolesLabel(row)" tooltipPosition="top">
+                  {{ 'announcements.moreRoles' | translate: { count: hiddenRoleCount(row) } }}
+                </span>
+              }
+            </div>
+          </td>
+
+          <!-- Status -->
+          <td>
+            <span class="status" [attr.data-status]="row.status">
+              <span class="status__dot"></span>{{ 'announcements.status.' + row.status | translate }}
+            </span>
+          </td>
+
+          <!-- Schedule -->
+          <td>
+            <div class="window">
+              <span><i class="pi pi-play"></i> {{ row.publishAt | date: 'd MMM y, h:mm a' }}</span>
+              <span class="window__end">
+                <i class="pi pi-stop"></i>
+                {{ row.expiresAt ? (row.expiresAt | date: 'd MMM y, h:mm a') : ('announcements.noExpiry' | translate) }}
+              </span>
+            </div>
+          </td>
+
+          <!-- Read by -->
+          <td class="col-views">
+            <div class="reads" [attr.data-tone]="meterTone(row)">
+              <div class="reads__top">
+                <span class="reads__count">{{ row.viewedCount }}<span class="reads__of"> / {{ row.targetCount }}</span></span>
+                <span class="reads__pct">{{ pct(row) }}%</span>
+              </div>
+              <div class="meter" role="progressbar" [attr.aria-valuenow]="pct(row)" aria-valuemin="0" aria-valuemax="100">
+                <span class="meter__fill" [style.width.%]="pct(row)"></span>
+              </div>
+            </div>
+          </td>
+
+          <!-- Actions -->
+          <td class="col-actions">
+            <div class="row-actions">
+              <p-button
+                icon="pi pi-chart-bar"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                [pTooltip]="'announcements.report' | translate"
+                tooltipPosition="top"
+                [ariaLabel]="'announcements.report' | translate"
+                (onClick)="report(row)"
+              />
+              <p-button
+                icon="pi pi-ellipsis-v"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                severity="secondary"
+                [ariaLabel]="'common.actions' | translate"
+                (onClick)="openMenu($event, row, rowMenu)"
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-paginator
+      styleClass="ann-paginator"
+      [rows]="pageSize()"
+      [totalRecords]="totalRecords()"
+      [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="pageReportTemplate()"
+      (onPageChange)="onPage($event)"
+    />
+  }
+</section>
+
+<p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />

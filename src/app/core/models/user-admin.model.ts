@@ -6,6 +6,8 @@ export interface AdminUserListRow {
   name?: string | null;
   role: string;
   status: string;
+  /** Effective permissions (configured list, or the role's defaults when never customised). */
+  permissions?: string[];
   createdAt: string;
   deletedAt?: string | null;
 }
@@ -23,9 +25,11 @@ export interface UserCreateRequest {
   password: string;
   name?: string;
   role: string;
+  permissions?: string[];
   assignment?: {
     branchIds: string[];
     buildingIds: string[];
+    floorIds: string[];
   };
 }
 
@@ -40,6 +44,7 @@ export interface UserAssignmentPatchRequest {
   role?: string;
   branchIds?: string[];
   buildingIds?: string[];
+  floorIds?: string[];
 }
 
 export function adminUserRowId(row: AdminUserListRow): string {

@@ -1,0 +1,125 @@
+:host {
+  display: block;
+}
+
+.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 64rem;
+  padding-bottom: 5.5rem; // room so the sticky bar never covers the last card
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.25rem 1.25rem 0;
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0.2rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.section-step {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.125rem 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+
+  label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  input {
+    width: 100%;
+  }
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.req {
+  color: var(--p-red-500, #ef4444);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
+.field-error {
+  font-size: 0.75rem;
+  color: var(--p-red-500, #ef4444);
+}
+
+.info-note {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--p-content-hover-background);
+  font-size: 0.875rem;
+
+  i {
+    color: var(--p-primary-color);
+  }
+}
+
+// Save bar stays reachable while scrolling a long permissions grid.
+.form-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 10px;
+  background: var(--p-content-background);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.06);
+}
+
+@media (max-width: 640px) {
+  .form-bar {
+    justify-content: stretch;
+
+    ::ng-deep .p-button {
+      flex: 1;
+    }
+  }
+}

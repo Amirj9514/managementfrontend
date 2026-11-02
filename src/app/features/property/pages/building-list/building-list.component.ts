@@ -8,10 +8,10 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Drawer } from 'primeng/drawer';
 import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
@@ -37,6 +37,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { PROPERTY_DICTIONARY } from '../../property.dictionary';
@@ -61,13 +62,13 @@ import type { BranchListRow } from '../../../../core/models/branch-admin.model';
     Fluid,
     InputText,
     Select,
-    ConfirmDialog,
     Drawer,
     Tag,
     Menu,
     NgIcon,
     FieldErrorComponent,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './building-list.component.html',
   styleUrl: './building-list.component.scss',
@@ -80,7 +81,7 @@ export class BuildingListComponent {
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   readonly i18n = inject(TranslationService);
 
   readonly rows = signal<BuildingListRow[]>([]);
@@ -431,34 +432,40 @@ export class BuildingListComponent {
   }
 
   prepareActions(event: Event, row: BuildingListRow, menu: any): void {
-    const items: MenuItem[] = [
-      {
-        label: this.i18n.t('property.menu.addFloor'),
-        icon: 'pi pi-plus',
-        command: () => this.openCreateFloor(row),
-      },
-      {
-        label: this.i18n.t('property.menu.editBuilding'),
-        icon: 'pi pi-pencil',
-        command: () => this.openEdit(row),
-      },
-    ];
+    const items: MenuItem[] = [];
+    if (this.auth.can('buildings.edit')) {
+      items.push(
+        {
+          label: this.i18n.t('property.menu.addFloor'),
+          icon: 'pi pi-plus',
+          command: () => this.openCreateFloor(row),
+        },
+        {
+          label: this.i18n.t('property.menu.editBuilding'),
+          icon: 'pi pi-pencil',
+          command: () => this.openEdit(row),
+        },
+      );
+    }
+    const canDelete = this.auth.can('buildings.delete');
 
     if (row.deletedAt || row.status === 'inactive') {
-      items.push({
-        label: this.i18n.t('property.menu.restore'),
-        icon: 'pi pi-refresh',
-        command: () => this.onRestore(row),
-      });
+      if (canDelete) {
+        items.push({
+          label: this.i18n.t('property.menu.restore'),
+          icon: 'pi pi-refresh',
+          command: () => this.onRestore(row),
+        });
+      }
 
-      if (this.isAuthorizedForPermanentDelete()) {
+      if (canDelete && this.isAuthorizedForPermanentDelete()) {
         items.push({
           label: this.i18n.t('property.menu.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDelete(row),
         });
       }
-    } else {
+    } else if (canDelete) {
       items.push({
         label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
@@ -466,39 +473,51 @@ export class BuildingListComponent {
       });
     }
 
+    if (items.length === 0) {
+      return;
+    }
+
     this.menuItems.set(items);
     menu.toggle(event);
   }
 
   prepareFloorActions(event: Event, floor: FloorListRow, buildingId: string, menu: any): void {
-    const items: MenuItem[] = [
-      {
+    const items: MenuItem[] = [];
+    if (this.auth.can('buildings.edit')) {
+      items.push({
         label: this.i18n.t('property.menu.edit'),
         icon: 'pi pi-pencil',
         command: () => this.openEditFloor(floor, buildingId),
-      },
-    ];
+      });
+    }
+    const canDelete = this.auth.can('buildings.delete');
 
     if (floor.deletedAt || floor.status === 'inactive') {
-      items.push({
-        label: this.i18n.t('property.menu.restore'),
-        icon: 'pi pi-refresh',
-        command: () => this.onRestoreFloor(floor, buildingId),
-      });
+      if (canDelete) {
+        items.push({
+          label: this.i18n.t('property.menu.restore'),
+          icon: 'pi pi-refresh',
+          command: () => this.onRestoreFloor(floor, buildingId),
+        });
+      }
 
-      if (this.isAuthorizedForPermanentDelete()) {
+      if (canDelete && this.isAuthorizedForPermanentDelete()) {
         items.push({
           label: this.i18n.t('property.menu.deleteForever'),
           icon: 'pi pi-trash',
           command: () => this.onPermanentDeleteFloor(floor, buildingId),
         });
       }
-    } else {
+    } else if (canDelete) {
       items.push({
         label: this.i18n.t('property.menu.deactivate'),
         icon: 'pi pi-trash',
         command: () => this.onDeleteFloor(floor, buildingId),
       });
+    }
+
+    if (items.length === 0) {
+      return;
     }
 
     this.floorMenuItems.set(items);

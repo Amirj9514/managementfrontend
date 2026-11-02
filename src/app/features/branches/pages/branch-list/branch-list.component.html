@@ -4,7 +4,7 @@
 <p-toolbar styleClass="branches-toolbar">
   <ng-template #start>
     <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" [label]="'branches.newBranch' | translate" (onClick)="openCreate()" />
+      <p-button *appCan="'branches.create'" type="button" [label]="'branches.newBranch' | translate" (onClick)="openCreate()" />
       <p-select [options]="[
           { label: ('branches.filter.active' | translate), value: 'active' },
           { label: ('branches.filter.inactiveDeleted' | translate), value: 'inactive' },
@@ -23,7 +23,7 @@
       [title]="'branches.emptyTitle' | translate"
       [description]="'branches.emptyDescription' | translate"
       icon="lucideBuilding"
-      [actionLabel]="'branches.createBranch' | translate"
+      [actionLabel]="canCreateBranch() ? ('branches.createBranch' | translate) : undefined"
       (actionClick)="openCreate()"
     />
   } @else {
@@ -38,7 +38,7 @@
         <th>{{ 'branches.country' | translate }}</th>
         <th>{{ 'common.status' | translate }}</th>
         <th>{{ 'common.created' | translate }}</th>
-        <th style="width: 4rem"></th>
+        <th *appCan="['branches.edit', 'branches.delete']" style="width: 4rem"></th>
       </tr>
     </ng-template>
     <ng-template #body let-row let-expanded="expanded">
@@ -59,7 +59,7 @@
           }
         </td>
         <td>{{ row.createdAt ? (row.createdAt | date: 'short') : '—' }}</td>
-        <td style="text-align: right">
+        <td *appCan="['branches.edit', 'branches.delete']" style="text-align: right">
           <p-button type="button" [text]="true" [rounded]="true" (onClick)="prepareActions($event, row, rowMenu)">
             <ng-icon name="lucideMoreVertical" size="1.25rem" />
           </p-button>
@@ -79,7 +79,7 @@
                 </span>
                 {{ 'branches.buildingsIn' | translate: { name: row.name } }}
               </h4>
-              <p-button [label]="'branches.addBuilding' | translate" icon="pi pi-plus" size="small" (onClick)="openCreateBuilding(row)" />
+              <p-button *appCan="'buildings.create'" [label]="'branches.addBuilding' | translate" icon="pi pi-plus" size="small" (onClick)="openCreateBuilding(row)" />
             </div>
 
             @if (row.buildings && row.buildings.length > 0) {
@@ -90,7 +90,7 @@
         <th style="width: 40%">{{ 'common.name' | translate }}</th>
         <th>{{ 'common.status' | translate }}</th>
         <th>{{ 'common.created' | translate }}</th>
-        <th style="width: 4rem"></th>
+        <th *appCan="['buildings.view', 'buildings.edit', 'buildings.delete']" style="width: 4rem"></th>
       </tr>
     </ng-template>
     <ng-template #body let-building>
@@ -104,10 +104,10 @@
           }
         </td>
         <td>{{ building.createdAt | date: 'short' }}</td>
-        <td style="text-align: right; white-space: nowrap">
-          <p-button [label]="'branches.floors' | translate" icon="pi pi-list" [text]="true" size="small"
+        <td *appCan="['buildings.view', 'buildings.edit', 'buildings.delete']" style="text-align: right; white-space: nowrap">
+          <p-button *appCan="'buildings.view'" [label]="'branches.floors' | translate" icon="pi pi-list" [text]="true" size="small"
             (onClick)="navigateToFloors(building._id)" />
-          <p-button type="button" [text]="true" [rounded]="true"
+          <p-button *appCan="['buildings.edit', 'buildings.delete']" type="button" [text]="true" [rounded]="true"
             (onClick)="prepareBuildingActions($event, building, row, buildingMenu)">
             <ng-icon name="lucideMoreVertical" size="1.1rem" />
           </p-button>
@@ -208,5 +208,3 @@
     </p-fluid>
   </form>
 </p-drawer>
-
-<p-confirm-dialog />

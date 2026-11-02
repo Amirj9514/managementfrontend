@@ -8,7 +8,7 @@
 <p-toolbar styleClass="floors-toolbar">
   <ng-template #start>
     <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" [label]="'property.newFloor' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
+      <p-button *appCan="'buildings.edit'" type="button" [label]="'property.newFloor' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
       <p-select
         [options]="statusFilterOptions()"
         [ngModel]="status()"
@@ -28,7 +28,7 @@
       [title]="'property.empty.floors.title' | translate"
       [description]="'property.empty.floors.description' | translate"
       icon="lucideLayers"
-      [actionLabel]="'property.addFirstFloor' | translate"
+      [actionLabel]="canCreateFloor() ? ('property.addFirstFloor' | translate) : undefined"
       (actionClick)="openCreate()"
     />
   } @else {
@@ -43,7 +43,7 @@
           <th>{{ 'property.floorLabel' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
           <th>{{ 'property.lastUpdated' | translate }}</th>
-          <th style="width: 4rem"></th>
+          <th *appCan="['buildings.edit', 'buildings.delete']" style="width: 4rem"></th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
@@ -58,7 +58,7 @@
             }
           </td>
           <td>{{ row.updatedAt | date: 'medium' }}</td>
-          <td style="text-align: right">
+          <td *appCan="['buildings.edit', 'buildings.delete']" style="text-align: right">
             <p-button
               type="button"
               [text]="true"
@@ -108,5 +108,3 @@
     </p-fluid>
   </form>
 </p-drawer>
-
-<p-confirm-dialog />

@@ -2,14 +2,14 @@
 
 <p-toolbar styleClass="mb-4">
   <ng-template #start>
-    <p-button [label]="'amenities.newAmenity' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
+    <p-button *appCan="'amenities.create'" [label]="'amenities.newAmenity' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
   </ng-template>
 </p-toolbar>
 
 <p-card>
   @if (!loading() && rows().length === 0) {
     <app-empty-state [title]="'amenities.empty.title' | translate" [description]="'amenities.empty.description' | translate"
-      [actionLabel]="'amenities.newAmenity' | translate" (actionClick)="openCreate()" />
+      [actionLabel]="canCreate() ? ('amenities.newAmenity' | translate) : undefined" (actionClick)="openCreate()" />
   } @else {
     <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
       <ng-template #header>
@@ -17,7 +17,7 @@
           <th>{{ 'common.name' | translate }}</th>
           <th>{{ 'amenities.category' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
-          <th style="width: 6rem"></th>
+          <th *appCan="['amenities.edit', 'amenities.delete']" style="width: 6rem"></th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
@@ -31,9 +31,9 @@
               <p-tag [value]="'status.inactive' | translate" severity="secondary" [rounded]="true" />
             }
           </td>
-          <td style="text-align: right">
-            <p-button icon="pi pi-pencil" [text]="true" [rounded]="true" (onClick)="openEdit(row)" />
-            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" (onClick)="remove(row)" />
+          <td *appCan="['amenities.edit', 'amenities.delete']" style="text-align: right">
+            <p-button *appCan="'amenities.edit'" icon="pi pi-pencil" [text]="true" [rounded]="true" (onClick)="openEdit(row)" />
+            <p-button *appCan="'amenities.delete'" icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" (onClick)="remove(row)" />
           </td>
         </tr>
       </ng-template>
@@ -69,5 +69,3 @@
     </p-fluid>
   </form>
 </p-dialog>
-
-<p-confirm-dialog />

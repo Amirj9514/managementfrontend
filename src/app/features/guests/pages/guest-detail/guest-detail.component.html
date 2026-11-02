@@ -56,7 +56,7 @@
         } @else {
           <div class="booking-cards">
             @for (row of bookings(); track row._id) {
-              <button type="button" class="booking-card" (click)="openBooking(row)">
+              <button type="button" class="booking-card" [disabled]="!canOpenBooking()" (click)="canOpenBooking() && openBooking(row)">
                 <div class="booking-card__header">
                   <span class="booking-card__number">{{ row.bookingNumber }}</span>
                   <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
@@ -66,7 +66,7 @@
                     [class.pi-building]="row.bookingType === 'hall'"></i> {{ (row.bookingType === 'room' ? 'common.room' : 'common.hall') | translate }}</span>
                   <span><i class="pi pi-calendar"></i> {{ row.createdAt | date: 'medium' }}</span>
                 </div>
-                <span class="booking-card__view"><i class="pi pi-eye"></i> {{ 'common.viewDetails' | translate }}</span>
+                <span *appCan="'bookings.detail'" class="booking-card__view"><i class="pi pi-eye"></i> {{ 'common.viewDetails' | translate }}</span>
               </button>
             }
           </div>
@@ -78,7 +78,7 @@
       </p-tabpanel>
 
       <p-tabpanel value="notes">
-        <div class="notes-add">
+        <div *appCan="'guests.edit'" class="notes-add">
           <textarea pTextarea rows="2" class="w-full" [attr.placeholder]="'guests.notePlaceholder' | translate"
             [ngModel]="newNoteText()" (ngModelChange)="newNoteText.set($event)"></textarea>
           <p-button [label]="'guests.addNote' | translate" icon="pi pi-plus" size="small" [loading]="addingNote()"
@@ -95,7 +95,7 @@
                   <p class="notes-list__text">{{ n.text }}</p>
                   <span class="notes-list__meta">{{ n.authorName }} · {{ n.createdAt | date: 'medium' }}</span>
                 </div>
-                <button type="button" class="notes-list__remove" [attr.title]="'guests.deleteNote' | translate" (click)="removeNote(n._id)">
+                <button *appCan="'guests.edit'" type="button" class="notes-list__remove" [attr.title]="'guests.deleteNote' | translate" (click)="removeNote(n._id)">
                   <i class="pi pi-times"></i>
                 </button>
               </li>
@@ -106,5 +106,3 @@
     </p-tabpanels>
   </p-tabs>
 }
-
-<p-confirm-dialog />

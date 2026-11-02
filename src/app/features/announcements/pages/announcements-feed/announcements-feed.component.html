@@ -1,0 +1,93 @@
+<app-page-header [title]="'nav.announcements' | translate" [subtitle]="'announcements.subtitle' | translate">
+  @if (isAdmin()) {
+    <div actions class="feed-actions">
+      <p-button type="button" icon="pi pi-cog" [label]="'announcements.manage' | translate" [outlined]="true" (onClick)="goManage()" />
+      <p-button type="button" icon="pi pi-plus" [label]="'announcements.new' | translate" (onClick)="goNew()" />
+    </div>
+  }
+</app-page-header>
+
+<div class="feed-toolbar">
+  <p-selectbutton
+    [options]="tabOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="tab()"
+    (ngModelChange)="onTab($event)"
+    [allowEmpty]="false"
+  />
+</div>
+
+@if (!notifier.loaded()) {
+  <div class="feed-list">
+    @for (i of skeletons; track i) {
+      <div class="feed-card"><p-skeleton width="50%" height="1.25rem" styleClass="mb-3" /><p-skeleton height="3rem" /></div>
+    }
+  </div>
+} @else if (shown().length === 0) {
+  <div class="feed-card feed-card--empty">
+    <app-empty-state
+      [title]="(tab() === 'unread' ? 'announcements.emptyUnread' : 'announcements.emptyTitle') | translate"
+      [description]="(isAdmin() ? 'announcements.emptyAdminHint' : 'announcements.emptyDescription') | translate"
+    />
+  </div>
+} @else {
+  <div class="feed-list">
+    @for (a of shown(); track a._id) {
+      <article class="feed-card" [class.feed-card--unread]="!a.viewed" [class.feed-card--important]="a.priority === 'important'">
+        <header class="feed-card__head">
+          <div class="feed-card__titles">
+            <h2>{{ a.title }}</h2>
+            <p class="feed-card__meta">
+              {{ 'announcements.publishedOn' | translate: { date: ((a.publishAt | date: 'd MMM y, h:mm a') ?? '') } }}
+              @if (a.expiresAt) {
+                · {{ 'announcements.expiresOn' | translate: { date: ((a.expiresAt | date: 'd MMM y') ?? '') } }}
+              }
+            </p>
+          </div>
+          <div class="feed-card__tags">
+            @if (a.priority === 'important') {
+              <p-tag [value]="'announcements.badge.important' | translate" severity="warn" [rounded]="true" />
+            }
+            @if (!a.viewed) {
+              <p-tag [value]="'announcements.badge.new' | translate" severity="danger" [rounded]="true" />
+            }
+          </div>
+        </header>
+
+        <p class="feed-card__body" [class.feed-card__body--clamped]="!isOpen(a._id)">{{ a.body }}</p>
+
+        @if (isOpen(a._id) && a.images.length) {
+          <div class="feed-card__images">
+            @for (img of a.images; track img._id) {
+              <div class="feed-card__image">
+                <app-secure-image [announcementId]="a._id" [imageId]="img._id" [alt]="img.originalName" />
+              </div>
+            }
+          </div>
+        }
+
+        <footer class="feed-card__foot">
+          <p-button
+            type="button"
+            size="small"
+            [text]="isOpen(a._id)"
+            [outlined]="!isOpen(a._id)"
+            [icon]="isOpen(a._id) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+            [label]="(isOpen(a._id) ? 'announcements.collapse' : 'announcements.read') | translate"
+            (onClick)="toggle(a._id)"
+          />
+          @if (a.images.length && !isOpen(a._id)) {
+            <span class="feed-card__imgcount"><i class="pi pi-image"></i> {{ a.images.length }}</span>
+          }
+          @if (a.viewed && a.viewedAt) {
+            <span class="feed-card__read">
+              <i class="pi pi-check-circle"></i>
+              {{ 'announcements.viewedOn' | translate: { date: ((a.viewedAt | date: 'd MMM, h:mm a') ?? '') } }}
+            </span>
+          }
+        </footer>
+      </article>
+    }
+  </div>
+}

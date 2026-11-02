@@ -34,7 +34,12 @@
           <p-table [value]="arrivals().slice(0, 6)">
             <ng-template #body let-line>
               <tr>
-                <td>{{ (line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate }}</td>
+                <td>
+                  <div class="flex flex-column">
+                    <span class="font-medium">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
+                    <small class="text-color-secondary">{{ line.primaryGuestName ?? '' }}</small>
+                  </div>
+                </td>
                 <td>{{ line.checkInDate | date: 'shortTime' }}</td>
               </tr>
             </ng-template>
@@ -48,7 +53,12 @@
           <p-table [value]="departures().slice(0, 6)">
             <ng-template #body let-line>
               <tr>
-                <td>{{ (line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate }}</td>
+                <td>
+                  <div class="flex flex-column">
+                    <span class="font-medium">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
+                    <small class="text-color-secondary">{{ line.primaryGuestName ?? '' }}</small>
+                  </div>
+                </td>
                 <td>{{ line.expectedCheckOut | date: 'shortTime' }}</td>
               </tr>
             </ng-template>

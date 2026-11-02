@@ -2,15 +2,17 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
+import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Paginator, type PaginatorState } from 'primeng/paginator';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from 'primeng/tabs';
 import { Textarea } from 'primeng/textarea';
 import { BOOKING_STATUS_SEVERITY, type BookingRow } from '../../../../core/models/booking.model';
 import type { Guest } from '../../../../core/models/guest.model';
+import { CanDirective } from '../../../../core/directives/can.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
@@ -33,13 +35,13 @@ import { GUESTS_DICTIONARY } from '../../guests.dictionary';
     Button,
     Textarea,
     Paginator,
-    ConfirmDialog,
     Tabs,
     TabList,
     Tab,
     TabPanels,
     TabPanel,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './guest-detail.component.html',
   styleUrl: './guest-detail.component.scss',
@@ -51,9 +53,11 @@ export class GuestDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly confirmation = inject(ConfirmService);
   private readonly drawer = inject(BookingDetailDrawerService);
+  private readonly auth = inject(AuthService);
   readonly i18n = inject(TranslationService);
+  readonly canOpenBooking = computed(() => this.auth.can('bookings.detail'));
 
   readonly statusSeverityMap = BOOKING_STATUS_SEVERITY;
 

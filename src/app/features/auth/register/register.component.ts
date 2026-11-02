@@ -46,7 +46,7 @@ export class RegisterComponent {
     this.auth.register(this.form.getRawValue()).subscribe({
       next: () => {
         this.submitting = false;
-        void this.router.navigateByUrl('/dashboard');
+        void this.router.navigateByUrl('/');
       },
       error: () => {
         this.submitting = false;

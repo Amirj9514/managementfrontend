@@ -21,6 +21,11 @@ import { BranchesApiService } from '../../../branches/services/branches-api.serv
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../../shared/status-badge/status-badge.component';
+import { CanDirective } from '../../../../core/directives/can.directive';
+import { MessageService } from 'primeng/api';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ConfirmService } from '../../../../core/services/confirm.service';
+import { CHECKOUT_DICTIONARY } from '../../../checkout/checkout.dictionary';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { BookingDetailDrawerService } from '../../services/booking-detail-drawer.service';
@@ -73,6 +78,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
     Tooltip,
     Paginator,
     TranslatePipe,
+    CanDirective,
   ],
   templateUrl: './booking-list.component.html',
   styleUrl: './booking-list.component.scss',
@@ -83,6 +89,14 @@ export class BookingListComponent {
   private readonly branchesApi = inject(BranchesApiService);
   private readonly router = inject(Router);
   private readonly drawer = inject(BookingDetailDrawerService);
+  private readonly auth = inject(AuthService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly messages = inject(MessageService);
+  readonly canCreate = computed(() => this.auth.can('bookings.create'));
+  readonly canOpen = computed(() => this.auth.can('bookings.detail'));
+  /** Check out is always shown on in-house bookings; without access it is disabled with an explanation. */
+  readonly canCheckOut = computed(() => this.auth.can('checkout.checkout'));
+  readonly busyId = signal<string | null>(null);
   readonly i18n = inject(TranslationService);
 
   readonly statusOptions = computed(() => STATUS_KEYS.map((o) => ({ label: this.i18n.t(o.key), value: o.value })));
@@ -98,7 +112,8 @@ export class BookingListComponent {
 
   readonly branches = signal<BranchListRow[]>([]);
   readonly branchId = signal<string | undefined>(undefined);
-  readonly status = signal<BookingStatus | undefined>(undefined);
+  /** Opens on active (checked-in) bookings only; clear or change the filter to see the rest. */
+  readonly status = signal<BookingStatus | undefined>('checked_in');
   readonly bookingType = signal<string | undefined>(undefined);
 
   readonly rows = signal<BookingRow[]>([]);
@@ -110,6 +125,7 @@ export class BookingListComponent {
 
   constructor() {
     this.i18n.register(BOOKINGS_DICTIONARY);
+    this.i18n.register(CHECKOUT_DICTIONARY);
     this.branchesApi.list(1, 100, 'active').subscribe({
       next: ({ items }) => {
         this.branches.set(items);
@@ -181,7 +197,40 @@ export class BookingListComponent {
   }
 
   open(id: string): void {
+    if (!this.canOpen()) return;
     this.drawer.open(id);
+  }
+
+  showAll(): void {
+    this.onStatusChange(null);
+  }
+
+  confirmCheckOut(row: BookingRow): void {
+    const guest = row.primaryGuestName ?? this.i18n.t('bookings.unknownGuest');
+    const unit = row.unitCodes?.length ? row.unitCodes.join(', ') : row.bookingNumber;
+    this.confirm.confirm({
+      header: this.i18n.t('checkout.confirmOutHeader'),
+      message: this.i18n.t('checkout.confirmOutMessage', { guest, unit }),
+      icon: 'pi pi-sign-out',
+      variant: 'warning',
+      accept: () => this.checkOut(row, unit),
+    });
+  }
+
+  private checkOut(row: BookingRow, unit: string): void {
+    this.busyId.set(row._id);
+    this.api.checkOutBooking(row._id).subscribe({
+      next: () => {
+        this.messages.add({
+          severity: 'success',
+          summary: this.i18n.t('status.checkedOut'),
+          detail: this.i18n.t('checkout.checkedOutToast', { unit }),
+        });
+        this.busyId.set(null);
+        this.reload();
+      },
+      error: () => this.busyId.set(null),
+    });
   }
 
   goNew(): void {
