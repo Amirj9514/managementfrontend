@@ -1,0 +1,168 @@
+<p-drawer
+  [visible]="row() !== null"
+  (visibleChange)="$event || closed.emit()"
+  position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+>
+  <ng-template #header>
+    <span class="font-semibold">{{ 'audit.detail.title' | translate }}</span>
+  </ng-template>
+
+  @if (row(); as r) {
+    <div class="ad">
+      <!-- What happened -->
+      <section class="ad-hero" [attr.data-tone]="meta()?.tone">
+        <span class="ad-hero__icon"><i [class]="'pi ' + meta()?.icon"></i></span>
+        <div class="ad-hero__text">
+          <strong>{{ p.label(r) }}</strong>
+          @if (r.targetLabel) {
+            <span class="ad-hero__target">{{ r.targetLabel }}</span>
+          }
+          <small>{{ p.when(r.createdAt) }} · {{ p.relative(r.createdAt) }}</small>
+        </div>
+      </section>
+      <p class="ad-help"><i class="pi pi-info-circle"></i> {{ p.help(r) }}</p>
+
+      <div class="ad-nav">
+        <p-button type="button" size="small" [text]="true" severity="secondary" icon="pi pi-arrow-up" [label]="'audit.detail.prev' | translate" [disabled]="!hasNewer()" (onClick)="newer.emit()" />
+        <p-button type="button" size="small" [text]="true" severity="secondary" icon="pi pi-arrow-down" iconPos="right" [label]="'audit.detail.next' | translate" [disabled]="!hasOlder()" (onClick)="older.emit()" />
+      </div>
+
+      <!-- Who -->
+      <section class="ad-card">
+        <h3>{{ 'audit.detail.who' | translate }}</h3>
+        @if (r.actor; as a) {
+          <div class="ad-person">
+            <span class="ad-avatar">{{ initials() }}</span>
+            <div>
+              <strong>{{ a.name }}</strong>
+              <small>{{ a.email }} · {{ 'role.' + a.role | translate }}</small>
+            </div>
+          </div>
+        } @else {
+          <p class="ad-muted">{{ 'audit.detail.systemActor' | translate }}</p>
+        }
+      </section>
+
+      <!-- When -->
+      <section class="ad-card">
+        <h3>{{ 'audit.detail.when' | translate }}</h3>
+        <p class="ad-value">{{ p.whenFull(r.createdAt) }}</p>
+      </section>
+
+      <!-- What it affected -->
+      <section class="ad-card">
+        <h3>{{ 'audit.detail.affected' | translate }}</h3>
+        <dl class="ad-kv">
+          <div>
+            <dt>{{ 'audit.detail.type' | translate }}</dt>
+            <dd>{{ p.entityLabel(r.entityType) }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'audit.detail.name' | translate }}</dt>
+            <dd>
+              @if (r.targetLabel) {
+                {{ r.targetLabel }}
+              } @else {
+                <span class="ad-muted">{{ 'audit.detail.noLongerExists' | translate }}</span>
+              }
+            </dd>
+          </div>
+          @if (r.entityId) {
+            <div>
+              <dt>{{ 'audit.detail.id' | translate }}</dt>
+              <dd class="ad-mono">
+                <span>{{ r.entityId }}</span>
+                <button type="button" class="ad-copy" (click)="copy('entity', r.entityId)" [attr.aria-label]="'audit.detail.copy' | translate">
+                  <i [class]="copiedKey() === 'entity' ? 'pi pi-check' : 'pi pi-copy'"></i>
+                </button>
+              </dd>
+            </div>
+          }
+        </dl>
+        @if (canOpen()) {
+          <p-button type="button" size="small" [outlined]="true" icon="pi pi-external-link" [label]="'audit.detail.open' | translate" (onClick)="open()" />
+        }
+      </section>
+
+      <!-- What was submitted -->
+      <section class="ad-card">
+        <h3>{{ 'audit.detail.changes' | translate }}</h3>
+        @if (entries().length === 0) {
+          <p class="ad-muted">{{ 'audit.detail.noChanges' | translate }}</p>
+        } @else {
+          <p class="ad-hint">{{ 'audit.detail.changesHint' | translate }}</p>
+          <dl class="ad-kv">
+            @for (e of entries(); track $index) {
+              <div>
+                <dt>{{ e.label }}</dt>
+                <dd>
+                  @switch (e.kind) {
+                    @case ('id') {
+                      <span class="ad-mono">{{ e.value }}</span>
+                    }
+                    @case ('list') {
+                      <span class="ad-chips">
+                        <span class="ad-chip ad-chip--count">{{ e.value }}</span>
+                        @for (it of e.items; track $index) {
+                          <span class="ad-chip">{{ it }}</span>
+                        }
+                      </span>
+                    }
+                    @default {
+                      {{ e.value }}
+                    }
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        }
+      </section>
+
+      <!-- Technical -->
+      <section class="ad-card ad-card--tech">
+        <h3>{{ 'audit.detail.technical' | translate }}</h3>
+        <dl class="ad-kv">
+          <div>
+            <dt>{{ 'audit.detail.action' | translate }}</dt>
+            <dd class="ad-mono">{{ r.action }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'audit.detail.requestId' | translate }}</dt>
+            <dd class="ad-mono">
+              @if (r.requestId) {
+                <span>{{ r.requestId }}</span>
+                <button type="button" class="ad-copy" (click)="copy('req', r.requestId)" [attr.aria-label]="'audit.detail.copy' | translate">
+                  <i [class]="copiedKey() === 'req' ? 'pi pi-check' : 'pi pi-copy'"></i>
+                </button>
+              } @else {
+                <span class="ad-muted">{{ 'audit.detail.notRecorded' | translate }}</span>
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>{{ 'audit.detail.ip' | translate }}</dt>
+            <dd class="ad-mono">{{ p.ip(r.ip) }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'audit.detail.device' | translate }}</dt>
+            <dd [attr.title]="r.userAgent">{{ p.device(r.userAgent) }}</dd>
+          </div>
+        </dl>
+        @if (r.requestId) {
+          <p class="ad-hint">{{ 'audit.detail.requestIdHint' | translate }}</p>
+        }
+        <div class="ad-raw-bar">
+          <p-button type="button" size="small" [text]="true" severity="secondary" [icon]="showRaw() ? 'pi pi-chevron-up' : 'pi pi-code'" [label]="(showRaw() ? 'audit.detail.hideRaw' : 'audit.detail.showRaw') | translate" (onClick)="showRaw.set(!showRaw())" />
+          @if (showRaw()) {
+            <p-button type="button" size="small" [text]="true" severity="secondary" [icon]="copiedKey() === 'raw' ? 'pi pi-check' : 'pi pi-copy'" [label]="(copiedKey() === 'raw' ? 'audit.detail.copied' : 'audit.detail.copy') | translate" (onClick)="copy('raw', raw())" />
+          }
+        </div>
+        @if (showRaw()) {
+          <pre class="ad-raw" dir="ltr">{{ raw() }}</pre>
+        }
+      </section>
+    </div>
+  }
+</p-drawer>

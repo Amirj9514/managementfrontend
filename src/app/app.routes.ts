@@ -89,6 +89,11 @@ export const routes: Routes = [
       },
       { path: 'checkout', redirectTo: 'stays', pathMatch: 'prefix' },
       {
+        path: 'housekeeping',
+        loadChildren: () =>
+          import('./features/housekeeping/housekeeping.routes').then((m) => m.housekeepingRoutes),
+      },
+      {
         path: 'hr',
         loadChildren: () => import('./features/hr/hr.routes').then((m) => m.hrRoutes),
       },

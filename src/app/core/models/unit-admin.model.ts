@@ -98,6 +98,10 @@ export interface AmenityRow {
   active: boolean;
   createdAt?: string;
   deletedAt?: string | null;
+  /** How many rooms / halls use it (list endpoint only). */
+  usage?: { rooms: number; halls: number };
+  /** Name of the branch it belongs to; null = shared by every branch. */
+  branchName?: string | null;
 }
 
 export interface AmenityRequest {

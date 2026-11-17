@@ -1,0 +1,539 @@
+/* Room / hall picker styles — the same cards, legend and filters the check-in step uses. */
+:host {
+  display: block;
+}
+
+.status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  color: var(--app-text-muted);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--success {
+      background: var(--p-green-500);
+    }
+
+    &--info {
+      background: var(--p-blue-500);
+    }
+
+    &--warn {
+      background: #f59e0b;
+    }
+
+    &--danger {
+      background: var(--p-red-500);
+    }
+
+    &--capacity {
+      background: #f59e0b;
+      box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 25%, transparent);
+    }
+  }
+}
+
+.availability-summary {
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+
+  strong {
+    color: var(--p-green-600);
+    font-size: 0.95rem;
+  }
+}
+
+.unit-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+  align-items: stretch;
+}
+
+.unit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.85rem 0.7rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid var(--app-border-subtle);
+  border-left: 4px solid var(--app-border-subtle);
+  background: var(--app-surface-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &--selected {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 25%, transparent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Each real unit status gets its own left-border + tinted background so staff can scan a
+     whole grid of cards at a glance — muted via explicit, still-legible colors on each
+     child (not `opacity`, which fades text into low-contrast mush on a light background). */
+  &--status-available {
+    border-left-color: var(--p-green-500);
+  }
+
+  &--status-occupied {
+    border-left-color: var(--p-blue-500);
+    background: color-mix(in srgb, var(--p-blue-500) 5%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--status-cleaning {
+    border-left-color: #f59e0b;
+    background: color-mix(in srgb, #f59e0b 6%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--status-maintenance {
+    border-left-color: var(--p-red-500);
+    background: color-mix(in srgb, var(--p-red-500) 6%, var(--app-surface-elevated));
+
+    .unit-card__code {
+      color: #475569;
+    }
+  }
+
+  &--warning {
+    border-left-color: #f59e0b;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #f59e0b 45%, transparent);
+  }
+
+  &--skeleton {
+    min-height: 5.5rem;
+    cursor: default;
+    border-left-width: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--p-surface-100) 25%,
+      var(--p-surface-200) 37%,
+      var(--p-surface-100) 63%
+    );
+    background-size: 400% 100%;
+    animation: unit-card-shimmer 1.4s ease infinite;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &__code {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--app-text-primary);
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &--success {
+      background: var(--p-green-50);
+      color: var(--p-green-700);
+    }
+
+    &--info {
+      background: color-mix(in srgb, var(--p-blue-500) 12%, transparent);
+      color: var(--p-blue-700);
+    }
+
+    &--warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--danger {
+      background: var(--p-red-50);
+      color: var(--p-red-700);
+    }
+  }
+
+  &__type {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--app-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__location {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--app-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__detail {
+    font-size: 0.82rem;
+    color: var(--p-text-muted-color);
+  }
+
+  &__amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.15rem;
+  }
+
+  &__amenity {
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--app-surface-page);
+    border: 1px solid var(--app-border-subtle);
+    color: var(--app-text-muted);
+    white-space: nowrap;
+
+    &--more {
+      font-weight: 600;
+    }
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  &__reason {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #b91c1c;
+
+    &--warning {
+      color: #92400e;
+    }
+  }
+}
+
+@keyframes unit-card-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+// ---- Room step: building tiles, floor chips, refine row, selected bar -------------------------
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.875rem;
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.bldg-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.625rem;
+}
+
+.bldg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--p-content-border-color);
+  border-radius: 14px;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    border-color: var(--p-primary-color);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 8%, var(--p-content-background));
+    box-shadow: 0 0 0 1px var(--p-primary-color) inset;
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+
+    i {
+      margin-inline-end: 0.35rem;
+      color: var(--p-primary-color);
+      font-size: 0.85rem;
+    }
+  }
+
+  &__count {
+    font-size: 0.75rem;
+    color: var(--p-green-600, #16a34a);
+
+    &--none {
+      color: var(--p-red-500, #ef4444);
+    }
+  }
+}
+
+.pick-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1.25rem 1.25rem;
+  margin-bottom: 0.5rem;
+  border: 2px dashed var(--p-content-border-color);
+  border-radius: 16px;
+  color: var(--p-text-muted-color);
+
+  > i {
+    font-size: 1.5rem;
+    color: var(--p-primary-color);
+  }
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  strong {
+    color: var(--p-text-color);
+  }
+
+  span {
+    font-size: 0.8125rem;
+  }
+}
+
+.floor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 999px;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    border-color: var(--p-primary-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
+
+  &__n {
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: var(--p-content-hover-background);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--p-text-muted-color);
+  }
+
+  &--empty {
+    opacity: 0.6;
+  }
+
+  &--on {
+    background: var(--p-primary-color);
+    border-color: var(--p-primary-color);
+    color: var(--p-primary-contrast-color);
+
+    .fchip__n {
+      background: rgb(255 255 255 / 0.22);
+      color: inherit;
+    }
+  }
+}
+
+.filter-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.search-box {
+  position: relative;
+  flex: 1 1 11rem;
+  max-width: 16rem;
+
+  i {
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    color: var(--p-text-muted-color);
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    padding-inline-start: 2.1rem;
+    border-radius: 999px;
+  }
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.selected-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.875rem;
+  padding: 0.65rem 0.875rem;
+  border: 1px solid var(--p-primary-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--p-primary-color) 7%, var(--p-content-background));
+
+  > i {
+    font-size: 1.15rem;
+    color: var(--p-primary-color);
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+
+    span,
+    small {
+      font-size: 0.78rem;
+      color: var(--p-text-muted-color);
+    }
+
+    small {
+      color: var(--p-orange-600, #d97706);
+    }
+  }
+
+  &--hidden {
+    border-style: dashed;
+  }
+}
+
+.floor-group {
+  margin-bottom: 1rem;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+
+    span {
+      padding: 0.05rem 0.5rem;
+      border-radius: 999px;
+      background: var(--p-content-hover-background);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--p-text-muted-color);
+    }
+  }
+}
+
+.summary-line {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.unit-card__tag {
+  margin-inline-start: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+  color: var(--p-primary-color);
+  font-size: 0.68rem;
+  font-weight: 600;
+}

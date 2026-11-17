@@ -98,6 +98,13 @@ body {
   overflow: visible;
 }
 
+/* Laptop widths (1100-1365px): a slimmer sidebar so tables and boards get the room. */
+@media (min-width: 1100px) and (max-width: 1365px) {
+  :root {
+    --app-sidebar-width: 228px;
+  }
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: var(--app-sidebar-width) 1fr;
@@ -231,4 +238,14 @@ body.has-shell {
 .p-menu .menu-danger .p-menu-item-icon,
 .p-menu .menu-danger .p-menu-item-label {
   color: var(--p-red-500, #ef4444);
+}
+
+/* Form drawers (add guest etc.): header and footer stay put, only the body scrolls. The drawer is rendered
+   outside the component, so the footer look has to live in a global rule. */
+body .gl-drawer .p-drawer-footer,
+body .gp-drawer .p-drawer-footer {
+  padding: 0.8rem 1.25rem;
+  border-top: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
+  box-shadow: 0 -6px 16px rgb(0 0 0 / 0.05);
 }

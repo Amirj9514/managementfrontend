@@ -48,12 +48,6 @@
           [description]="'checkout.emptyArrivalsDescription' | translate"
         />
       }
-      @case ('inHouse') {
-        <app-empty-state
-          [title]="'checkout.emptyInHouseTitle' | translate"
-          [description]="'checkout.emptyInHouseDescription' | translate"
-        />
-      }
       @case ('cancelled') {
         <app-empty-state
           [title]="'checkout.emptyCancelledTitle' | translate"

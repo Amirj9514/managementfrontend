@@ -1,49 +1,222 @@
-:host ::ng-deep .guest-toolbar .p-toolbar {
+:host {
+  display: block;
+}
+
+$border: var(--p-content-border-color, rgba(127, 127, 127, 0.25));
+$muted: var(--p-text-muted-color, #64748b);
+
+.gl-toolbar {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+
+  &__search {
+    flex: 1 1 16rem;
+    max-width: 24rem;
+
+    input {
+      width: 100%;
+    }
+  }
+
+  &__count {
+    margin-inline-start: auto;
+    font-size: 0.85rem;
+    color: $muted;
+  }
+}
+
+.gl-panel {
+  border-radius: 16px;
+  border: 1px solid $border;
+  background: var(--p-content-background, #fff);
+  overflow: hidden;
+}
+
+.gl-guest {
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
-  border: none;
-  padding: 0;
-  background: transparent;
+  min-width: 0;
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+
+    small {
+      color: $muted;
+      font-size: 0.78rem;
+
+      i {
+        font-size: 0.68rem;
+      }
+    }
+  }
 }
 
-.guest-toolbar__search-input {
-  width: 18rem;
+.gl-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 14%, transparent);
+
+  &--lg {
+    width: 3.2rem;
+    height: 3.2rem;
+    font-size: 1.05rem;
+  }
 }
 
-.guest-name-link {
-  color: var(--app-accent);
-  text-decoration: none;
+.gl-name {
   font-weight: 600;
+  color: inherit;
+  text-decoration: none;
 
   &:hover {
+    color: var(--p-primary-color);
     text-decoration: underline;
   }
 }
 
-.form-actions {
+.gl-contact {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+
+  small {
+    color: $muted;
+  }
+}
+
+.gl-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.gl-count {
+  display: inline-block;
+  min-width: 1.8rem;
+  padding: 0.1rem 0.55rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+}
+
+.gl-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  i {
+    font-size: 0.45rem;
+  }
+
+  &--on { color: var(--p-green-600, #16a34a); }
+  &--off { color: $muted; }
+}
+
+.gl-row--off td {
+  opacity: 0.72;
+}
+
+.gl-actions {
+  width: 9rem;
+  text-align: end;
+  white-space: nowrap;
+}
+
+// Drawers: the header and the footer stay put, only the body scrolls.
+.dr-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--p-content-border-color);
+  width: 100%;
 }
 
-.view-grid {
+:host ::ng-deep .gl-drawer {
+  .p-drawer-content {
+    padding-bottom: 1rem;
+  }
+
+  .p-drawer-footer {
+    padding: 0.8rem 1.25rem;
+    border-top: 1px solid var(--p-content-border-color);
+    background: var(--p-content-background);
+    box-shadow: 0 -6px 16px rgb(0 0 0 / 0.05);
+  }
+}
+
+// Profile (view) drawer
+.gv-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: var(--p-content-hover-background, rgba(127, 127, 127, 0.07));
+
+  div {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 1.05rem;
+  }
+
+  small {
+    color: $muted;
+  }
+}
+
+.gv-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
+  gap: 0.2rem;
+  margin: 0;
 
-.detail-label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--p-text-muted-color);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
+  > div {
+    padding: 0.65rem 0.2rem;
+    border-bottom: 1px solid $border;
+  }
 
-.view-grid p {
-  margin: 0.2rem 0 0;
+  dt {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: $muted;
+
+    i {
+      color: var(--p-primary-color);
+    }
+  }
+
+  dd {
+    margin: 0.2rem 0 0;
+    overflow-wrap: anywhere;
+  }
 }

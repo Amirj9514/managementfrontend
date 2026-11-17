@@ -1,179 +1,270 @@
 <app-page-header [title]="'users.newUserHeader' | translate" [subtitle]="'users.new.subtitle' | translate">
-  <div actions>
-    <p-button type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" (onClick)="cancel()" />
-  </div>
+  <p-button actions type="button" icon="pi pi-arrow-left" [label]="'common.back' | translate" [text]="true" severity="secondary" (onClick)="cancel()" />
 </app-page-header>
 
-<form class="user-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-  <!-- 1. Account -->
-  <p-card styleClass="user-section">
-    <ng-template #header>
-      <div class="section-head">
-        <span class="section-step">1</span>
+<form class="uc" [formGroup]="form" (ngSubmit)="submit(false)" novalidate>
+  <div class="uc__main">
+    <!-- 1. Account -->
+    <section class="uc-card">
+      <header class="uc-head">
+        <span class="uc-step">1</span>
         <div>
           <h2>{{ 'users.section.account' | translate }}</h2>
           <p>{{ 'users.section.accountHint' | translate }}</p>
         </div>
+      </header>
+      <div class="uc-grid">
+        <div class="field">
+          <label for="uc-name">{{ 'common.name' | translate }}</label>
+          <input pInputText id="uc-name" formControlName="name" autocomplete="off" [placeholder]="'users.namePlaceholder' | translate" />
+        </div>
+        <div class="field">
+          <label for="uc-email">{{ 'common.email' | translate }} <span class="req">*</span></label>
+          <input pInputText id="uc-email" type="email" formControlName="email" autocomplete="off" placeholder="name&#64;example.com" [class.ng-invalid]="showError('email')" />
+          @if (showError('email')) {
+            <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
+          }
+        </div>
+        <div class="field field--full">
+          <label for="uc-password">{{ 'common.password' | translate }} <span class="req">*</span></label>
+          <div class="pw">
+            <div class="pw__box">
+              <input
+                pInputText
+                id="uc-password"
+                formControlName="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="new-password"
+                [placeholder]="'users.passwordPlaceholder' | translate"
+                [class.ng-invalid]="showError('password')"
+              />
+              <button type="button" class="pw__eye" (click)="showPassword.set(!showPassword())" [attr.aria-label]="'users.pw.toggle' | translate">
+                <i [class]="showPassword() ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+              </button>
+            </div>
+            <p-button type="button" severity="secondary" [outlined]="true" icon="pi pi-sync" [label]="'users.pw.generate' | translate" (onClick)="generate()" />
+            <p-button
+              type="button"
+              severity="secondary"
+              [text]="true"
+              [icon]="copied() ? 'pi pi-check' : 'pi pi-copy'"
+              [label]="(copied() ? 'users.pw.copied' : 'users.pw.copy') | translate"
+              [disabled]="!passwordValue()"
+              (onClick)="copyPassword()"
+            />
+          </div>
+          @if (passwordValue()) {
+            <div class="meter" [attr.data-level]="strength()">
+              <span class="meter__bar"><i></i><i></i><i></i><i></i></span>
+              <small>{{ strengthKey() | translate }}</small>
+            </div>
+          }
+          @if (showError('password')) {
+            <app-field-error [control]="form.controls.password" [label]="'common.password' | translate" />
+          } @else {
+            <small class="hint">{{ 'users.pw.hint' | translate }}</small>
+          }
+        </div>
       </div>
-    </ng-template>
-    <div class="form-grid">
-      <div class="field">
-        <label for="uc-name">{{ 'common.name' | translate }}</label>
-        <input pInputText id="uc-name" formControlName="name" autocomplete="off" />
-      </div>
-      <div class="field">
-        <label for="uc-email">{{ 'common.email' | translate }} <span class="req">*</span></label>
-        <input pInputText id="uc-email" type="email" formControlName="email" autocomplete="off" [class.ng-invalid]="showError('email')" />
-        @if (showError('email')) {
-          <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
-        }
-      </div>
-      <div class="field">
-        <label for="uc-password">{{ 'common.password' | translate }} <span class="req">*</span></label>
-        <p-password
-          inputId="uc-password"
-          formControlName="password"
-          [toggleMask]="true"
-          [feedback]="false"
-          styleClass="w-full"
-          inputStyleClass="w-full"
-          autocomplete="new-password"
-        />
-        @if (showError('password')) {
-          <app-field-error [control]="form.controls.password" [label]="'common.password' | translate" />
-        }
-      </div>
-      <div class="field">
-        <label for="uc-confirm">{{ 'users.confirmPassword' | translate }} <span class="req">*</span></label>
-        <p-password
-          inputId="uc-confirm"
-          formControlName="confirmPassword"
-          [toggleMask]="true"
-          [feedback]="false"
-          styleClass="w-full"
-          inputStyleClass="w-full"
-          autocomplete="new-password"
-        />
-        @if (mismatch) {
-          <small class="field-error">{{ 'users.passwordMismatch' | translate }}</small>
-        } @else if (showError('confirmPassword')) {
-          <app-field-error [control]="form.controls.confirmPassword" [label]="'users.confirmPassword' | translate" />
-        }
-      </div>
-    </div>
-  </p-card>
+    </section>
 
-  <!-- 2. Role & access scope -->
-  <p-card styleClass="user-section">
-    <ng-template #header>
-      <div class="section-head">
-        <span class="section-step">2</span>
+    <!-- 2. Role & access scope -->
+    <section class="uc-card">
+      <header class="uc-head">
+        <span class="uc-step">2</span>
         <div>
           <h2>{{ 'users.section.role' | translate }}</h2>
           <p>{{ 'users.section.roleHint' | translate }}</p>
         </div>
-      </div>
-    </ng-template>
-    <div class="form-grid">
-      <div class="field field--full role-field">
-        <label for="uc-role">{{ 'common.role' | translate }} <span class="req">*</span></label>
-        <p-select
-          inputId="uc-role"
-          formControlName="role"
-          [options]="roleOptions()"
-          optionLabel="label"
-          optionValue="value"
-          [placeholder]="'common.role' | translate"
-          styleClass="w-full"
-        />
-        @if (roleHint()) {
-          <p class="field-hint">{{ roleHint() }}</p>
+      </header>
+
+      <div class="roles" role="radiogroup" [attr.aria-label]="'common.role' | translate">
+        @for (r of roleCards(); track r.value) {
+          <button
+            type="button"
+            class="role"
+            role="radio"
+            [class.role--on]="role() === r.value"
+            [attr.aria-checked]="role() === r.value"
+            (click)="pickRole(r.value)"
+          >
+            <span class="role__icon"><i [class]="'pi ' + r.icon"></i></span>
+            <span class="role__text">
+              <strong>{{ r.label }}</strong>
+              <small>{{ r.hint }}</small>
+            </span>
+            <i class="pi pi-check-circle role__tick"></i>
+          </button>
         }
       </div>
 
-      @if (fullAccess()) {
-        <div class="field field--full">
-          <div class="info-note">
-            <i class="pi pi-shield"></i>
-            <span>{{ 'users.adminScopeNote' | translate }}</span>
-          </div>
-        </div>
-      } @else {
-        <div class="field field--full">
-          <label for="uc-branches">{{ 'entity.branches' | translate }} <span class="req">*</span></label>
-          <p-multiselect
-            inputId="uc-branches"
-            formControlName="branchIds"
-            [options]="branchOptions()"
-            optionLabel="label"
-            optionValue="value"
-            [placeholder]="'users.selectBranches' | translate"
-            display="chip"
-            [filter]="branchOptions().length > 8"
-            styleClass="w-full"
-          />
-          @if (branchMissing) {
-            <small class="field-error">{{ 'users.branchRequired' | translate }}</small>
-          }
-        </div>
-        <div class="field field--full">
-          <label for="uc-buildings">{{ 'users.buildings' | translate }}</label>
-          <p-multiselect
-            inputId="uc-buildings"
-            formControlName="buildingIds"
-            [options]="buildingOptions()"
-            optionLabel="label"
-            optionValue="value"
-            [placeholder]="'users.selectBuildings' | translate"
-            display="chip"
-            [loading]="loadingBuildings()"
-            [filter]="buildingOptions().length > 8"
-            [showClear]="true"
-            styleClass="w-full"
-          />
-          <p class="field-hint">{{ 'users.buildingsHint' | translate }}</p>
-        </div>
-        @if (floorScoped()) {
+      <div class="uc-grid uc-grid--scope">
+        @if (fullAccess()) {
           <div class="field field--full">
-            <label for="uc-floors">{{ 'users.floors' | translate }}</label>
+            <div class="note">
+              <i class="pi pi-shield"></i>
+              <span>{{ 'users.adminScopeNote' | translate }}</span>
+            </div>
+          </div>
+        } @else {
+          <div class="field field--full">
+            <label for="uc-branches">{{ 'entity.branches' | translate }} <span class="req">*</span></label>
             <p-multiselect
-              inputId="uc-floors"
-              formControlName="floorIds"
-              [options]="floorOptions()"
+              inputId="uc-branches"
+              formControlName="branchIds"
+              [options]="branchOptions()"
               optionLabel="label"
               optionValue="value"
-              [placeholder]="'users.selectFloors' | translate"
+              [placeholder]="'users.selectBranches' | translate"
               display="chip"
-              [loading]="loadingFloors()"
-              [filter]="floorOptions().length > 8"
-              [showClear]="true"
+              [filter]="branchOptions().length > 8"
               styleClass="w-full"
             />
-            <p class="field-hint">{{ 'users.floorsHint' | translate }}</p>
+            @if (branchMissing) {
+              <small class="err">{{ 'users.branchRequired' | translate }}</small>
+            }
           </div>
+          <div class="field field--full">
+            <div class="blocks-head">
+              <label id="uc-buildings-label">{{ 'users.buildings' | translate }}</label>
+              @if (selectedBuildings().length > 0) {
+                <button type="button" class="blocks-clear" (click)="clearBuildings()">
+                  <i class="pi pi-times"></i> {{ 'users.blocks.clear' | translate }}
+                </button>
+              }
+            </div>
+            @if (branchCount() === 0) {
+              <div class="note"><i class="pi pi-info-circle"></i><span>{{ 'users.blocks.pickBranch' | translate }}</span></div>
+            } @else if (loadingBuildings()) {
+              <div class="blocks">
+                <span class="blk blk--skeleton"></span>
+                <span class="blk blk--skeleton"></span>
+              </div>
+            } @else if (buildingCards().length === 0) {
+              <div class="note"><i class="pi pi-info-circle"></i><span>{{ 'users.blocks.none' | translate }}</span></div>
+            } @else {
+              <div class="blocks" role="group" aria-labelledby="uc-buildings-label">
+                @for (b of buildingCards(); track b.value) {
+                  <button
+                    type="button"
+                    class="blk"
+                    role="checkbox"
+                    [class.blk--on]="selectedBuildings().includes(b.value)"
+                    [attr.aria-checked]="selectedBuildings().includes(b.value)"
+                    (click)="toggleBuilding(b.value)"
+                  >
+                    <span class="blk__icon"><i class="pi pi-building"></i></span>
+                    <span class="blk__text">
+                      <strong>{{ b.name }}</strong>
+                      @if (b.branch) {
+                        <small>{{ b.branch }}</small>
+                      }
+                    </span>
+                    <i class="pi blk__tick" [class.pi-check-circle]="selectedBuildings().includes(b.value)" [class.pi-circle]="!selectedBuildings().includes(b.value)"></i>
+                  </button>
+                }
+              </div>
+              <small class="hint">
+                {{ (selectedBuildings().length ? 'users.blocks.selected' : 'users.blocks.allHint') | translate: { n: selectedBuildings().length } }}
+              </small>
+            }
+          </div>
+          @if (floorScoped()) {
+            <div class="field field--full">
+              <label for="uc-floors">{{ 'users.floors' | translate }}</label>
+              <p-multiselect
+                inputId="uc-floors"
+                formControlName="floorIds"
+                [options]="floorOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [placeholder]="'users.selectFloors' | translate"
+                display="chip"
+                [loading]="loadingFloors()"
+                [filter]="floorOptions().length > 8"
+                [showClear]="true"
+                styleClass="w-full"
+              />
+              <small class="hint">{{ 'users.floorsHint' | translate }}</small>
+            </div>
+          }
         }
-      }
-    </div>
-  </p-card>
+      </div>
+    </section>
 
-  <!-- 3. Permissions -->
-  <p-card styleClass="user-section">
-    <ng-template #header>
-      <div class="section-head">
-        <span class="section-step">3</span>
+    <!-- 3. Permissions -->
+    <section class="uc-card">
+      <header class="uc-head">
+        <span class="uc-step">3</span>
         <div>
           <h2>{{ 'perm.title' | translate }}</h2>
           <p>{{ (fullAccess() ? 'perm.adminNote' : 'perm.hint') | translate }}</p>
         </div>
-      </div>
-    </ng-template>
-    @if (!fullAccess()) {
-      <app-permission-matrix [catalog]="catalog()" [(value)]="permissions" [roleForDefaults]="role()" />
-    }
-  </p-card>
+      </header>
+      @if (!fullAccess()) {
+        <app-permission-matrix [catalog]="catalog()" [(value)]="permissions" [roleForDefaults]="role()" />
+      }
+    </section>
+  </div>
 
-  <div class="form-bar">
-    <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" severity="secondary" (onClick)="cancel()" />
+  <!-- Live summary -->
+  <aside class="uc__aside" [attr.aria-label]="'users.summary.title' | translate">
+    <div class="sum">
+      <div class="sum__who">
+        <span class="sum__avatar">{{ initials() }}</span>
+        <div>
+          <strong>{{ displayName() }}</strong>
+          @if (nameValue().trim() && emailValue().trim()) {
+            <small>{{ emailValue().trim() }}</small>
+          }
+        </div>
+      </div>
+
+      <dl class="sum__rows">
+        <div>
+          <dt>{{ 'common.role' | translate }}</dt>
+          <dd>{{ roleLabel() }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'users.col.access' | translate }}</dt>
+          <dd>
+            @if (fullAccess()) {
+              {{ 'users.scope.everything' | translate }}
+            } @else {
+              {{ 'users.summary.branches' | translate: { n: branchCount() } }}
+              · {{ buildingCount() ? ('users.summary.buildings' | translate: { n: buildingCount() }) : ('users.scope.allBuildings' | translate) }}
+              @if (floorScoped() && floorCount() > 0) {
+                · {{ 'users.scope.floors' | translate: { n: floorCount() } }}
+              }
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>{{ 'perm.title' | translate }}</dt>
+          <dd>
+            @if (fullAccess()) {
+              {{ 'users.summary.allScreens' | translate }}
+            } @else {
+              {{ 'users.summary.permCount' | translate: { n: permissions().length, total: totalPermissions() } }}
+            }
+          </dd>
+        </div>
+      </dl>
+
+      <ul class="sum__check">
+        @for (c of checklist(); track c.key) {
+          <li [class.ok]="c.ok">
+            <i [class]="c.ok ? 'pi pi-check-circle' : 'pi pi-circle'"></i> {{ c.key | translate }}
+          </li>
+        }
+      </ul>
+    </div>
+  </aside>
+
+  <div class="uc__bar">
+    <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="cancel()" />
+    <span class="uc__bar-spacer"></span>
+    <p-button type="button" [outlined]="true" icon="pi pi-user-plus" [label]="'users.createAnother' | translate" [disabled]="saving()" (onClick)="submit(true)" />
     <p-button type="submit" icon="pi pi-check" [label]="'users.createUserBtn' | translate" [loading]="saving()" />
   </div>
 </form>

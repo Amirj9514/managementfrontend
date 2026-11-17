@@ -11,11 +11,7 @@
   <div class="layout">
     <div class="layout__main">
       <p-skeleton width="100%" height="6rem" borderRadius="16px" />
-      <div class="tiles">
-        @for (i of skeletons; track i) {
-          <p-skeleton width="100%" height="5.5rem" borderRadius="14px" />
-        }
-      </div>
+      <p-skeleton width="100%" height="14rem" borderRadius="16px" />
     </div>
     <aside class="layout__side"><p-skeleton width="100%" height="18rem" borderRadius="16px" /></aside>
   </div>
@@ -51,122 +47,18 @@
         </div>
       </section>
 
-      <!-- Filters -->
-      <section class="filters">
-        <p-iconfield class="filters__search">
-          <p-inputicon class="pi pi-search" />
-          <input
-            pInputText
-            type="search"
-            [ngModel]="search()"
-            (ngModelChange)="search.set($event)"
-            [placeholder]="'transfer.searchRoom' | translate"
-            [attr.aria-label]="'transfer.searchRoom' | translate"
-            autocomplete="off"
-          />
-        </p-iconfield>
-        @if (buildingOptions().length > 1) {
-          <p-select
-            [options]="buildingOptions()"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="buildingFilter()"
-            (ngModelChange)="buildingFilter.set($event)"
-            [placeholder]="'transfer.allBuildings' | translate"
-            [showClear]="true"
-            styleClass="w-12rem"
-          />
-        }
-        @if (typeOptions().length > 1) {
-          <p-select
-            [options]="typeOptions()"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="typeFilter()"
-            (ngModelChange)="typeFilter.set($event)"
-            [placeholder]="'transfer.allTypes' | translate"
-            [showClear]="true"
-            styleClass="w-12rem"
-          />
-        }
-        <label class="filters__switch" for="tr-only">
-          <p-toggleswitch inputId="tr-only" [ngModel]="onlyAvailable()" (ngModelChange)="onlyAvailable.set($event)" />
-          <span>{{ 'transfer.onlyAvailable' | translate }}</span>
-        </label>
-        <span class="filters__count">{{ 'transfer.availableCount' | translate: { free: availableCount(), total: rooms().length } }}</span>
-      </section>
-
-      <!-- Legend -->
-      <div class="legend" aria-hidden="true">
-        <span><i class="dot dot--ok"></i> {{ 'transfer.legend.free' | translate }}</span>
-        <span><i class="dot dot--sel"></i> {{ 'transfer.legend.selected' | translate }}</span>
-        <span><i class="dot dot--blocked"></i> {{ 'transfer.legend.blocked' | translate }}</span>
-        <span><i class="pi pi-exclamation-triangle legend__warn"></i> {{ 'transfer.legend.small' | translate }}</span>
-      </div>
-
-      <!-- Rooms by building › floor -->
-      @if (groups().length === 0) {
-        <div class="empty">
-          @if (hasFilters()) {
-            <app-empty-state
-              [title]="'transfer.noMatchTitle' | translate"
-              [description]="'transfer.noMatchDesc' | translate"
-              [actionLabel]="'transfer.clearFilters' | translate"
-              (actionClick)="clearFilters()"
-            />
-          } @else {
-            <app-empty-state [title]="'transfer.noRoomsTitle' | translate" [description]="'transfer.noRoomsDesc' | translate" />
-          }
-        </div>
-      } @else {
-        @for (g of groups(); track g.key) {
-          <section class="floor">
-            <header class="floor__head">
-              <h3>
-                <i class="pi pi-building"></i>
-                {{ g.building }}@if (g.floor) { <span class="floor__sep">›</span> {{ g.floor }} }
-              </h3>
-              <span class="floor__free">{{ 'transfer.floorFree' | translate: { free: g.free, total: g.rooms.length } }}</span>
-            </header>
-
-            <div class="tiles">
-              @for (r of g.rooms; track r._id) {
-                <div class="tile-wrap" [pTooltip]="tooltipFor(r)" tooltipPosition="top" [tooltipDisabled]="!tooltipFor(r)">
-                  <button
-                    type="button"
-                    class="tile"
-                    [class.tile--selected]="selectedId() === r._id"
-                    [class.tile--blocked]="!r.selectable"
-                    [class.tile--current]="r.reason === 'current'"
-                    [disabled]="!r.selectable"
-                    [attr.aria-pressed]="selectedId() === r._id"
-                    [attr.aria-label]="r.code + (r.reason ? ' — ' + blockedLabel(r) : '')"
-                    (click)="select(r)"
-                  >
-                    <span class="tile__top">
-                      <span class="tile__code">{{ r.code }}</span>
-                      @if (selectedId() === r._id) {
-                        <i class="pi pi-check-circle tile__check"></i>
-                      } @else if (r.tooSmall && r.selectable) {
-                        <i class="pi pi-exclamation-triangle tile__warn"></i>
-                      }
-                    </span>
-                    <span class="tile__type">{{ r.roomTypeName ?? '' }}</span>
-                    <span class="tile__meta">
-                      <span><i class="pi pi-users"></i> {{ r.capacity.total }}</span>
-                      @if (r.reason) {
-                        <span class="badge" [attr.data-reason]="r.reason">{{ blockedLabel(r) }}</span>
-                      } @else {
-                        <span class="state"><i class="dot dot--{{ r.status }}"></i>{{ 'status.' + r.status | translate }}</span>
-                      }
-                    </span>
-                  </button>
-                </div>
-              }
-            </div>
-          </section>
-        }
-      }
+      <!-- Room picker: same as the check-in step -->
+      <app-unit-picker
+        [units]="units()"
+        [buildings]="pickerBuildings()"
+        [floors]="pickerFloors()"
+        [types]="pickerTypes()"
+        [amenities]="pickerAmenities()"
+        [partySize]="d.guests"
+        unitWord="rooms"
+        [selectedId]="selectedId() ?? undefined"
+        (selectedIdChange)="onPick($event)"
+      />
     </div>
 
     <!-- Summary / confirm -->

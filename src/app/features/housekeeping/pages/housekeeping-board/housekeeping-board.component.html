@@ -1,0 +1,336 @@
+<app-page-header [title]="'nav.housekeeping' | translate" [subtitle]="'hk.subtitle' | translate" />
+
+<div class="hk-toolbar">
+  <div class="hk-toolbar__filters">
+    @if (branches().length > 1) {
+      <p-select
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="_id"
+        [ngModel]="branchId()"
+        (ngModelChange)="onBranchChange($event)"
+        [placeholder]="'bookings.selectBranch' | translate"
+        styleClass="w-12rem"
+      />
+    }
+    @if (buildings().length > 1) {
+      <p-select
+        [options]="buildings()"
+        optionLabel="name"
+        optionValue="id"
+        [ngModel]="buildingId()"
+        (ngModelChange)="buildingId.set($event ?? null)"
+        [showClear]="true"
+        [placeholder]="'hk.allBuildings' | translate"
+        styleClass="w-12rem"
+      />
+    }
+    @if (canAssign() || canVerify()) {
+      <label class="hk-check" for="hk-mine">
+        <p-checkbox inputId="hk-mine" [binary]="true" [ngModel]="onlyMine()" (ngModelChange)="onlyMine.set($event)" />
+        <span>{{ 'hk.myJobs' | translate }}</span>
+      </label>
+    }
+  </div>
+  <div class="hk-toolbar__actions">
+    <p-button
+      icon="pi pi-refresh"
+      [text]="true"
+      severity="secondary"
+      [label]="'hk.refresh' | translate"
+      [loading]="loading()"
+      (onClick)="reload()"
+    />
+    @if (canAssign()) {
+      <p-button icon="pi pi-plus" [label]="'hk.sendRoom' | translate" [outlined]="true" (onClick)="openRequest()" />
+    }
+  </div>
+</div>
+
+@if (isEmpty()) {
+  <app-empty-state
+    icon="lucideSparkles"
+    [title]="'hk.allClearTitle' | translate"
+    [description]="'hk.allClearDescription' | translate"
+  />
+} @else {
+  <div class="hk-board">
+    @for (col of columns(); track col.key) {
+      <section class="hk-col" [class]="'hk-col hk-col--' + col.tone">
+        <header class="hk-col__head">
+          <span class="hk-col__icon"><i [class]="col.icon"></i></span>
+          <div class="hk-col__title">
+            <strong>{{ 'hk.col.' + col.key | translate }}</strong>
+            <small>{{ 'hk.col.' + col.key + 'Hint' | translate }}</small>
+          </div>
+          <span class="hk-col__count">{{ col.tasks.length }}</span>
+        </header>
+
+        @if (col.key === 'todo' && canAssign() && col.tasks.length > 0) {
+          <div class="hk-bulk">
+            <label class="hk-check" for="hk-all">
+              <p-checkbox inputId="hk-all" [binary]="true" [ngModel]="allTodoSelected()" (ngModelChange)="toggleAll($event)" />
+              <span>{{ 'hk.selectAll' | translate }}</span>
+            </label>
+            @if (selected().length > 0) {
+              <p-button
+                size="small"
+                icon="pi pi-user-plus"
+                [label]="'hk.assignSelected' | translate: { count: selected().length }"
+                (onClick)="openAssign(selected())"
+              />
+            }
+          </div>
+        }
+
+        <div class="hk-col__list">
+          @if (loading() && !board()) {
+            @for (i of [1, 2]; track i) {
+              <p-skeleton width="100%" height="7rem" borderRadius="14px" />
+            }
+          } @else {
+            @for (t of col.tasks; track t._id) {
+              <article class="task" [class.task--stale]="isStale(t)" [class.task--mine]="isMine(t)" [class.task--busy]="busyId() === t._id">
+                <div class="task__head">
+                  @if (col.key === 'todo' && canAssign()) {
+                    <p-checkbox [binary]="true" [ngModel]="isSelected(t._id)" (ngModelChange)="toggle(t._id, $event)" [ariaLabel]="t.unitCode" />
+                  }
+                  <span class="task__code">{{ t.unitCode }}</span>
+                  @if (t.roomTypeName) {
+                    <span class="task__type">{{ t.roomTypeName }}</span>
+                  }
+                  <span class="task__spacer"></span>
+                  @if (col.key === 'todo') {
+                    <span class="chip" [class.chip--warn]="isStale(t)">
+                      <i class="pi pi-clock"></i> {{ 'hk.waiting' | translate: { time: waiting(t) } }}
+                    </span>
+                  } @else if (col.key !== 'done') {
+                    <span class="chip chip--status">{{ 'hk.status.' + t.status | translate }}</span>
+                  }
+                </div>
+
+                <span class="task__where">
+                  <i class="pi pi-map-marker"></i>
+                  {{ t.buildingName }}@if (t.floorLabel) { · {{ t.floorLabel }} }
+                </span>
+
+                <div class="task__chips">
+                  <span class="chip chip--soft">{{ 'hk.source.' + t.source | translate }}</span>
+                  @if (t.redoCount > 0) {
+                    <span class="chip chip--danger"><i class="pi pi-replay"></i> {{ 'hk.redo' | translate: { count: t.redoCount } }}</span>
+                  }
+                </div>
+
+                @if (t.cleanerName) {
+                  <span class="task__person">
+                    <i class="pi pi-user"></i>
+                    <span class="task__person-name">{{ t.cleanerName }}</span>
+                    @if (isMine(t)) {
+                      <span class="chip chip--soft">{{ 'hk.you' | translate }}</span>
+                    }
+                  </span>
+                }
+
+                @if (t.status === 'assigned' && t.lastRejectionNote) {
+                  <p class="task__note task__note--danger">{{ 'hk.sentBack' | translate: { note: t.lastRejectionNote } }}</p>
+                }
+                @if (t.status === 'awaiting_verification' && t.cleanerNote) {
+                  <p class="task__note"><strong>{{ 'hk.cleanerNote' | translate }}:</strong> {{ t.cleanerNote }}</p>
+                }
+                @if (t.note && t.status !== 'done') {
+                  <p class="task__note">{{ t.note }}</p>
+                }
+                @if (t.status === 'done' && t.verifiedByName) {
+                  <span class="task__person task__person--ok">
+                    <i class="pi pi-check"></i> {{ 'hk.verifiedBy' | translate: { name: t.verifiedByName } }}
+                  </span>
+                }
+
+                <div class="task__actions">
+                  @switch (t.status) {
+                    @case ('pending') {
+                      @if (canAssign()) {
+                        <p-button size="small" icon="pi pi-user-plus" [label]="'hk.assign' | translate" (onClick)="openAssign([t._id])" />
+                      }
+                    }
+                    @case ('assigned') {
+                      @if (mayWork()) {
+                        <p-button size="small" icon="pi pi-play" [label]="'hk.start' | translate" [disabled]="busyId() !== null" (onClick)="start(t)" />
+                      }
+                      @if (canAssign()) {
+                        <p-button size="small" [text]="true" severity="secondary" icon="pi pi-user-edit" [label]="'hk.reassign' | translate" (onClick)="openAssign([t._id])" />
+                        <p-button size="small" [text]="true" severity="secondary" icon="pi pi-undo" [label]="'hk.unassign' | translate" [disabled]="busyId() !== null" (onClick)="confirmUnassign(t)" />
+                      }
+                    }
+                    @case ('in_progress') {
+                      @if (mayWork()) {
+                        <p-button size="small" severity="success" icon="pi pi-check" [label]="'hk.markCleaned' | translate" [disabled]="busyId() !== null" (onClick)="openCleaned(t)" />
+                      }
+                      @if (canAssign()) {
+                        <p-button size="small" [text]="true" severity="secondary" icon="pi pi-user-edit" [label]="'hk.reassign' | translate" (onClick)="openAssign([t._id])" />
+                      }
+                    }
+                    @case ('awaiting_verification') {
+                      @if (canVerify()) {
+                        <p-button size="small" severity="success" icon="pi pi-verified" [label]="'hk.verify' | translate" [disabled]="busyId() !== null" (onClick)="confirmVerify(t)" />
+                        <p-button size="small" [text]="true" severity="danger" icon="pi pi-replay" [label]="'hk.sendBack' | translate" [disabled]="busyId() !== null" (onClick)="openReject(t)" />
+                      }
+                    }
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p class="hk-col__empty">{{ 'hk.empty' + (col.key === 'todo' ? 'Todo' : col.key === 'working' ? 'Working' : col.key === 'review' ? 'Review' : 'Done') | translate }}</p>
+            }
+          }
+        </div>
+      </section>
+    }
+  </div>
+}
+
+<!-- Give rooms to a cleaner -->
+<p-dialog
+  [header]="'hk.assignHeader' | translate"
+  [visible]="assignOpen()"
+  (visibleChange)="assignOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: 'min(28rem, 100vw)' }"
+>
+  <div class="hk-form">
+    <p class="hk-form__rooms">{{ 'hk.assignRooms' | translate: { rooms: assignRoomCodes() } }}</p>
+    <label for="hk-cleaner">{{ 'hk.cleaner' | translate }}</label>
+    <input
+      pInputText
+      id="hk-cleaner"
+      type="text"
+      maxlength="80"
+      autocomplete="off"
+      [ngModel]="cleanerName()"
+      (ngModelChange)="cleanerName.set($event)"
+      (keydown.enter)="submitAssign()"
+      [placeholder]="'hk.cleanerPlaceholder' | translate"
+    />
+    @if (suggestions().length > 0) {
+      <div class="hk-suggest" role="list" [attr.aria-label]="'hk.recentCleaners' | translate">
+        <span class="hk-suggest__label">{{ 'hk.recentCleaners' | translate }}</span>
+        @for (c of suggestions(); track c.name) {
+          <button type="button" class="hk-suggest__chip" role="listitem" (click)="pickName(c.name)">
+            {{ c.name }}
+            @if (c.openTasks > 0) {
+              <small>{{ c.openTasks }}</small>
+            }
+          </button>
+        }
+      </div>
+    }
+    <label for="hk-assign-note">{{ 'hk.instructions' | translate }}</label>
+    <textarea
+      pTextarea
+      id="hk-assign-note"
+      rows="2"
+      maxlength="300"
+      [ngModel]="assignNote()"
+      (ngModelChange)="assignNote.set($event)"
+      [placeholder]="'hk.instructionsPlaceholder' | translate"
+    ></textarea>
+  </div>
+  <ng-template #footer>
+    <p-button [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="assignOpen.set(false)" />
+    <p-button [label]="'hk.assign' | translate" icon="pi pi-user-plus" [disabled]="!cleanerName().trim()" [loading]="saving()" (onClick)="submitAssign()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Cleaner: room is clean -->
+<p-dialog
+  [header]="'hk.cleanedHeader' | translate"
+  [visible]="!!cleanedTask()"
+  (visibleChange)="$event || cleanedTask.set(null)"
+  [modal]="true"
+  [style]="{ width: 'min(26rem, 100vw)' }"
+>
+  <div class="hk-form">
+    <p class="hk-form__rooms">{{ cleanedTask()?.unitCode }}</p>
+    <label for="hk-cleaned-note">{{ 'hk.cleanedNote' | translate }}</label>
+    <textarea
+      pTextarea
+      id="hk-cleaned-note"
+      rows="3"
+      maxlength="300"
+      [ngModel]="cleanedNote()"
+      (ngModelChange)="cleanedNote.set($event)"
+      [placeholder]="'hk.cleanedNotePlaceholder' | translate"
+    ></textarea>
+  </div>
+  <ng-template #footer>
+    <p-button [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="cleanedTask.set(null)" />
+    <p-button [label]="'hk.markCleaned' | translate" icon="pi pi-check" severity="success" (onClick)="submitCleaned()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Supervisor: send back -->
+<p-dialog
+  [header]="'hk.rejectHeader' | translate"
+  [visible]="!!rejectTask()"
+  (visibleChange)="$event || rejectTask.set(null)"
+  [modal]="true"
+  [style]="{ width: 'min(26rem, 100vw)' }"
+>
+  <div class="hk-form">
+    <p class="hk-form__rooms">{{ rejectTask()?.unitCode }}</p>
+    <label for="hk-reject-note">{{ 'hk.rejectReason' | translate }}</label>
+    <textarea
+      pTextarea
+      id="hk-reject-note"
+      rows="3"
+      maxlength="300"
+      [ngModel]="rejectNote()"
+      (ngModelChange)="rejectNote.set($event)"
+      [placeholder]="'hk.rejectPlaceholder' | translate"
+    ></textarea>
+  </div>
+  <ng-template #footer>
+    <p-button [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="rejectTask.set(null)" />
+    <p-button [label]="'hk.sendBack' | translate" icon="pi pi-replay" severity="danger" [disabled]="!rejectNote().trim()" (onClick)="submitReject()" />
+  </ng-template>
+</p-dialog>
+
+<!-- Manual: send an available room for cleaning -->
+<p-dialog
+  [header]="'hk.requestHeader' | translate"
+  [visible]="requestOpen()"
+  (visibleChange)="requestOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: 'min(26rem, 100vw)' }"
+>
+  <div class="hk-form">
+    <p class="hk-form__hint">{{ 'hk.requestHint' | translate }}</p>
+    <label for="hk-room">{{ 'hk.room' | translate }}</label>
+    <p-select
+      inputId="hk-room"
+      [options]="roomOptions()"
+      optionLabel="label"
+      optionValue="id"
+      [ngModel]="requestRoomId()"
+      (ngModelChange)="requestRoomId.set($event)"
+      [filter]="true"
+      [placeholder]="'hk.roomPlaceholder' | translate"
+      appendTo="body"
+      styleClass="w-full"
+    />
+    <label for="hk-request-note">{{ 'hk.reason' | translate }}</label>
+    <textarea
+      pTextarea
+      id="hk-request-note"
+      rows="2"
+      maxlength="300"
+      [ngModel]="requestNote()"
+      (ngModelChange)="requestNote.set($event)"
+      [placeholder]="'hk.reasonPlaceholder' | translate"
+    ></textarea>
+  </div>
+  <ng-template #footer>
+    <p-button [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="requestOpen.set(false)" />
+    <p-button [label]="'hk.send' | translate" icon="pi pi-send" [disabled]="!requestRoomId()" [loading]="saving()" (onClick)="submitRequest()" />
+  </ng-template>
+</p-dialog>

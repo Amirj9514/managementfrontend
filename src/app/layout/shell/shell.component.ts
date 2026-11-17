@@ -1,6 +1,7 @@
 import { AsyncPipe } from '@angular/common';
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { MenuItem } from 'primeng/api';
@@ -51,12 +52,30 @@ export class ShellComponent {
     this.auth.ensureFresh().subscribe(() => announcements.start());
     inject(DestroyRef).onDestroy(() => announcements.stop());
 
+    // On a small laptop the full sidebar eats a third of the screen: use the icon rail there. Following
+    // the window means resizing across the line adjusts it, and the toggle button still overrides.
+    const compact = inject(DOCUMENT).defaultView?.matchMedia('(max-width: 1099px)');
+    if (compact) {
+      this.sidebarCollapsed.set(compact.matches);
+      const onChange = (e: MediaQueryListEvent) => this.sidebarCollapsed.set(e.matches);
+      compact.addEventListener('change', onChange);
+      inject(DestroyRef).onDestroy(() => compact.removeEventListener('change', onChange));
+    }
+
     // Only the shell's main area scrolls while signed in (see body.has-shell in _layout.scss).
     const body = inject(DOCUMENT).body;
     body.classList.add('has-shell');
     inject(DestroyRef).onDestroy(() => body.classList.remove('has-shell'));
   }
-  readonly navGroups = NAV_GROUPS;
+  private readonly userSignal = toSignal(this.auth.user$, { initialValue: null });
+
+  /** Only groups the signed-in user can actually open — a heading with nothing under it is never shown. */
+  readonly visibleGroups = computed(() => {
+    const user = this.userSignal();
+    return NAV_GROUPS.map((g) => ({ label: g.label, items: this.filteredItems(g.items, user) })).filter(
+      (g) => g.items.length > 0,
+    );
+  });
   readonly sidebarCollapsed = signal(false);
   readonly mobileDrawerOpen = signal(false);
 

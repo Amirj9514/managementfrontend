@@ -28,12 +28,11 @@ import { BranchesApiService } from '../../../branches/services/branches-api.serv
 import { CHECKOUT_DICTIONARY } from '../../checkout.dictionary';
 import { CheckoutApiService, type CheckoutUnitRow } from '../../services/checkout-api.service';
 
-type BoardTab = 'all' | 'arrivals' | 'inHouse' | 'checkedOut' | 'cancelled';
+type BoardTab = 'all' | 'arrivals' | 'checkedOut' | 'cancelled';
 
 const TAB_STATUS: Record<BoardTab, string> = {
   all: 'reserved,checked_in,checked_out,cancelled,no_show',
   arrivals: 'reserved',
-  inHouse: 'checked_in',
   checkedOut: 'checked_out',
   cancelled: 'cancelled,no_show',
 };
@@ -86,7 +85,6 @@ export class CheckoutBoardComponent {
   readonly tabOptions = computed(() => [
     { label: this.i18n.t('checkout.tab.all'), value: 'all' as BoardTab },
     { label: this.i18n.t('checkout.tab.arrivals'), value: 'arrivals' as BoardTab },
-    { label: this.i18n.t('checkout.tab.inHouse'), value: 'inHouse' as BoardTab },
     { label: this.i18n.t('checkout.tab.checkedOut'), value: 'checkedOut' as BoardTab },
     { label: this.i18n.t('checkout.tab.cancelled'), value: 'cancelled' as BoardTab },
   ]);

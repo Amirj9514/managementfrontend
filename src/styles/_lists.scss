@@ -1,0 +1,130 @@
+/*
+ * List screens — one modern, quiet look for every table, filter bar and pager in the app.
+ *
+ * It restyles PrimeNG's own table / card / toolbar / paginator, so screens get it for free and any
+ * new list looks the same. (PrimeNG injects its CSS at runtime, after this file, so selectors are
+ * prefixed with `body` to win on specificity instead of using !important.)
+ */
+
+// ---- cards that hold a list: flush, rounded, softly outlined
+body .p-card:not(:has(.p-card-title)):has(> .p-card-body > .p-card-content > p-table),
+body .p-card:not(:has(.p-card-title)):has(> .p-card-body > .p-card-content > .p-datatable) {
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 16px;
+  background: var(--app-surface-elevated);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  overflow: hidden;
+
+  > .p-card-body {
+    padding: 0;
+    gap: 0;
+
+    > .p-card-content {
+      padding: 0;
+    }
+  }
+}
+
+// ---- the table
+body .p-datatable {
+  --list-row-pad: 0.85rem 1rem;
+
+  .p-datatable-table-container {
+    overflow-x: auto;
+  }
+
+  .p-datatable-thead > tr > th {
+    padding: 0.7rem 1rem;
+    background: var(--p-content-hover-background);
+    color: var(--app-text-muted);
+    border: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+    border-radius: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .p-datatable-tbody > tr {
+    background: transparent;
+    transition: background 0.12s ease;
+
+    > td {
+      padding: var(--list-row-pad);
+      border: 0;
+      border-bottom: 1px solid var(--app-border-subtle);
+      vertical-align: middle;
+    }
+
+    &:last-child > td {
+      border-bottom: 0;
+    }
+  }
+
+  &.p-datatable-hoverable .p-datatable-tbody > tr:not(.p-datatable-row-selected):hover,
+  .p-datatable-tbody > tr:hover {
+    background: color-mix(in srgb, var(--p-primary-color) 4%, transparent);
+  }
+
+  // PrimeNG's "small" variant just tightens the rows a little
+  &.p-datatable-sm,
+  .p-datatable-sm & {
+    --list-row-pad: 0.7rem 1rem;
+  }
+
+  .p-datatable-empty-message td {
+    padding: 2rem 1rem;
+  }
+}
+
+// Urdu (Nastaliq) needs more line-height and a lighter weight to avoid clipped letterforms.
+[dir='rtl'] body .p-datatable .p-datatable-thead > tr > th,
+body[dir='rtl'] .p-datatable .p-datatable-thead > tr > th {
+  font-weight: 500;
+  font-size: 0.9rem;
+  line-height: 2.2;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+// ---- the filter bar above a list
+body .p-toolbar {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 14px;
+  background: var(--app-surface-elevated);
+  box-shadow: none;
+  gap: 0.75rem;
+}
+
+// ---- the pager under a list
+body .p-paginator {
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--app-border-subtle);
+  border-radius: 0;
+  gap: 0.25rem;
+
+  .p-paginator-page,
+  .p-paginator-first,
+  .p-paginator-prev,
+  .p-paginator-next,
+  .p-paginator-last {
+    border-radius: 10px;
+    min-width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .p-paginator-current {
+    color: var(--app-text-muted);
+    font-size: 0.8125rem;
+  }
+}
+
+// ---- empty-state boxes inside a list card breathe a little
+body .p-card .app-empty-state {
+  padding: 2rem 1rem;
+}

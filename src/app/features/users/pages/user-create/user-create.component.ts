@@ -1,20 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-  type ValidationErrors,
-} from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators, type ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
-import { Card } from 'primeng/card';
 import { InputText } from 'primeng/inputtext';
 import { MultiSelect } from 'primeng/multiselect';
-import { Password } from 'primeng/password';
-import { Select } from 'primeng/select';
 import { Subject, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
@@ -23,6 +14,7 @@ import { floorRowId } from '../../../../core/models/floor-admin.model';
 import { hasFullAccess, type PermissionCatalog } from '../../../../core/models/permissions.model';
 import { STAFF_ROLE_OPTIONS, isFloorScopedRole } from '../../../../core/models/roles.model';
 import type { UserCreateRequest } from '../../../../core/models/user-admin.model';
+import { AuthService } from '../../../../core/services/auth.service';
 import { PermissionsApiService } from '../../../../core/services/permissions-api.service';
 import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
@@ -38,6 +30,19 @@ interface Option {
   value: string;
 }
 
+/** Icon shown on each role card. */
+const ROLE_ICONS: Record<string, string> = {
+  super_admin: 'pi-shield',
+  admin: 'pi-key',
+  branch_admin: 'pi-building',
+  building_admin: 'pi-home',
+  booking_admin: 'pi-calendar',
+  employee_admin: 'pi-briefcase',
+  front_desk: 'pi-desktop',
+  housekeeping: 'pi-sparkles',
+  staff: 'pi-user',
+};
+
 /** Non-admin roles need at least one branch, otherwise the user could not reach anything. */
 function scopeValidator(group: AbstractControl): ValidationErrors | null {
   const role = group.get('role')?.value as string | null;
@@ -45,25 +50,35 @@ function scopeValidator(group: AbstractControl): ValidationErrors | null {
   return !hasFullAccess(role) && branchIds.length === 0 ? { branchRequired: true } : null;
 }
 
-function passwordsMatch(group: AbstractControl): ValidationErrors | null {
-  const pw = group.get('password')?.value as string | null;
-  const confirm = group.get('confirmPassword')?.value as string | null;
-  return pw && confirm && pw !== confirm ? { passwordMismatch: true } : null;
+/** A readable 12-character password with upper/lower case, digits and a symbol (no look-alike letters). */
+function generatePassword(): string {
+  const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?'];
+  const all = sets.join('');
+  const rnd = (max: number) => {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] % max;
+  };
+  const chars = sets.map((s) => s[rnd(s.length)]);
+  while (chars.length < 12) chars.push(all[rnd(all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = rnd(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
 }
 
 /**
- * Full-page "new user" screen: account details, role + access scope (branches, buildings, floors),
- * and the per-screen permission grid, saved together in one request.
+ * Full-page "new user" screen: account details, role + access scope (branches, buildings, floors) and the
+ * per-screen permission grid, saved together in one request. A live summary on the side shows exactly what
+ * is about to be created, and "Create and add another" keeps the role and branch for the next person.
  */
 @Component({
   selector: 'app-user-create',
   imports: [
     ReactiveFormsModule,
-    Card,
     Button,
     InputText,
-    Password,
-    Select,
     MultiSelect,
     PageHeaderComponent,
     FieldErrorComponent,
@@ -78,6 +93,7 @@ export class UserCreateComponent {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly messages = inject(MessageService);
+  private readonly auth = inject(AuthService);
   private readonly usersApi = inject(UsersApiService);
   private readonly branchesApi = inject(BranchesApiService);
   private readonly buildingsApi = inject(BuildingsApiService);
@@ -90,19 +106,20 @@ export class UserCreateComponent {
       name: [''],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
-      confirmPassword: ['', Validators.required],
       role: ['front_desk', Validators.required],
       branchIds: [[] as string[]],
       buildingIds: [[] as string[]],
       floorIds: [[] as string[]],
     },
-    { validators: [scopeValidator, passwordsMatch] },
+    { validators: [scopeValidator] },
   );
 
   readonly catalog = signal<PermissionCatalog | null>(null);
   readonly permissions = signal<string[]>([]);
   readonly saving = signal(false);
   readonly submitted = signal(false);
+  readonly showPassword = signal(false);
+  readonly copied = signal(false);
 
   readonly branchOptions = signal<Option[]>([]);
   readonly buildingOptions = signal<Option[]>([]);
@@ -110,26 +127,96 @@ export class UserCreateComponent {
   readonly loadingBuildings = signal(false);
   readonly loadingFloors = signal(false);
 
-  /** Re-render hook: the role drives which sections show, and a plain form read isn't reactive. */
+  /** Mirrors of form values so the summary and password meter re-render (OnPush-safe). */
   readonly role = signal<string>('front_desk');
+  readonly nameValue = signal('');
+  readonly emailValue = signal('');
+  readonly passwordValue = signal('');
+  readonly branchCount = signal(0);
+  readonly buildingCount = signal(0);
+  readonly selectedBuildings = signal<string[]>([]);
+  readonly floorCount = signal(0);
+
   readonly fullAccess = computed(() => hasFullAccess(this.role()));
   readonly floorScoped = computed(() => isFloorScopedRole(this.role()));
 
-  readonly roleOptions = computed(() => {
+  /** Only a super admin can create admins; everyone else here can create the staff roles. */
+  private readonly canCreateAdmins = this.auth.hasAnyRole(['super_admin']);
+
+  readonly roleCards = computed(() => {
     this.i18n.currentLang();
-    return STAFF_ROLE_OPTIONS.map((o) => ({ ...o, label: this.i18n.t('role.' + o.value) }));
+    return STAFF_ROLE_OPTIONS.filter((o) => this.canCreateAdmins || !hasFullAccess(o.value)).map((o) => ({
+      value: o.value as string,
+      icon: ROLE_ICONS[o.value] ?? 'pi-user',
+      label: this.i18n.t('role.' + o.value),
+      hint: this.i18n.t('users.roleHint.' + o.value),
+    }));
   });
-  readonly roleHint = computed(() => {
+  readonly roleLabel = computed(() => {
     this.i18n.currentLang();
-    const key = `users.roleHint.${this.role()}`;
-    const text = this.i18n.t(key);
-    return text === key ? '' : text;
+    return this.i18n.t('role.' + this.role());
+  });
+
+  /** Blocks as cards: "Branch › Block" option labels split into a title and a sub-line. */
+  readonly buildingCards = computed(() =>
+    this.buildingOptions().map((o) => {
+      const i = o.label.lastIndexOf(' › ');
+      return { value: o.value, name: i >= 0 ? o.label.slice(i + 3) : o.label, branch: i >= 0 ? o.label.slice(0, i) : '' };
+    }),
+  );
+
+  readonly totalPermissions = computed(() => this.catalog()?.modules.reduce((n, m) => n + m.actions.length, 0) ?? 0);
+
+  /** 0–4: length, mixed case, digit, symbol. */
+  readonly strength = computed(() => {
+    const p = this.passwordValue();
+    if (!p) return 0;
+    let score = 0;
+    if (p.length >= 8) score++;
+    if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score++;
+    if (/\d/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p) && p.length >= 8) score++;
+    return p.length < 8 ? Math.min(score, 1) : score;
+  });
+  readonly strengthKey = computed(() => ['', 'users.pw.weak', 'users.pw.fair', 'users.pw.good', 'users.pw.strong'][this.strength()] || 'users.pw.weak');
+
+  /** What is still missing before "Create" can succeed. */
+  readonly checklist = computed(() => {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.emailValue().trim());
+    const items = [
+      { key: 'users.check.email', ok: emailOk },
+      { key: 'users.check.password', ok: this.passwordValue().length >= 8 },
+    ];
+    if (!this.fullAccess()) items.push({ key: 'users.check.branch', ok: this.branchCount() > 0 });
+    return items;
+  });
+  readonly ready = computed(() => this.checklist().every((c) => c.ok));
+
+  readonly displayName = computed(() => this.nameValue().trim() || this.emailValue().trim() || this.i18n.t('users.summary.newPerson'));
+  readonly initials = computed(() => {
+    const base = this.nameValue().trim() || this.emailValue().trim();
+    const parts = base.split(/[\s@.]+/).filter(Boolean);
+    return base ? ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[1][0] : '')).toUpperCase() : '?';
   });
 
   private readonly floorRefresh$ = new Subject<void>();
 
   constructor() {
     this.i18n.register(USERS_DICTIONARY);
+
+    const f = this.form.controls;
+    f.name.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => this.nameValue.set(v ?? ''));
+    f.email.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => this.emailValue.set(v ?? ''));
+    f.password.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      this.passwordValue.set(v ?? '');
+      this.copied.set(false);
+    });
+    f.branchIds.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => this.branchCount.set(v?.length ?? 0));
+    f.buildingIds.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      this.buildingCount.set(v?.length ?? 0);
+      this.selectedBuildings.set(v ?? []);
+    });
+    f.floorIds.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => this.floorCount.set(v?.length ?? 0));
 
     this.permissionsApi.getCatalog().subscribe({
       next: (cat) => {
@@ -142,22 +229,20 @@ export class UserCreateComponent {
       next: ({ items }) => {
         this.branchOptions.set(items.map((b) => ({ label: b.name, value: b._id })));
         // A single branch is the only sensible choice — preselect it.
-        if (items.length === 1) this.form.controls.branchIds.setValue([items[0]._id]);
+        if (items.length === 1) f.branchIds.setValue([items[0]._id]);
       },
     });
 
     // Role → starting permissions, and clear access scope for roles that don't use it.
-    this.form.controls.role.valueChanges.pipe(takeUntilDestroyed()).subscribe((role) => {
+    f.role.valueChanges.pipe(takeUntilDestroyed()).subscribe((role) => {
       this.role.set(role ?? '');
       this.permissions.set(this.defaultsFor(role));
-      if (hasFullAccess(role)) {
-        this.form.patchValue({ branchIds: [], buildingIds: [], floorIds: [] });
-      }
+      if (hasFullAccess(role)) this.form.patchValue({ branchIds: [], buildingIds: [], floorIds: [] });
       this.floorRefresh$.next();
     });
 
     // Branches → the buildings inside them.
-    this.form.controls.branchIds.valueChanges
+    f.branchIds.valueChanges
       .pipe(
         switchMap((ids) => {
           this.loadingBuildings.set(true);
@@ -168,14 +253,12 @@ export class UserCreateComponent {
       .subscribe((options) => {
         this.loadingBuildings.set(false);
         this.buildingOptions.set(options);
-        this.keepOnly(this.form.controls.buildingIds, options);
+        this.keepOnly(f.buildingIds, options);
         this.floorRefresh$.next();
       });
 
     // Buildings (or the chosen subset of them) → the floors inside them.
-    this.form.controls.buildingIds.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.floorRefresh$.next());
+    f.buildingIds.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.floorRefresh$.next());
 
     this.floorRefresh$
       .pipe(
@@ -189,7 +272,7 @@ export class UserCreateComponent {
       .subscribe((options) => {
         this.loadingFloors.set(false);
         this.floorOptions.set(options);
-        this.keepOnly(this.form.controls.floorIds, options);
+        this.keepOnly(f.floorIds, options);
       });
   }
 
@@ -228,19 +311,49 @@ export class UserCreateComponent {
     return forkJoin(
       targets.map((b) =>
         this.floorsApi.list(b.value, 1, 100, 'active').pipe(
-          map(({ items }) => items.map((f) => ({ label: `${b.label} › ${f.label}`, value: floorRowId(f) }))),
+          map(({ items }) => items.map((fl) => ({ label: `${b.label} › ${fl.label}`, value: floorRowId(fl) }))),
         ),
       ),
     ).pipe(map((groups) => groups.flat()));
   }
 
-  showError(name: 'email' | 'password' | 'confirmPassword'): boolean {
-    const c = this.form.controls[name];
-    return c.invalid && (c.touched || this.submitted());
+  // --- password helpers
+  generate(): void {
+    this.form.controls.password.setValue(generatePassword());
+    this.form.controls.password.markAsDirty();
+    this.showPassword.set(true);
   }
 
-  get mismatch(): boolean {
-    return this.form.hasError('passwordMismatch') && (this.form.controls.confirmPassword.touched || this.submitted());
+  async copyPassword(): Promise<void> {
+    const pw = this.form.controls.password.value;
+    if (!pw) return;
+    try {
+      await navigator.clipboard.writeText(pw);
+      this.copied.set(true);
+    } catch {
+      // Clipboard blocked (e.g. http): reveal the password so it can be copied by hand.
+      this.showPassword.set(true);
+    }
+  }
+
+  toggleBuilding(value: string): void {
+    const ctrl = this.form.controls.buildingIds;
+    const cur = ctrl.value ?? [];
+    ctrl.setValue(cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value]);
+    ctrl.markAsDirty();
+  }
+
+  clearBuildings(): void {
+    this.form.controls.buildingIds.setValue([]);
+  }
+
+  pickRole(value: string): void {
+    this.form.controls.role.setValue(value);
+  }
+
+  showError(name: 'email' | 'password'): boolean {
+    const c = this.form.controls[name];
+    return c.invalid && (c.touched || this.submitted());
   }
 
   get branchMissing(): boolean {
@@ -251,7 +364,7 @@ export class UserCreateComponent {
     void this.router.navigate(['/users']);
   }
 
-  submit(): void {
+  submit(addAnother = false): void {
     this.submitted.set(true);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -275,13 +388,21 @@ export class UserCreateComponent {
     this.saving.set(true);
     this.usersApi.create(body).subscribe({
       next: () => {
-        this.messages.add({
-          severity: 'success',
-          summary: this.i18n.t('users.toast.userCreated'),
-          detail: body.email,
-        });
-        void this.router.navigate(['/users']);
+        this.messages.add({ severity: 'success', summary: this.i18n.t('users.toast.userCreated'), detail: body.email });
+        this.saving.set(false);
+        if (addAnother) {
+          // Keep role, branch and permissions: onboarding several people with the same job is the common case.
+          this.form.patchValue({ name: '', email: '', password: '' });
+          this.form.controls.email.markAsUntouched();
+          this.form.controls.password.markAsUntouched();
+          this.submitted.set(false);
+          this.showPassword.set(false);
+          document.querySelector('.app-shell__main')?.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          void this.router.navigate(['/users']);
+        }
       },
+      // The error toast already says why (e.g. email already in use); stay on the form to fix it.
       error: () => this.saving.set(false),
     });
   }

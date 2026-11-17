@@ -77,48 +77,21 @@
   }
 </div>
 
-<p-drawer [header]="'guestPicker.newGuest' | translate" [(visible)]="newGuestVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
-  <form [formGroup]="newGuestForm" (ngSubmit)="submitNewGuest()">
-    <p-fluid>
-      <div class="field mb-3">
-        <label for="gp-fullname">{{ 'common.fullName' | translate }}</label>
-        <input pInputText id="gp-fullname" formControlName="fullName" autocomplete="off" />
-        <app-field-error [control]="newGuestForm.controls.fullName" [label]="'common.fullName' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="gp-email">{{ 'common.email' | translate }}</label>
-        <input pInputText id="gp-email" type="email" formControlName="email" autocomplete="off" />
-        <app-field-error [control]="newGuestForm.controls.email" [label]="'common.email' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="gp-phone">{{ 'common.phone' | translate }}</label>
-        <input pInputText id="gp-phone" formControlName="phone" autocomplete="off" />
-      </div>
-      <div class="field mb-3">
-        <label for="gp-cnic">{{ 'common.cnic' | translate }}</label>
-        <input pInputText id="gp-cnic" formControlName="cnic" autocomplete="off" />
-        <app-field-error [control]="newGuestForm.controls.cnic" [label]="'common.cnic' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="gp-address">{{ 'common.address' | translate }}</label>
-        <input pInputText id="gp-address" formControlName="address" autocomplete="off" />
-      </div>
-      <app-country-state-fields idPrefix="gp" [countryControl]="newGuestForm.controls.country"
-        [stateControl]="newGuestForm.controls.state" />
-      <div class="field mb-3">
-        <label for="gp-dob">{{ 'common.dob' | translate }}</label>
-        <p-datepicker id="gp-dob" formControlName="dateOfBirth" [showIcon]="true" dateFormat="yy-mm-dd" [maxDate]="today"
-          appendTo="body" />
-      </div>
-      <div class="field mb-3">
-        <label for="gp-notes">{{ 'common.notes' | translate }}</label>
-        <textarea pTextarea id="gp-notes" formControlName="notes" rows="3" style="width: 100%"></textarea>
-      </div>
-
-      <div class="flex justify-content-end gap-2">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="newGuestVisible.set(false)" />
-        <p-button type="submit" [label]="'guestPicker.createGuest' | translate" [loading]="saving()" />
-      </div>
-    </p-fluid>
+<p-drawer
+  [header]="'guestPicker.newGuest' | translate"
+  [(visible)]="newGuestVisible"
+  position="right"
+  [style]="{ width: 'min(46rem, 100vw)' }"
+  styleClass="gp-drawer"
+>
+  <form class="gp-form" [formGroup]="newGuestForm" (ngSubmit)="submitNewGuest()">
+    <app-guest-form [form]="newGuestForm" idPrefix="gp" />
+    <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
   </form>
+  <ng-template #footer>
+    <div class="gp-footer">
+      <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="newGuestVisible.set(false)" />
+      <p-button type="button" icon="pi pi-check" [label]="'guestPicker.createGuest' | translate" [loading]="saving()" (onClick)="submitNewGuest()" />
+    </div>
+  </ng-template>
 </p-drawer>

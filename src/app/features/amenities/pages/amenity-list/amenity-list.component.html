@@ -1,71 +1,274 @@
-<app-page-header [title]="'nav.amenities' | translate" [subtitle]="'amenities.subtitle' | translate" />
+<app-page-header [title]="'nav.amenities' | translate" [subtitle]="'amenities.subtitle' | translate">
+  <p-button actions *appCan="'amenities.create'" [label]="'amenities.newAmenity' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
+</app-page-header>
 
-<p-toolbar styleClass="mb-4">
-  <ng-template #start>
-    <p-button *appCan="'amenities.create'" [label]="'amenities.newAmenity' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
-  </ng-template>
-</p-toolbar>
+<!-- At a glance -->
+<div class="am-stats">
+  <div class="am-stat">
+    <span class="am-stat__icon am-stat__icon--all"><i class="pi pi-tags"></i></span>
+    <div><strong>{{ stats().total }}</strong><small>{{ 'amenities.stat.total' | translate }}</small></div>
+  </div>
+  <div class="am-stat">
+    <span class="am-stat__icon am-stat__icon--ok"><i class="pi pi-check-circle"></i></span>
+    <div><strong>{{ stats().active }}</strong><small>{{ 'status.active' | translate }}</small></div>
+  </div>
+  <div class="am-stat">
+    <span class="am-stat__icon am-stat__icon--off"><i class="pi pi-eye-slash"></i></span>
+    <div><strong>{{ stats().inactive }}</strong><small>{{ 'status.inactive' | translate }}</small></div>
+  </div>
+  <div class="am-stat">
+    <span class="am-stat__icon am-stat__icon--warn"><i class="pi pi-inbox"></i></span>
+    <div><strong>{{ stats().unused }}</strong><small>{{ 'amenities.stat.unused' | translate }}</small></div>
+  </div>
+</div>
 
-<p-card>
-  @if (!loading() && rows().length === 0) {
-    <app-empty-state [title]="'amenities.empty.title' | translate" [description]="'amenities.empty.description' | translate"
-      [actionLabel]="canCreate() ? ('amenities.newAmenity' | translate) : undefined" (actionClick)="openCreate()" />
-  } @else {
-    <p-table [value]="rows()" [loading]="loading()" dataKey="_id">
+<!-- Search, filters, view -->
+<div class="am-toolbar">
+  <p-iconfield class="am-toolbar__search">
+    <p-inputicon class="pi pi-search" />
+    <input
+      pInputText
+      type="search"
+      autocomplete="off"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)"
+      [placeholder]="'amenities.searchPlaceholder' | translate"
+      [attr.aria-label]="'amenities.searchPlaceholder' | translate"
+    />
+  </p-iconfield>
+  <p-selectbutton
+    [options]="statusOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="status()"
+    (ngModelChange)="status.set($event ?? 'all')"
+    [allowEmpty]="false"
+    size="small"
+  />
+  @if (categories().length > 0) {
+    <p-select
+      [options]="categoryOptions()"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="category()"
+      (ngModelChange)="category.set($event ?? null)"
+      [showClear]="true"
+      [placeholder]="'amenities.allCategories' | translate"
+      styleClass="w-12rem"
+    />
+  }
+  @if (hasFilters()) {
+    <p-button [text]="true" size="small" icon="pi pi-filter-slash" [label]="'amenities.clearFilters' | translate" (onClick)="clearFilters()" />
+  }
+  <span class="am-toolbar__spacer"></span>
+  <p-selectbutton [options]="viewOptions" optionLabel="icon" optionValue="value" [ngModel]="view()" (ngModelChange)="setView($event)" [allowEmpty]="false" size="small">
+    <ng-template #item let-item>
+      <i [class]="item.icon" [attr.aria-label]="item.aria | translate"></i>
+    </ng-template>
+  </p-selectbutton>
+</div>
+
+<!-- One-click starters -->
+@if (canCreate() && !loading() && presets().length > 0) {
+  <section class="am-presets" [attr.aria-label]="'amenities.quickAdd' | translate">
+    <span class="am-presets__label"><i class="pi pi-bolt"></i> {{ 'amenities.quickAdd' | translate }}</span>
+    @for (p of presets(); track p.name) {
+      <button type="button" class="am-presets__chip" [disabled]="busyId() !== null" (click)="quickAdd(p)">
+        <i [class]="p.icon"></i> {{ p.name }} <i class="pi pi-plus am-presets__plus"></i>
+      </button>
+    }
+  </section>
+}
+
+@if (loading()) {
+  <div class="am-grid">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton width="100%" height="8.5rem" borderRadius="16px" />
+    }
+  </div>
+} @else if (rows().length === 0) {
+  <app-empty-state
+    icon="lucideTag"
+    [title]="'amenities.empty.title' | translate"
+    [description]="'amenities.empty.description' | translate"
+    [actionLabel]="canCreate() ? ('amenities.newAmenity' | translate) : undefined"
+    (actionClick)="openCreate()"
+  />
+} @else if (filtered().length === 0) {
+  <app-empty-state
+    icon="lucideTag"
+    [title]="'amenities.noMatch.title' | translate"
+    [description]="'amenities.noMatch.description' | translate"
+    [actionLabel]="'amenities.clearFilters' | translate"
+    (actionClick)="clearFilters()"
+  />
+} @else if (view() === 'grid') {
+  @for (g of groups(); track g.key) {
+    <section class="am-group">
+      <h3 class="am-group__title">
+        {{ g.key || ('amenities.uncategorised' | translate) }}
+        <span>{{ g.items.length }}</span>
+      </h3>
+      <div class="am-grid">
+        @for (a of g.items; track a._id) {
+          <article class="am-card" [class.am-card--off]="!a.active" [class.am-card--busy]="busyId() === a._id">
+            <div class="am-card__top">
+              <span class="am-card__icon"><i [class]="iconOf(a)"></i></span>
+              <div class="am-card__title">
+                <strong>{{ a.name }}</strong>
+                <small>
+                  <i [class]="a.branchId ? 'pi pi-building' : 'pi pi-globe'"></i> {{ scopeText(a) }}
+                </small>
+              </div>
+              <p-toggleswitch
+                *appCan="'amenities.edit'"
+                [ngModel]="a.active"
+                (ngModelChange)="toggleActive(a, $event)"
+                [disabled]="busyId() !== null"
+                [attr.aria-label]="'status.active' | translate"
+              />
+            </div>
+            <div class="am-card__meta">
+              <span class="am-pill" [class.am-pill--muted]="!(a.usage?.rooms || a.usage?.halls)">
+                <i class="pi pi-door-open"></i> {{ usageText(a) }}
+              </span>
+              @if (!a.active) {
+                <span class="am-pill am-pill--off">{{ 'status.inactive' | translate }}</span>
+              }
+            </div>
+            <div class="am-card__actions">
+              <p-button *appCan="'amenities.edit'" size="small" [text]="true" icon="pi pi-pencil" [label]="'common.edit' | translate" (onClick)="openEdit(a)" />
+              <p-button *appCan="'amenities.delete'" size="small" [text]="true" severity="danger" icon="pi pi-trash" [label]="'common.delete' | translate" [disabled]="busyId() !== null" (onClick)="remove(a)" />
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+} @else {
+  <div class="am-table">
+    <p-table [value]="filtered()" dataKey="_id" [rowHover]="true" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '46rem' }">
       <ng-template #header>
         <tr>
           <th>{{ 'common.name' | translate }}</th>
           <th>{{ 'amenities.category' | translate }}</th>
+          <th>{{ 'amenities.scope' | translate }}</th>
+          <th>{{ 'amenities.usedIn' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
-          <th *appCan="['amenities.edit', 'amenities.delete']" style="width: 6rem"></th>
+          <th *appCan="['amenities.edit', 'amenities.delete']" class="am-table__actions"></th>
         </tr>
       </ng-template>
-      <ng-template #body let-row>
-        <tr>
-          <td class="font-medium">{{ row.name }}</td>
-          <td>{{ row.category || '—' }}</td>
+      <ng-template #body let-a>
+        <tr [class.am-row--off]="!a.active">
           <td>
-            @if (row.active) {
-              <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
-            } @else {
-              <p-tag [value]="'status.inactive' | translate" severity="secondary" [rounded]="true" />
-            }
+            <span class="am-name"><span class="am-name__icon"><i [class]="iconOf(a)"></i></span> {{ a.name }}</span>
           </td>
-          <td *appCan="['amenities.edit', 'amenities.delete']" style="text-align: right">
-            <p-button *appCan="'amenities.edit'" icon="pi pi-pencil" [text]="true" [rounded]="true" (onClick)="openEdit(row)" />
-            <p-button *appCan="'amenities.delete'" icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" (onClick)="remove(row)" />
+          <td>{{ a.category || '—' }}</td>
+          <td>{{ scopeText(a) }}</td>
+          <td>{{ usageText(a) }}</td>
+          <td>
+            <p-toggleswitch
+              *appCan="'amenities.edit'"
+              [ngModel]="a.active"
+              (ngModelChange)="toggleActive(a, $event)"
+              [disabled]="busyId() !== null"
+              [attr.aria-label]="'status.active' | translate"
+            />
+          </td>
+          <td *appCan="['amenities.edit', 'amenities.delete']" class="am-table__actions">
+            <p-button *appCan="'amenities.edit'" icon="pi pi-pencil" [text]="true" [rounded]="true" [ariaLabel]="'common.edit' | translate" (onClick)="openEdit(a)" />
+            <p-button *appCan="'amenities.delete'" icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" [ariaLabel]="'common.delete' | translate" [disabled]="busyId() !== null" (onClick)="remove(a)" />
           </td>
         </tr>
       </ng-template>
     </p-table>
-  }
-</p-card>
+  </div>
+}
 
-<p-dialog [header]="(isEdit() ? 'amenities.formHeaderEdit' : 'amenities.formHeaderNew') | translate" [(visible)]="formVisible" [modal]="true"
-  [style]="{ width: 'min(28rem, 100vw)' }">
-  <form [formGroup]="form" (ngSubmit)="submit()">
+<!-- Add / edit -->
+<p-dialog
+  [header]="(isEdit() ? 'amenities.formHeaderEdit' : 'amenities.formHeaderNew') | translate"
+  [visible]="formVisible()"
+  (visibleChange)="formVisible.set($event)"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="am-form">
+    <!-- live preview -->
+    <div class="am-preview" aria-hidden="true">
+      <span class="am-preview__icon"><i [class]="previewIcon() ? 'pi ' + previewIcon() : 'pi pi-tag'"></i></span>
+      <div>
+        <strong>{{ previewName().trim() || ('amenities.previewName' | translate) }}</strong>
+        <small>{{ previewCategory().trim() || ('amenities.uncategorised' | translate) }}</small>
+      </div>
+    </div>
+
     <p-fluid>
-      <div class="field mb-3">
-        <label for="a-name">{{ 'common.name' | translate }}</label>
-        <input pInputText id="a-name" formControlName="name" [placeholder]="'amenities.namePlaceholder' | translate" autocomplete="off" />
+      <div class="field">
+        <label for="a-name">{{ 'common.name' | translate }} <span class="am-req">*</span></label>
+        <input pInputText id="a-name" formControlName="name" maxlength="60" [placeholder]="'amenities.namePlaceholder' | translate" autocomplete="off" />
         <app-field-error [control]="form.controls.name" [label]="'common.name' | translate" />
       </div>
-      <div class="field mb-3">
-        <label for="a-icon">{{ 'amenities.icon' | translate }}</label>
-        <input pInputText id="a-icon" formControlName="icon" placeholder="pi pi-wifi" autocomplete="off" />
+
+      <div class="field">
+        <label>{{ 'amenities.icon' | translate }}</label>
+        <div class="am-icons" role="radiogroup" [attr.aria-label]="'amenities.icon' | translate">
+          @for (ic of icons; track ic) {
+            <button
+              type="button"
+              class="am-icons__btn"
+              role="radio"
+              [class.am-icons__btn--on]="form.controls.icon.value === ic"
+              [attr.aria-checked]="form.controls.icon.value === ic"
+              [attr.aria-label]="ic.replace('pi-', '')"
+              [title]="ic.replace('pi-', '')"
+              (click)="pickIcon(ic)"
+            >
+              <i [class]="'pi ' + ic"></i>
+            </button>
+          }
+        </div>
       </div>
-      <div class="field mb-3">
+
+      <div class="field">
         <label for="a-category">{{ 'amenities.categoryOptional' | translate }}</label>
-        <input pInputText id="a-category" formControlName="category" [placeholder]="'amenities.categoryPlaceholder' | translate" autocomplete="off" />
+        <input pInputText id="a-category" formControlName="category" maxlength="40" [placeholder]="'amenities.categoryPlaceholder' | translate" autocomplete="off" />
+        @if (categorySuggestions().length > 0) {
+          <div class="am-suggest">
+            @for (c of categorySuggestions(); track c) {
+              <button type="button" class="am-suggest__chip" (click)="pickCategory(c)">{{ c }}</button>
+            }
+          </div>
+        }
       </div>
-      <div class="field mb-3 flex align-items-center gap-2">
+
+      <div class="field">
+        <label for="a-scope">{{ 'amenities.scope' | translate }}</label>
+        <p-select
+          inputId="a-scope"
+          formControlName="branchId"
+          [options]="branchOptions()"
+          optionLabel="name"
+          optionValue="id"
+          appendTo="body"
+          styleClass="w-full"
+        />
+        <small class="am-hint">{{ 'amenities.scopeHint' | translate }}</small>
+      </div>
+
+      <label class="am-switch" for="a-active">
         <p-toggleswitch formControlName="active" inputId="a-active" />
-        <label for="a-active">{{ 'status.active' | translate }}</label>
-      </div>
-      <div class="flex justify-content-end gap-2">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true" (onClick)="formVisible.set(false)" />
-        <p-button type="submit" [label]="(isEdit() ? 'common.saveChanges' : 'amenities.createAmenity') | translate" [loading]="saving()" />
-      </div>
+        <span>
+          <strong>{{ 'status.active' | translate }}</strong>
+          <small>{{ 'amenities.activeHint' | translate }}</small>
+        </span>
+      </label>
     </p-fluid>
+
+    <div class="am-form__footer">
+      <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="formVisible.set(false)" />
+      <p-button type="submit" [label]="(isEdit() ? 'common.saveChanges' : 'amenities.createAmenity') | translate" icon="pi pi-check" [loading]="saving()" />
+    </div>
   </form>
 </p-dialog>

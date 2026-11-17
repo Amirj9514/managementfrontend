@@ -57,7 +57,9 @@
         <div role="button" tabindex="0" class="checkin-card" [class]="'checkin-card--' + row.status + (canOpen() ? '' : ' checkin-card--static')" (click)="open(row._id)" (keydown.enter)="open(row._id)">
           <div class="checkin-card__top">
             <span class="checkin-card__number"><i class="pi pi-hashtag"></i>{{ row.bookingNumber }}</span>
-            <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+            @if (!status()) {
+              <app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" />
+            }
           </div>
 
           <div class="checkin-card__guest">
@@ -95,10 +97,6 @@
             @if (row.guestCount) {
               <span class="checkin-card__chip"><i class="pi pi-users"></i> {{ row.guestCount }}</span>
             }
-            <span class="checkin-card__chip" [class.checkin-card__chip--walkin]="row.source === 'walk_in'">
-              <i class="pi" [class.pi-bolt]="row.source === 'walk_in'" [class.pi-calendar]="row.source !== 'walk_in'"></i>
-              {{ sourceLabel(row.source) }}
-            </span>
             @if (row.documents?.length) {
               <span class="checkin-card__chip"><i class="pi pi-paperclip"></i> {{ row.documents!.length }}</span>
             }
@@ -136,15 +134,16 @@
 } @else {
   <p-card styleClass="checkin-table-card">
     <p-table [value]="rows()" [loading]="loading()" dataKey="_id" [rowHover]="true" styleClass="p-datatable-sm"
-      [tableStyle]="{ 'min-width': '56rem' }">
+      [tableStyle]="{ 'min-width': '44rem' }">
       <ng-template #header>
         <tr>
           <th>{{ 'bookings.bookingNumber' | translate }}</th>
           <th>{{ 'bookings.guestColumn' | translate }}</th>
           <th>{{ 'bookings.unitColumn' | translate }}</th>
           <th>{{ 'bookings.stayColumn' | translate }}</th>
-          <th>{{ 'bookings.source' | translate }}</th>
-          <th>{{ 'common.status' | translate }}</th>
+          @if (!status()) {
+            <th>{{ 'common.status' | translate }}</th>
+          }
           <th>{{ 'common.created' | translate }}</th>
           <th style="width: 9rem"></th>
           <th *appCan="'bookings.detail'" style="width: 4rem"></th>
@@ -182,8 +181,9 @@
               —
             }
           </td>
-          <td>{{ sourceLabel(row.source) }}</td>
-          <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
+          @if (!status()) {
+            <td><app-status-badge [status]="row.status" [severityMap]="statusSeverityMap" /></td>
+          }
           <td>{{ row.createdAt | date: 'short' }}</td>
           <td>
             @if (row.status === 'checked_in') {

@@ -301,90 +301,231 @@
     @case (3) {
       <div class="flex align-items-baseline justify-content-between flex-wrap gap-2 mb-2">
         <h3 class="mt-0 mb-0">{{ 'bookings.roomSelectionTitle' | translate }}</h3>
-        @if (!searching() && wizardUnits().length > 0) {
+        @if (!searching() && !needsBuilding() && shownTotal() > 0) {
           <span class="availability-summary">
             {{ 'bookings.availableSummary' | translate: {
-              available: availableCount(),
-              total: wizardUnits().length,
+              available: shownFree(),
+              total: shownTotal(),
               unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate
             } }}
           </span>
         }
       </div>
 
-      <div class="filter-bar">
-        <div class="field">
-          <label for="w-filter-building">{{ 'common.building' | translate }}</label>
-          <p-select id="w-filter-building" [options]="buildingFilterOptions()" optionLabel="label" optionValue="value"
-            [ngModel]="filterBuildingId()" (ngModelChange)="onFilterBuildingChange($event)" />
+      <!-- Building -->
+      @if (buildings().length > 1) {
+        <div class="picker">
+          <span class="picker__label">{{ 'common.building' | translate }}</span>
+          <div class="bldg-tiles" role="radiogroup" [attr.aria-label]="'common.building' | translate">
+            @for (b of buildingCards(); track b.id) {
+              <button
+                type="button"
+                class="bldg"
+                role="radio"
+                [class.bldg--on]="effectiveBuildingId() === b.id"
+                [attr.aria-checked]="effectiveBuildingId() === b.id"
+                (click)="onFilterBuildingChange(b.id)"
+              >
+                <span class="bldg__name"><i class="pi pi-building"></i> {{ b.name }}</span>
+                @if (!searching()) {
+                  <span class="bldg__count" [class.bldg__count--none]="b.free === 0">
+                    {{ 'bookings.pick.freeOfTotal' | translate: { free: b.free, total: b.total } }}
+                  </span>
+                }
+              </button>
+            }
+          </div>
         </div>
-        <div class="field">
-          <label for="w-filter-floor">{{ 'common.floor' | translate }}</label>
-          <p-select id="w-filter-floor" [options]="floorFilterOptions()" optionLabel="label" optionValue="value"
-            [ngModel]="filterFloorId()" (ngModelChange)="onFilterFloorChange($event)" />
-        </div>
-      </div>
+      }
 
-      <div class="status-legend">
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--success"></span> {{ 'status.available' | translate }}</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--info"></span> {{ 'status.occupied' | translate }}</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--warn"></span> {{ 'status.cleaning' | translate }}</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--danger"></span> {{ 'status.maintenance' | translate }}</span>
-        <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--capacity"></span>
-          {{ 'bookings.legend.fitsFewerGuests' | translate }}</span>
-      </div>
-      @if (searching()) {
-        <div class="unit-results">
-          @for (i of [1, 2, 3]; track i) {
-            <div class="unit-card unit-card--skeleton"></div>
-          }
+      @if (needsBuilding()) {
+        <div class="pick-prompt">
+          <i class="pi pi-building"></i>
+          <div>
+            <strong>{{ 'bookings.pick.chooseBuilding' | translate: { unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate } }}</strong>
+            <span>{{ 'bookings.pick.chooseBuildingHint' | translate }}</span>
+          </div>
         </div>
-      } @else if (wizardUnits().length === 0) {
-        <p class="text-color-secondary">{{ 'bookings.noUnitsMatch' | translate: { unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate } }}</p>
       } @else {
-        <div class="unit-results">
-          @for (unit of wizardUnits(); track unit.id) {
-            <button type="button" class="unit-card" [class.unit-card--selected]="unit.id === selectedUnitId()"
-              [class]="'unit-card--status-' + unit.status" [class.unit-card--warning]="unit.level === 'capacity-warning'"
-              [disabled]="!isSelectable(unit)" (click)="selectUnit(unit)">
-              <div class="unit-card__header">
-                <span class="unit-card__code">{{ unit.code }}</span>
-                <span class="unit-card__badge" [class]="'unit-card__badge--' + unit.statusSeverity">
-                  <i class="pi" [class.pi-check-circle]="unit.status === 'available'"
-                    [class.pi-user]="unit.status === 'occupied'" [class.pi-eraser]="unit.status === 'cleaning'"
-                    [class.pi-wrench]="unit.status === 'maintenance'"></i>
-                  {{ unit.statusLabel }}
-                </span>
-              </div>
-
-              <span class="unit-card__type">{{ unit.typeLabel }}</span>
-              <span class="unit-card__location"><i class="pi pi-map-marker"></i> {{ unit.locationLabel }}</span>
-              <span class="unit-card__detail">{{ unit.capacityText }} · {{ unit.detail }}</span>
-
-              @if (unit.amenityNames.length > 0) {
-                <div class="unit-card__amenities">
-                  @for (name of unit.amenityNames.slice(0, 3); track name) {
-                    <span class="unit-card__amenity">{{ name }}</span>
-                  }
-                  @if (unit.amenityNames.length > 3) {
-                    <span class="unit-card__amenity unit-card__amenity--more">+{{ unit.amenityNames.length - 3 }}</span>
-                  }
-                </div>
+        <!-- Floor -->
+        @if (floorChips().length > 0) {
+          <div class="picker">
+            <span class="picker__label">{{ 'common.floor' | translate }}</span>
+            <div class="floor-chips" role="radiogroup" [attr.aria-label]="'common.floor' | translate">
+              <button
+                type="button"
+                class="fchip"
+                role="radio"
+                [class.fchip--on]="!filterFloorId()"
+                [attr.aria-checked]="!filterFloorId()"
+                (click)="onFilterFloorChange(undefined)"
+              >
+                {{ 'bookings.pick.allFloors' | translate }}
+                <span class="fchip__n">{{ allFloorsChip().free }}/{{ allFloorsChip().total }}</span>
+              </button>
+              @for (f of floorChips(); track f.id) {
+                <button
+                  type="button"
+                  class="fchip"
+                  role="radio"
+                  [class.fchip--on]="filterFloorId() === f.id"
+                  [class.fchip--empty]="f.free === 0"
+                  [attr.aria-checked]="filterFloorId() === f.id"
+                  (click)="onFilterFloorChange(f.id)"
+                >
+                  {{ f.label }}
+                  <span class="fchip__n">{{ f.free }}/{{ f.total }}</span>
+                </button>
               }
+            </div>
+          </div>
+        }
 
-              <span class="unit-card__spacer"></span>
-
-              @if (unit.level === 'capacity-warning') {
-                <span class="unit-card__reason unit-card__reason--warning">
-                  <i class="pi pi-exclamation-triangle"></i>
-                  {{ unit.message }}
-                </span>
-              } @else if (unit.message) {
-                <span class="unit-card__reason">{{ unit.message }}</span>
-              }
-            </button>
+        <!-- Refine -->
+        <div class="filter-tools">
+          <span class="search-box">
+            <i class="pi pi-search"></i>
+            <input
+              pInputText
+              type="search"
+              [ngModel]="filterSearch()"
+              (ngModelChange)="filterSearch.set($event)"
+              [placeholder]="'bookings.pick.search' | translate"
+              [attr.aria-label]="'bookings.pick.search' | translate"
+              autocomplete="off"
+            />
+          </span>
+          @if (bookingType() === 'room' && typeFilterOptions().length > 1) {
+            <p-select
+              [options]="typeFilterOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="filterTypeId()"
+              (ngModelChange)="filterTypeId.set($event ?? undefined)"
+              [placeholder]="'bookings.pick.anyType' | translate"
+              [showClear]="true"
+              styleClass="w-12rem"
+              appendTo="body"
+            />
+          }
+          @if (amenityFilterOptions().length > 0) {
+            <p-multiselect
+              [options]="amenityFilterOptions()"
+              optionLabel="name"
+              optionValue="_id"
+              [ngModel]="filterAmenityIds()"
+              (ngModelChange)="filterAmenityIds.set($event ?? [])"
+              [placeholder]="'bookings.pick.amenities' | translate"
+              [maxSelectedLabels]="1"
+              [selectedItemsLabel]="'{0}'"
+              [showClear]="true"
+              styleClass="w-12rem"
+              appendTo="body"
+            />
+          }
+          <label class="check" for="w-avail-only">
+            <p-checkbox inputId="w-avail-only" [binary]="true" [ngModel]="filterAvailableOnly()" (ngModelChange)="filterAvailableOnly.set($event)" />
+            <span>{{ 'bookings.pick.availableOnly' | translate }}</span>
+          </label>
+          <label class="check" for="w-fits-party">
+            <p-checkbox inputId="w-fits-party" [binary]="true" [ngModel]="filterFitsParty()" (ngModelChange)="filterFitsParty.set($event)" />
+            <span>{{ 'bookings.pick.fitsParty' | translate: { count: partySize() } }}</span>
+          </label>
+          @if (hasActiveFilters()) {
+            <p-button type="button" size="small" [text]="true" icon="pi pi-filter-slash" [label]="'bookings.pick.clearFilters' | translate" (onClick)="clearUnitFilters()" />
           }
         </div>
+
+        <div class="status-legend">
+          <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--success"></span> {{ 'status.available' | translate }}</span>
+          <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--info"></span> {{ 'status.occupied' | translate }}</span>
+          <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--warn"></span> {{ 'status.cleaning' | translate }}</span>
+          <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--danger"></span> {{ 'status.maintenance' | translate }}</span>
+          <span class="status-legend__item"><span class="status-legend__dot status-legend__dot--capacity"></span>
+            {{ 'bookings.legend.fitsFewerGuests' | translate }}</span>
+        </div>
+
+        <!-- The current choice stays put while you browse or change filters -->
+        @if (selectedUnit(); as sel) {
+          <div class="selected-bar" [class.selected-bar--hidden]="selectedHidden()">
+            <i class="pi pi-check-circle"></i>
+            <div class="selected-bar__text">
+              <strong>{{ 'bookings.pick.selected' | translate }}: {{ sel.code }}</strong>
+              <span>{{ sel.locationLabel }} · {{ sel.typeLabel }}</span>
+              @if (selectedHidden()) {
+                <small>{{ 'bookings.pick.hiddenByFilters' | translate }}</small>
+              }
+            </div>
+            <p-button type="button" size="small" [text]="true" severity="secondary" icon="pi pi-times" [label]="'bookings.pick.clearSelection' | translate" (onClick)="clearSelectedUnit()" />
+          </div>
+        }
+
+        @if (searching()) {
+          <div class="unit-results">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="unit-card unit-card--skeleton"></div>
+            }
+          </div>
+        } @else if (wizardUnits().length === 0) {
+          <p class="text-color-secondary">
+            {{ 'bookings.pick.nothingHere' | translate: { unitWord: (bookingType() === 'room' ? 'bookings.unitsWord.rooms' : 'bookings.unitsWord.halls') | translate } }}
+          </p>
+        } @else {
+          @for (group of unitGroups(); track group.floorId) {
+            <section class="floor-group">
+              @if (!filterFloorId() && unitGroups().length > 1) {
+                <h4 class="floor-group__title">
+                  {{ group.label }} <span>{{ group.units.length }}</span>
+                </h4>
+              }
+              <div class="unit-results">
+                @for (unit of group.units; track unit.id) {
+                  <button type="button" class="unit-card" [class.unit-card--selected]="unit.id === selectedUnitId()"
+                    [class]="'unit-card--status-' + unit.status" [class.unit-card--warning]="unit.level === 'capacity-warning'"
+                    [disabled]="!isSelectable(unit)" (click)="selectUnit(unit)">
+                    <div class="unit-card__header">
+                      <span class="unit-card__code">{{ unit.code }}</span>
+                      <span class="unit-card__badge" [class]="'unit-card__badge--' + unit.statusSeverity">
+                        <i class="pi" [class.pi-check-circle]="unit.status === 'available'"
+                          [class.pi-user]="unit.status === 'occupied'" [class.pi-eraser]="unit.status === 'cleaning'"
+                          [class.pi-wrench]="unit.status === 'maintenance'"></i>
+                        {{ unit.statusLabel }}
+                      </span>
+                    </div>
+
+                    <span class="unit-card__type">{{ unit.typeLabel }}</span>
+                    @if (!effectiveBuildingId()) {
+                      <span class="unit-card__location"><i class="pi pi-map-marker"></i> {{ unit.locationLabel }}</span>
+                    }
+                    <span class="unit-card__detail">{{ unit.capacityText }} · {{ unit.detail }}</span>
+
+                    @if (unit.amenityNames.length > 0) {
+                      <div class="unit-card__amenities">
+                        @for (name of unit.amenityNames.slice(0, 3); track name) {
+                          <span class="unit-card__amenity">{{ name }}</span>
+                        }
+                        @if (unit.amenityNames.length > 3) {
+                          <span class="unit-card__amenity unit-card__amenity--more">+{{ unit.amenityNames.length - 3 }}</span>
+                        }
+                      </div>
+                    }
+
+                    <span class="unit-card__spacer"></span>
+
+                    @if (unit.level === 'capacity-warning') {
+                      <span class="unit-card__reason unit-card__reason--warning">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        {{ unit.message }}
+                      </span>
+                    } @else if (unit.message) {
+                      <span class="unit-card__reason">{{ unit.message }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            </section>
+          }
+        }
       }
     }
 

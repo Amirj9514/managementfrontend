@@ -14,6 +14,7 @@ import { forkJoin } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
+import { Checkbox } from 'primeng/checkbox';
 import { DatePicker } from 'primeng/datepicker';
 import { FileUpload, type FileSelectEvent } from 'primeng/fileupload';
 import { InputNumber } from 'primeng/inputnumber';
@@ -80,6 +81,16 @@ interface WizardUnit {
   locationLabel: string;
   capacityText: string;
   amenityNames: string[];
+  /** For the building / floor / type / amenity filters on the room step. */
+  buildingId: string | null;
+  floorId: string;
+  roomTypeId: string | null;
+  amenityIds: string[];
+}
+
+/** Only a real status/date conflict blocks a unit — a capacity-short one is still bookable. */
+function isBookable(u: WizardUnit): boolean {
+  return u.level !== 'blocked';
 }
 
 const STATUS_KEYS: Record<UnitStatus, string> = {
@@ -151,6 +162,7 @@ const MAX_COMPANIONS = 20;
     InputNumber,
     InputText,
     MultiSelect,
+    Checkbox,
     Textarea,
     DatePicker,
     FileUpload,
@@ -337,51 +349,44 @@ export class BookingWizardComponent implements OnDestroy {
   readonly roomResults = signal<PrivateRoomRow[]>([]);
   readonly hallResults = signal<PublicHallRow[]>([]);
   readonly selectedUnitId = signal<string | undefined>(undefined);
+  // ---- Room step: choose a building, then a floor, then refine — only those units are listed.
   readonly filterBuildingId = signal<string | undefined>(undefined);
+  /** undefined = every floor of the chosen building. */
   readonly filterFloorId = signal<string | undefined>(undefined);
+  readonly filterAvailableOnly = signal(true);
+  readonly filterFitsParty = signal(false);
+  readonly filterTypeId = signal<string | undefined>(undefined);
+  readonly filterAmenityIds = signal<string[]>([]);
+  readonly filterSearch = signal('');
+  /** Once the user picks a floor themselves we stop auto-picking one for them. */
+  private floorTouched = false;
 
-  readonly buildingFilterOptions = computed<FilterOption[]>(() => [
-    { label: this.i18n.t('bookings.allBuildings'), value: undefined },
-    ...this.buildings().map((b) => ({ label: b.name, value: b._id })),
-  ]);
+  /** A single building is chosen for you; with several, the user must pick one first. */
+  readonly effectiveBuildingId = computed(
+    () => this.filterBuildingId() ?? (this.buildings().length === 1 ? this.buildings()[0]._id : undefined),
+  );
+  readonly needsBuilding = computed(() => this.buildings().length > 1 && !this.filterBuildingId());
 
-  readonly floorFilterOptions = computed<FilterOption[]>(() => {
-    const buildingId = this.filterBuildingId();
-    const floors = buildingId ? this.allFloors().filter((f) => f.buildingId === buildingId) : this.allFloors();
-    return [{ label: this.i18n.t('bookings.allFloors'), value: undefined }, ...floors.map((f) => ({ label: f.label, value: f._id }))];
-  });
+  readonly typeFilterOptions = computed(() => this.roomTypes().map((t) => ({ label: t.name, value: t._id })));
+  readonly amenityFilterOptions = computed(() => this.amenities().filter((a) => a.active));
 
-  /** roomResults/hallResults narrowed to the chosen building/floor — recomputed client-side, no refetch. */
-  readonly filteredRoomResults = computed(() => {
-    const buildingId = this.filterBuildingId();
-    const floorId = this.filterFloorId();
-    return this.roomResults().filter(
-      (r) => (!buildingId || r.buildingId === buildingId) && (!floorId || r.floorId === floorId),
-    );
-  });
+  readonly hasActiveFilters = computed(
+    () =>
+      !!this.filterSearch().trim() ||
+      !!this.filterTypeId() ||
+      this.filterAmenityIds().length > 0 ||
+      this.filterFitsParty() ||
+      !this.filterAvailableOnly(),
+  );
 
-  readonly filteredHallResults = computed(() => {
-    const buildingId = this.filterBuildingId();
-    const floorId = this.filterFloorId();
-    const audience = this.hallAudience();
-    return this.hallResults().filter(
-      (h) =>
-        (!buildingId || h.buildingId === buildingId) &&
-        (!floorId || h.floorId === floorId) &&
-        // A gents party only sees gents (or mixed) halls, and likewise for ladies.
-        (!h.audience || h.audience === 'mixed' || h.audience === audience),
-    );
-  });
-
-  /** Every room/hall matching the current building/floor filter. A unit with a real status/date
+  /** Every room/hall the search returned, mapped for display. A unit with a real status/date
    * conflict is always 'blocked'; one that's genuinely free but just short on capacity is only a
    * 'capacity-warning' — a policy call, not a physical one — so it stays selectable for anyone,
    * just flagged. */
-  readonly wizardUnits = computed<WizardUnit[]>(() => {
-    let units: WizardUnit[];
+  readonly allUnits = computed<WizardUnit[]>(() => {
     if (this.bookingType() === 'room') {
       const needed = this.adults() + this.children();
-      units = this.filteredRoomResults().map((r) => {
+      return this.roomResults().map((r) => {
         const statusBlocked = r.availableForRange === false;
         const capacityShort = r.capacity.total < needed;
         let level: UnitBlockLevel;
@@ -412,11 +417,20 @@ export class BookingWizardComponent implements OnDestroy {
             `${r.capacity.adults} ${this.i18n.t('common.adults')}` +
             (r.capacity.children ? `, ${r.capacity.children} ${this.i18n.t('common.children')}` : ''),
           amenityNames: this.amenityNamesFor(r.amenityIds),
+          buildingId: r.buildingId ?? null,
+          floorId: r.floorId,
+          roomTypeId: r.roomTypeId,
+          amenityIds: r.amenityIds ?? [],
         };
       });
-    } else {
-      const remaining = (h: PublicHallRow) => h.rangeOccupancy?.remaining ?? h.occupancy?.remaining ?? h.maxCapacity;
-      units = this.filteredHallResults().map((h) => {
+    }
+
+    const remaining = (h: PublicHallRow) => h.rangeOccupancy?.remaining ?? h.occupancy?.remaining ?? h.maxCapacity;
+    const audience = this.hallAudience();
+    return this.hallResults()
+      // A gents party only sees gents (or mixed) halls, and likewise for ladies.
+      .filter((h) => !h.audience || h.audience === 'mixed' || h.audience === audience)
+      .map((h) => {
         const statusBlocked = h.status !== 'available';
         const capacityShort = remaining(h) < this.partySize();
         let level: UnitBlockLevel;
@@ -450,14 +464,98 @@ export class BookingWizardComponent implements OnDestroy {
           locationLabel: this.locationLabel(h.buildingId, h.floorId),
           capacityText: this.i18n.t('bookings.upToGuests', { count: h.maxCapacity }),
           amenityNames: this.amenityNamesFor(h.amenityIds),
+          buildingId: h.buildingId ?? null,
+          floorId: h.floorId,
+          roomTypeId: null,
+          amenityIds: h.amenityIds ?? [],
         };
       });
-    }
-    const rank = (u: WizardUnit) => (u.level === 'available' ? 0 : u.level === 'capacity-warning' ? 1 : 2);
-    return [...units].sort((a, b) => rank(a) - rank(b));
   });
 
-  readonly availableCount = computed(() => this.wizardUnits().filter((u) => u.level === 'available').length);
+  /** The chosen building's units after type / amenity / search / "fits my party" — but not floor, and
+   * not "available only", so the floor chips and counts stay meaningful whatever floor is open. */
+  readonly scopedBase = computed(() => {
+    const building = this.effectiveBuildingId();
+    const q = this.filterSearch().trim().toLowerCase();
+    const type = this.filterTypeId();
+    const amenities = this.filterAmenityIds();
+    const fits = this.filterFitsParty();
+    return this.allUnits().filter(
+      (u) =>
+        (!building || u.buildingId === building) &&
+        (!fits || u.level === 'available') &&
+        (!type || u.roomTypeId === type) &&
+        amenities.every((id) => u.amenityIds.includes(id)) &&
+        (!q || u.code.toLowerCase().includes(q)),
+    );
+  });
+
+  /** Floor order for the chosen building (by sort order, then natural label order). */
+  private readonly orderedFloors = computed(() =>
+    [...this.allFloors()]
+      .filter((f) => !this.effectiveBuildingId() || f.buildingId === this.effectiveBuildingId())
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.label.localeCompare(b.label, undefined, { numeric: true })),
+  );
+
+  /** One chip per floor that has anything to show, with "free / total" for the current filters. */
+  readonly floorChips = computed(() => {
+    if (!this.effectiveBuildingId() && this.buildings().length > 0) return [];
+    const base = this.scopedBase();
+    return this.orderedFloors()
+      .map((f) => {
+        const inFloor = base.filter((u) => u.floorId === f._id);
+        return { id: f._id, label: f.label, free: inFloor.filter(isBookable).length, total: inFloor.length };
+      })
+      .filter((c) => c.total > 0);
+  });
+  readonly allFloorsChip = computed(() => {
+    const chips = this.floorChips();
+    return { free: chips.reduce((n, c) => n + c.free, 0), total: chips.reduce((n, c) => n + c.total, 0) };
+  });
+
+  /** Building tiles on the first picker row: how many of its rooms/halls could take this stay. */
+  readonly buildingCards = computed(() =>
+    this.buildings().map((b) => {
+      const inBuilding = this.allUnits().filter((u) => u.buildingId === b._id);
+      return { id: b._id, name: b.name, free: inBuilding.filter(isBookable).length, total: inBuilding.length };
+    }),
+  );
+
+  /** What the chosen floor (or every floor) holds, before "available only". */
+  private readonly shownBase = computed(() => {
+    const floor = this.filterFloorId();
+    return floor ? this.scopedBase().filter((u) => u.floorId === floor) : this.scopedBase();
+  });
+  readonly shownFree = computed(() => this.shownBase().filter(isBookable).length);
+  readonly shownTotal = computed(() => this.shownBase().length);
+
+  /** The units actually listed: nothing until a building is chosen; bookable first. */
+  readonly wizardUnits = computed<WizardUnit[]>(() => {
+    if (this.needsBuilding()) return [];
+    let list = this.shownBase();
+    if (this.filterAvailableOnly()) list = list.filter(isBookable);
+    const rank = (u: WizardUnit) => (u.level === 'available' ? 0 : u.level === 'capacity-warning' ? 1 : 2);
+    return [...list].sort((a, b) => rank(a) - rank(b) || a.code.localeCompare(b.code, undefined, { numeric: true }));
+  });
+
+  /** Listed units grouped under their floor (a single group when one floor is open). */
+  readonly unitGroups = computed(() => {
+    const order = new Map(this.orderedFloors().map((f, i) => [f._id, i] as const));
+    const groups = new Map<string, WizardUnit[]>();
+    for (const u of this.wizardUnits()) groups.set(u.floorId, [...(groups.get(u.floorId) ?? []), u]);
+    return [...groups.entries()]
+      .sort(([a], [b]) => (order.get(a) ?? 999) - (order.get(b) ?? 999))
+      .map(([floorId, units]) => ({ floorId, label: this.floorLabel(floorId) ?? '', units }));
+  });
+
+  /** The chosen unit stays selected when filters change — shown in a bar, flagged if currently hidden. */
+  readonly selectedUnit = computed(() => this.allUnits().find((u) => u.id === this.selectedUnitId()) ?? null);
+  readonly selectedHidden = computed(() => {
+    const s = this.selectedUnit();
+    return !!s && !this.wizardUnits().some((u) => u.id === s.id);
+  });
+
+  readonly availableCount = computed(() => this.shownBase().filter((u) => u.level === 'available').length);
 
   /** Only a real status/date conflict blocks a unit — a capacity-short one is still bookable. */
   isSelectable(unit: WizardUnit): boolean {
@@ -539,6 +637,9 @@ export class BookingWizardComponent implements OnDestroy {
     this.roomTypes.set([]);
     this.filterBuildingId.set(undefined);
     this.filterFloorId.set(undefined);
+    this.floorTouched = false;
+    this.clearUnitFilters();
+    this.selectedUnitId.set(undefined);
     this.serviceIds.set([]);
     this.allowedBy.set('');
     if (branchId) {
@@ -590,13 +691,37 @@ export class BookingWizardComponent implements OnDestroy {
     });
   }
 
-  onFilterBuildingChange(buildingId: string | null): void {
+  /** Picking (or changing) the building resets the floor, then opens the first floor that has space. */
+  onFilterBuildingChange(buildingId: string | null | undefined): void {
     this.filterBuildingId.set(buildingId ?? undefined);
     this.filterFloorId.set(undefined);
+    this.floorTouched = false;
+    this.applyDefaultFloor();
   }
 
-  onFilterFloorChange(floorId: string | null): void {
+  onFilterFloorChange(floorId: string | null | undefined): void {
+    this.floorTouched = true;
     this.filterFloorId.set(floorId ?? undefined);
+  }
+
+  /** Opens the first floor with room for this stay, so the user sees one floor — not the whole branch. */
+  private applyDefaultFloor(): void {
+    if (this.floorTouched || this.filterFloorId() || this.searching() || !this.effectiveBuildingId()) return;
+    const first = this.floorChips().find((c) => c.free > 0);
+    if (first) this.filterFloorId.set(first.id);
+  }
+
+  /** Resets the refinements (not the building / floor, which have their own pickers). */
+  clearUnitFilters(): void {
+    this.filterSearch.set('');
+    this.filterTypeId.set(undefined);
+    this.filterAmenityIds.set([]);
+    this.filterFitsParty.set(false);
+    this.filterAvailableOnly.set(true);
+  }
+
+  clearSelectedUnit(): void {
+    this.selectedUnitId.set(undefined);
   }
 
   /** Step 1 (guest information) — what's still missing, for the inline hint. */
@@ -698,6 +823,7 @@ export class BookingWizardComponent implements OnDestroy {
         next: ({ items }) => {
           this.roomResults.set(items);
           this.searching.set(false);
+          this.applyDefaultFloor();
         },
         error: () => this.searching.set(false),
       });
@@ -706,6 +832,7 @@ export class BookingWizardComponent implements OnDestroy {
         next: ({ items }) => {
           this.hallResults.set(items);
           this.searching.set(false);
+          this.applyDefaultFloor();
         },
         error: () => this.searching.set(false),
       });

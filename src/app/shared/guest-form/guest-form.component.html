@@ -1,0 +1,87 @@
+<div class="gf" [formGroup]="form()">
+  <!-- identity -->
+  <section class="gf-sec">
+    <header class="gf-head">
+      <span class="gf-avatar" [class.gf-avatar--empty]="!initials()">
+        @if (initials()) {
+          {{ initials() }}
+        } @else {
+          <i class="pi pi-user"></i>
+        }
+      </span>
+      <div>
+        <h3>{{ 'guests.form.detailsTitle' | translate }}</h3>
+        <p>{{ 'guests.form.detailsHint' | translate }}</p>
+      </div>
+    </header>
+    <div class="gf-grid">
+      <div class="field">
+        <label [for]="idPrefix() + '-fullname'">{{ 'common.fullName' | translate }} <span class="req">*</span></label>
+        <p-iconfield>
+          <p-inputicon class="pi pi-user" />
+          <input pInputText [id]="idPrefix() + '-fullname'" formControlName="fullName" maxlength="120" autocomplete="off" [placeholder]="'guests.form.namePlaceholder' | translate" />
+        </p-iconfield>
+        <app-field-error [control]="control('fullName')" [label]="'common.fullName' | translate" />
+      </div>
+      <div class="field">
+        <label [for]="idPrefix() + '-cnic'">{{ 'common.cnic' | translate }} <span class="req">*</span></label>
+        <p-iconfield>
+          <p-inputicon class="pi pi-id-card" />
+          <input pInputText [id]="idPrefix() + '-cnic'" formControlName="cnic" maxlength="40" autocomplete="off" placeholder="35202-1234567-1" />
+        </p-iconfield>
+        <app-field-error [control]="control('cnic')" [label]="'common.cnic' | translate" />
+      </div>
+    </div>
+  </section>
+
+  <!-- contact -->
+  <section class="gf-sec">
+    <header class="gf-head gf-head--plain">
+      <i class="pi pi-phone"></i>
+      <h3>{{ 'guests.form.contactTitle' | translate }}</h3>
+    </header>
+    <div class="gf-grid">
+      <div class="field">
+        <label [for]="idPrefix() + '-phone'">{{ 'common.phone' | translate }}</label>
+        <p-iconfield>
+          <p-inputicon class="pi pi-mobile" />
+          <input pInputText [id]="idPrefix() + '-phone'" type="tel" formControlName="phone" maxlength="40" autocomplete="off" placeholder="0300 1234567" />
+        </p-iconfield>
+        <app-field-error [control]="control('phone')" [label]="'common.phone' | translate" />
+      </div>
+      <div class="field">
+        <label [for]="idPrefix() + '-email'">{{ 'common.email' | translate }}</label>
+        <p-iconfield>
+          <p-inputicon class="pi pi-envelope" />
+          <input pInputText [id]="idPrefix() + '-email'" type="email" formControlName="email" maxlength="120" autocomplete="off" placeholder="name&#64;example.com" />
+        </p-iconfield>
+        <app-field-error [control]="control('email')" [label]="'common.email' | translate" />
+      </div>
+    </div>
+  </section>
+
+  <!-- address -->
+  <section class="gf-sec">
+    <header class="gf-head gf-head--plain">
+      <i class="pi pi-map-marker"></i>
+      <h3>{{ 'guests.form.addressTitle' | translate }}</h3>
+    </header>
+    <div class="field">
+      <label [for]="idPrefix() + '-address'">{{ 'common.address' | translate }}</label>
+      <input pInputText [id]="idPrefix() + '-address'" formControlName="address" maxlength="500" autocomplete="off" [placeholder]="'guests.form.addressPlaceholder' | translate" />
+    </div>
+    <app-country-state-fields [idPrefix]="idPrefix()" [countryControl]="control('country')" [stateControl]="control('state')" />
+  </section>
+
+  <!-- notes -->
+  <section class="gf-sec">
+    <header class="gf-head gf-head--plain">
+      <i class="pi pi-comment"></i>
+      <h3>{{ 'common.notes' | translate }}</h3>
+    </header>
+    <div class="field">
+      <textarea pTextarea [id]="idPrefix() + '-notes'" formControlName="notes" rows="3" maxlength="2000" [placeholder]="'guests.form.notesPlaceholder' | translate"></textarea>
+      <small class="hint gf-count">{{ notesLength() }} / 2000</small>
+    </div>
+  </section>
+</div>

@@ -4,15 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
-import { IconField } from 'primeng/iconfield';
-import { InputIcon } from 'primeng/inputicon';
-import { InputText } from 'primeng/inputtext';
-import { Select } from 'primeng/select';
 import { Skeleton } from 'primeng/skeleton';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
-import { ToggleSwitch } from 'primeng/toggleswitch';
-import { Tooltip } from 'primeng/tooltip';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import {
@@ -21,28 +15,24 @@ import {
   type TransferReasonKey,
   type TransferRoom,
 } from '../../../../core/models/booking-transfer.model';
+import { type UnitStatus, unitStatusSeverity } from '../../../../core/models/unit-admin.model';
 import { ConfirmService } from '../../../../core/services/confirm.service';
-import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import {
+  UnitPickerComponent,
+  type PickerBuilding,
+  type PickerFloor,
+  type PickerOption,
+  type PickerUnit,
+} from '../../../../shared/unit-picker/unit-picker.component';
 import { BOOKINGS_DICTIONARY } from '../../bookings.dictionary';
 import { BookingDetailDrawerService } from '../../services/booking-detail-drawer.service';
 import { BookingsApiService } from '../../services/bookings-api.service';
 
-interface RoomGroup {
-  key: string;
-  building: string;
-  floor: string;
-  rooms: TransferRoom[];
-  free: number;
-}
-
-/** Natural order so R2 comes before R10. */
-const byCode = (a: TransferRoom, b: TransferRoom) => a.code.localeCompare(b.code, undefined, { numeric: true });
-
 /**
- * Full-page "transfer room" screen: pick the new room from tiles grouped by building and floor.
- * Rooms that cannot take the stay (booked, maintenance, not ready, current) are shown but disabled
- * with the reason — the server applies the same rules, so what looks selectable here will work.
+ * Full-page "transfer room" screen. Rooms are picked with the same shared picker the check-in step uses
+ * (building › floor › refine). Rooms that cannot take the stay (booked, maintenance, not ready, current)
+ * are shown but disabled with the reason — the server applies the same rules, so what looks selectable works.
  */
 @Component({
   selector: 'app-booking-transfer',
@@ -50,17 +40,11 @@ const byCode = (a: TransferRoom, b: TransferRoom) => a.code.localeCompare(b.code
     DatePipe,
     FormsModule,
     Button,
-    IconField,
-    InputIcon,
-    InputText,
-    Select,
     Skeleton,
     Tag,
     Textarea,
-    ToggleSwitch,
-    Tooltip,
     PageHeaderComponent,
-    EmptyStateComponent,
+    UnitPickerComponent,
     TranslatePipe,
   ],
   templateUrl: './booking-transfer.component.html',
@@ -84,65 +68,78 @@ export class BookingTransferComponent {
   readonly saving = signal(false);
 
   readonly selectedId = signal<string | null>(null);
-  readonly search = signal('');
-  readonly buildingFilter = signal<string | null>(null);
-  readonly typeFilter = signal<string | null>(null);
-  readonly onlyAvailable = signal(false);
   readonly reasonKey = signal<TransferReasonKey | null>(null);
   readonly note = signal('');
 
   readonly reasons = TRANSFER_REASONS;
-  readonly skeletons = [1, 2, 3, 4, 5, 6, 7, 8];
 
-  readonly rooms = computed(() => this.data()?.rooms ?? []);
+  /** Rooms with safe defaults, so a server that predates the amenity / room-type fields still works. */
+  readonly rooms = computed(() =>
+    (this.data()?.rooms ?? []).map((r) => ({
+      ...r,
+      roomTypeId: r.roomTypeId ?? '',
+      amenityIds: r.amenityIds ?? [],
+      amenityNames: r.amenityNames ?? [],
+    })),
+  );
   readonly isCheckedIn = computed(() => this.data()?.line.status === 'checked_in');
   readonly selected = computed(() => this.rooms().find((r) => r._id === this.selectedId()) ?? null);
-  readonly availableCount = computed(() => this.rooms().filter((r) => r.selectable).length);
-
-  readonly buildingOptions = computed(() => {
-    const names = new Map<string, string>();
-    for (const r of this.rooms()) if (r.buildingId && r.buildingName) names.set(r.buildingId, r.buildingName);
-    return [...names].map(([value, label]) => ({ value, label }));
+  /** What the shared picker needs, mapped from the server's per-room verdicts. */
+  readonly units = computed<PickerUnit[]>(() => {
+    const guests = this.data()?.guests ?? 0;
+    return this.rooms().map((r) => {
+      const level = r.reason ? 'blocked' : r.tooSmall ? 'capacity-warning' : 'available';
+      return {
+        id: r._id,
+        code: r.code,
+        detail: this.i18n.t('bookings.capacityCount', { count: r.capacity.total }),
+        level,
+        message: r.reason
+          ? this.i18n.t('transfer.blockedHint.' + r.reason)
+          : r.tooSmall
+            ? this.i18n.t('bookings.fitsUpTo', { total: r.capacity.total, needed: guests })
+            : undefined,
+        status: r.status,
+        statusLabel: this.i18n.t('status.' + r.status),
+        statusSeverity: unitStatusSeverity(r.status as UnitStatus),
+        typeLabel: r.roomTypeName ?? this.i18n.t('common.room'),
+        typeId: r.roomTypeId,
+        locationLabel: [r.buildingName, r.floorLabel].filter(Boolean).join(' · '),
+        capacityText:
+          `${r.capacity.adults} ${this.i18n.t('common.adults')}` +
+          (r.capacity.children ? `, ${r.capacity.children} ${this.i18n.t('common.children')}` : ''),
+        amenityNames: r.amenityNames,
+        amenityIds: r.amenityIds,
+        buildingId: r.buildingId,
+        floorId: r.floorId,
+        tag: r.reason === 'current' ? this.i18n.t('transfer.blocked.current') : undefined,
+      } satisfies PickerUnit;
+    });
   });
-  readonly typeOptions = computed(() => {
-    const names = new Set<string>();
-    for (const r of this.rooms()) if (r.roomTypeName) names.add(r.roomTypeName);
-    return [...names].sort().map((n) => ({ value: n, label: n }));
+  readonly pickerBuildings = computed<PickerBuilding[]>(() => {
+    const seen = new Map<string, string>();
+    for (const r of this.rooms()) if (r.buildingId && r.buildingName) seen.set(r.buildingId, r.buildingName);
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   });
-
-  readonly visibleRooms = computed(() => {
-    const q = this.search().trim().toLowerCase();
-    const building = this.buildingFilter();
-    const type = this.typeFilter();
-    const onlyFree = this.onlyAvailable();
-    return this.rooms().filter(
-      (r) =>
-        (!q || r.code.toLowerCase().includes(q)) &&
-        (!building || r.buildingId === building) &&
-        (!type || r.roomTypeName === type) &&
-        (!onlyFree || r.selectable),
-    );
-  });
-
-  /** Rooms grouped Building › Floor, in building / floor order, rooms in natural code order. */
-  readonly groups = computed<RoomGroup[]>(() => {
-    const map = new Map<string, RoomGroup & { order: number }>();
-    for (const r of this.visibleRooms()) {
-      const key = `${r.buildingId ?? ''}|${r.floorId}`;
-      let g = map.get(key);
-      if (!g) {
-        g = { key, building: r.buildingName ?? '', floor: r.floorLabel ?? '', rooms: [], free: 0, order: r.floorOrder };
-        map.set(key, g);
+  readonly pickerFloors = computed<PickerFloor[]>(() => {
+    const seen = new Map<string, PickerFloor>();
+    for (const r of this.rooms()) {
+      if (r.buildingId && !seen.has(r.floorId)) {
+        seen.set(r.floorId, { id: r.floorId, buildingId: r.buildingId, label: r.floorLabel ?? '', order: r.floorOrder });
       }
-      g.rooms.push(r);
-      if (r.selectable) g.free += 1;
     }
-    return [...map.values()]
-      .sort((a, b) => a.building.localeCompare(b.building) || a.order - b.order || a.floor.localeCompare(b.floor, undefined, { numeric: true }))
-      .map((g) => ({ ...g, rooms: [...g.rooms].sort(byCode) }));
+    return [...seen.values()];
   });
-
-  readonly hasFilters = computed(() => !!(this.search().trim() || this.buildingFilter() || this.typeFilter() || this.onlyAvailable()));
+  readonly pickerTypes = computed<PickerOption[]>(() => {
+    const seen = new Map<string, string>();
+    for (const r of this.rooms()) if (r.roomTypeName) seen.set(r.roomTypeId, r.roomTypeName);
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  });
+  readonly pickerAmenities = computed<PickerOption[]>(() => {
+    const seen = new Map<string, string>();
+    for (const r of this.rooms()) r.amenityIds.forEach((id, i) => seen.set(id, r.amenityNames[i] ?? id));
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   /** The reason saved with the transfer: the chosen label, plus the note when there is one. */
   readonly reasonText = computed(() => {
@@ -164,26 +161,8 @@ export class BookingTransferComponent {
     });
   }
 
-  select(room: TransferRoom): void {
-    if (!room.selectable) return;
-    this.selectedId.update((id) => (id === room._id ? null : room._id));
-  }
-
-  clearFilters(): void {
-    this.search.set('');
-    this.buildingFilter.set(null);
-    this.typeFilter.set(null);
-    this.onlyAvailable.set(false);
-  }
-
-  blockedLabel(room: TransferRoom): string {
-    return room.reason ? this.i18n.t('transfer.blocked.' + room.reason) : '';
-  }
-
-  tooltipFor(room: TransferRoom): string {
-    if (room.reason) return this.i18n.t('transfer.blockedHint.' + room.reason);
-    if (room.tooSmall) return this.i18n.t('transfer.tooSmallHint', { beds: room.capacity.total, guests: this.data()?.guests ?? 0 });
-    return '';
+  onPick(id: string | undefined): void {
+    this.selectedId.set(id ?? null);
   }
 
   back(): void {

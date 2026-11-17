@@ -24,7 +24,6 @@ export const CHECKOUT_DICTIONARY: Record<string, DictionaryEntry> = {
   'checkout.emptyCheckedOutTitle': { en: 'Nothing checked out yet', ur: 'ابھی کوئی چیک آؤٹ نہیں ہوا' },
   'checkout.emptyCheckedOutDescription': { en: 'Checked-out stays will appear here.', ur: 'چیک آؤٹ شدہ قیام یہاں نظر آئیں گے۔' },
   'checkout.tab.arrivals': { en: 'Awaiting check-in', ur: 'چیک ان کے منتظر' },
-  'checkout.tab.inHouse': { en: 'In-house · check-out', ur: 'مقیم · چیک آؤٹ' },
   'checkout.searchPlaceholder': { en: 'Search by check-in #', ur: 'چیک اِن نمبر سے تلاش کریں' },
   'checkout.emptyArrivalsTitle': { en: 'No arrivals waiting', ur: 'کوئی آمد منتظر نہیں' },
   'checkout.emptyArrivalsDescription': {

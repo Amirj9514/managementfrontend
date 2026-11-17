@@ -201,3 +201,20 @@
     }
   }
 }
+
+// New-guest drawer: header and footer stay put, only the form scrolls.
+.gp-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+:host ::ng-deep .gp-drawer {
+  .p-drawer-footer {
+    padding: 0.8rem 1.25rem;
+    border-top: 1px solid var(--p-content-border-color);
+    background: var(--p-content-background);
+    box-shadow: 0 -6px 16px rgb(0 0 0 / 0.05);
+  }
+}

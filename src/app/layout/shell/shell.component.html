@@ -11,21 +11,23 @@
       }
     </div>
     <nav class="app-sidebar__nav">
-      @for (group of navGroups; track group.label) {
+      @for (group of visibleGroups(); track group.label) {
         <div class="app-sidebar__group">
           @if (!sidebarCollapsed()) {
             <p class="app-sidebar__group-label">{{ group.label | translate }}</p>
           }
-          @for (item of filteredItems(group.items, u); track item.routerLink) {
+          @for (item of group.items; track item.routerLink) {
             <a
               class="app-sidebar__link"
               [routerLink]="item.routerLink"
               routerLinkActive="app-sidebar__link--active"
               [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' }"
+              [attr.title]="sidebarCollapsed() ? (item.label | translate) : null"
+              [attr.aria-label]="item.label | translate"
             >
               <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
               @if (!sidebarCollapsed()) {
-                <span>{{ item.label | translate }}</span>
+                <span class="app-sidebar__text">{{ item.label | translate }}</span>
               }
             </a>
           }
@@ -98,18 +100,19 @@
     <span class="app-sidebar__name">{{ 'shell.brand' | translate }}</span>
   </ng-template>
   <nav class="app-sidebar__nav">
-    @for (group of navGroups; track group.label) {
+    @for (group of visibleGroups(); track group.label) {
       <div class="app-sidebar__group">
         <p class="app-sidebar__group-label">{{ group.label | translate }}</p>
-        @for (item of filteredItems(group.items, u); track item.routerLink) {
+        @for (item of group.items; track item.routerLink) {
           <a
             class="app-sidebar__link"
             [routerLink]="item.routerLink"
             routerLinkActive="app-sidebar__link--active"
+            [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' }"
             (click)="closeMobileNav()"
           >
             <ng-icon class="app-sidebar__icon" [name]="item.icon" size="1.125rem" />
-            <span>{{ item.label | translate }}</span>
+            <span class="app-sidebar__text">{{ item.label | translate }}</span>
           </a>
         }
       </div>

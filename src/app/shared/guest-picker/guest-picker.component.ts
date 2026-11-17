@@ -5,10 +5,6 @@ import { Router } from '@angular/router';
 import { AutoComplete, type AutoCompleteCompleteEvent, type AutoCompleteSelectEvent } from 'primeng/autocomplete';
 import { Button } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
-import { Fluid } from 'primeng/fluid';
-import { InputText } from 'primeng/inputtext';
-import { DatePicker } from 'primeng/datepicker';
-import { Textarea } from 'primeng/textarea';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, catchError, finalize, of, tap } from 'rxjs';
 import type { Guest } from '../../core/models/guest.model';
@@ -18,10 +14,9 @@ import { GuestApiService } from '../../features/guests/services/guest-api.servic
 import { BookingsApiService } from '../../features/bookings/services/bookings-api.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationService } from '../../core/i18n/translation.service';
-import { FieldErrorComponent } from '../field-error/field-error.component';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { GUEST_PICKER_DICTIONARY } from './guest-picker.dictionary';
-import { CountryStateFieldsComponent } from '../country-state-fields/country-state-fields.component';
+import { GuestFormComponent } from '../guest-form/guest-form.component';
 import { DEFAULT_COUNTRY } from '../../core/data/countries';
 
 /** Which new-guest field a typed search query most likely belongs to. */
@@ -48,13 +43,8 @@ const RECENT_BOOKINGS_LIMIT = 1;
     ReactiveFormsModule,
     Button,
     Drawer,
-    Fluid,
-    InputText,
-    DatePicker,
-    Textarea,
-    FieldErrorComponent,
+    GuestFormComponent,
     StatusBadgeComponent,
-    CountryStateFieldsComponent,
     TranslatePipe,
   ],
   templateUrl: './guest-picker.component.html',
@@ -73,7 +63,6 @@ export class GuestPickerComponent {
   readonly selected = model<Guest | null>(null);
   readonly guestCreated = output<Guest>();
 
-  readonly today = new Date();
   readonly suggestions = signal<Guest[]>([]);
   readonly searching = signal(false);
   readonly lastQuery = signal('');
@@ -115,7 +104,6 @@ export class GuestPickerComponent {
     address: ['', [Validators.maxLength(500)]],
     country: [DEFAULT_COUNTRY, [Validators.maxLength(80)]],
     state: ['', [Validators.maxLength(80)]],
-    dateOfBirth: [null as Date | null],
     notes: ['', [Validators.maxLength(2000)]],
   });
 
@@ -218,7 +206,6 @@ export class GuestPickerComponent {
       address: '',
       country: DEFAULT_COUNTRY,
       state: '',
-      dateOfBirth: null,
       notes: '',
     });
     this.newGuestVisible.set(true);
@@ -262,7 +249,6 @@ export class GuestPickerComponent {
         address: v.address || undefined,
         country: v.country || undefined,
         state: v.state?.trim() || undefined,
-        dateOfBirth: v.dateOfBirth ? v.dateOfBirth.toISOString() : undefined,
         notes: v.notes || undefined,
       })
       .pipe(

@@ -1,173 +1,154 @@
-<app-page-header [title]="'nav.guests' | translate" [subtitle]="'guests.subtitle' | translate" />
+<app-page-header [title]="'nav.guests' | translate" [subtitle]="'guests.subtitle' | translate">
+  <p-button actions *appCan="'guests.create'" [label]="'guests.addGuest' | translate" icon="pi pi-user-plus" (onClick)="openCreate()" />
+</app-page-header>
 
-<p-toolbar styleClass="guest-toolbar mb-4">
-  <ng-template #start>
-    <div class="flex flex-wrap align-items-center gap-2">
-      <input
-        pInputText
-        type="search"
-        class="guest-toolbar__search-input"
-        [ngModel]="search()"
-        (ngModelChange)="search.set($event)"
-        [attr.placeholder]="'guests.searchPlaceholder' | translate"
-        (keyup.enter)="applySearch()"
-      />
-      <p-button [label]="'common.search' | translate" [outlined]="true" (onClick)="applySearch()" />
-      <p-select [options]="statusOptions()" optionLabel="label" optionValue="value" [ngModel]="status()"
-        (ngModelChange)="onStatusChange($event)" styleClass="w-14rem" />
-    </div>
-  </ng-template>
-  <ng-template #end>
-    <p-button *appCan="'guests.create'" [label]="'guests.addGuest' | translate" icon="pi pi-plus" (onClick)="openCreate()" />
-  </ng-template>
-</p-toolbar>
+<div class="gl-toolbar">
+  <p-iconfield class="gl-toolbar__search">
+    <p-inputicon class="pi pi-search" />
+    <input
+      pInputText
+      type="search"
+      autocomplete="off"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+      (keyup.enter)="applySearch()"
+      [placeholder]="'guests.searchPlaceholder' | translate"
+      [attr.aria-label]="'guests.searchPlaceholder' | translate"
+    />
+  </p-iconfield>
+  <p-selectbutton [options]="statusOptions()" optionLabel="label" optionValue="value" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" [allowEmpty]="false" size="small" />
+  @if (hasFilters()) {
+    <p-button type="button" [text]="true" size="small" icon="pi pi-filter-slash" [label]="'guests.clearFilters' | translate" (onClick)="clearFilters()" />
+  }
+  <span class="gl-toolbar__count">{{ 'guests.count' | translate: { n: totalRecords() } }}</span>
+</div>
 
-<p-card>
+<section class="gl-panel">
   @if (!loading() && rows().length === 0) {
-    <app-empty-state [title]="'guests.emptyTitle' | translate" [description]="'guests.emptyDescription' | translate"
-      [actionLabel]="canCreate() ? ('guests.addGuest' | translate) : undefined" (actionClick)="openCreate()" />
+    @if (hasFilters()) {
+      <app-empty-state
+        [title]="'guests.noMatchTitle' | translate"
+        [description]="'guests.noMatchDescription' | translate"
+        [actionLabel]="'guests.clearFilters' | translate"
+        (actionClick)="clearFilters()"
+      />
+    } @else {
+      <app-empty-state
+        [title]="'guests.emptyTitle' | translate"
+        [description]="'guests.emptyDescription' | translate"
+        [actionLabel]="canCreate() ? ('guests.addGuest' | translate) : undefined"
+        (actionClick)="openCreate()"
+      />
+    }
   } @else {
-    <p-table [value]="rows()" [loading]="loading()" dataKey="_id" [tableStyle]="{ 'min-width': '48rem' }"
-      styleClass="p-datatable-sm" [stripedRows]="true">
+    <p-table [value]="rows()" [loading]="loading()" [rowHover]="true" dataKey="_id" [tableStyle]="{ 'min-width': '46rem' }">
       <ng-template #header>
         <tr>
-          <th>{{ 'common.fullName' | translate }}</th>
-          <th>{{ 'common.email' | translate }}</th>
-          <th>{{ 'common.phone' | translate }}</th>
+          <th>{{ 'guests.col.guest' | translate }}</th>
+          <th>{{ 'guests.col.contact' | translate }}</th>
           <th>{{ 'common.cnic' | translate }}</th>
           <th>{{ 'entity.bookings' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
-          <th *appCan="['guests.detail', 'guests.edit', 'guests.delete']" style="width: 14rem">{{ 'common.actions' | translate }}</th>
+          <th class="gl-actions"></th>
         </tr>
       </ng-template>
       <ng-template #body let-guest>
-        <tr>
-          <td class="font-medium">
-            <a *appCan="'guests.detail'; else plainName" class="guest-name-link" [routerLink]="['/guests', guest._id]">{{ guest.fullName }}</a>
-            <ng-template #plainName>{{ guest.fullName }}</ng-template>
+        <tr [class.gl-row--off]="guest.deletedAt">
+          <td>
+            <div class="gl-guest">
+              <span class="gl-avatar">{{ initials(guest) }}</span>
+              <div class="gl-guest__text">
+                <a *appCan="'guests.detail'; else plainName" class="gl-name" [routerLink]="['/guests', guest._id]">{{ guest.fullName }}</a>
+                <ng-template #plainName><strong>{{ guest.fullName }}</strong></ng-template>
+                @if (guest.country) {
+                  <small><i class="pi pi-map-marker"></i> {{ guest.country }}{{ guest.state ? ' · ' + guest.state : '' }}</small>
+                }
+              </div>
+            </div>
           </td>
-          <td>{{ guest.email ?? '—' }}</td>
-          <td>{{ guest.phone ?? '—' }}</td>
-          <td>{{ guest.cnic ?? '—' }}</td>
-          <td>{{ guest.bookingCount ?? 0 }}</td>
+          <td>
+            <div class="gl-contact">
+              <span>{{ guest.phone || '—' }}</span>
+              @if (guest.email) {
+                <small>{{ guest.email }}</small>
+              }
+            </div>
+          </td>
+          <td class="gl-mono">{{ guest.cnic || '—' }}</td>
+          <td><span class="gl-count">{{ guest.bookingCount ?? 0 }}</span></td>
           <td>
             @if (guest.deletedAt) {
-              <p-tag [value]="'status.inactive' | translate" severity="danger" [rounded]="true" />
+              <span class="gl-status gl-status--off"><i class="pi pi-circle-fill"></i> {{ 'status.inactive' | translate }}</span>
             } @else {
-              <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
+              <span class="gl-status gl-status--on"><i class="pi pi-circle-fill"></i> {{ 'status.active' | translate }}</span>
             }
           </td>
-          <td *appCan="['guests.detail', 'guests.edit', 'guests.delete']">
-            <p-button *appCan="'guests.detail'" [label]="'common.view' | translate" [text]="true" size="small" (onClick)="openView(guest)" />
-            <p-button *appCan="'guests.edit'" [label]="'common.edit' | translate" [text]="true" size="small" (onClick)="openEdit(guest)" />
-            @if (guest.deletedAt) {
-              <p-button *appCan="'guests.delete'" [label]="'common.restore' | translate" [text]="true" size="small" (onClick)="onRestore(guest)" />
-            } @else {
-              <p-button *appCan="'guests.delete'" [label]="'guests.deactivate' | translate" [text]="true" size="small" severity="danger" (onClick)="onDelete(guest)" />
-            }
+          <td class="gl-actions">
+            <p-button *appCan="'guests.edit'" size="small" [text]="true" icon="pi pi-pencil" [label]="'common.edit' | translate" (onClick)="openEdit(guest)" />
+            <p-button *appCan="['guests.detail', 'guests.delete']" type="button" [text]="true" [rounded]="true" severity="secondary" icon="pi pi-ellipsis-v" [ariaLabel]="'users.moreActions' | translate" (onClick)="prepareActions($event, guest, rowMenu)" />
           </td>
         </tr>
       </ng-template>
     </p-table>
 
-    <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
-      [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
-      currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
+    <p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />
+    <p-paginator
+      [rows]="pageSize()"
+      [totalRecords]="totalRecords()"
+      [first]="first()"
+      [rowsPerPageOptions]="[10, 20, 50, 100]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}"
+      (onPageChange)="onPaginatorChange($event)"
+    />
   }
-</p-card>
+</section>
 
 <!-- Create / Edit drawer -->
-<p-drawer [header]="editVisible() ? ('guests.editHeader' | translate) : ('guests.newHeader' | translate)" [visible]="createVisible() || editVisible()"
-  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)" position="right"
-  [style]="{ width: 'min(30rem, 100vw)' }">
-  <form [formGroup]="form" (ngSubmit)="submit()">
-    <p-fluid>
-      <div class="field mb-3">
-        <label for="g-fullname">{{ 'common.fullName' | translate }}</label>
-        <input pInputText id="g-fullname" formControlName="fullName" autocomplete="off" />
-        <app-field-error [control]="form.controls.fullName" [label]="'common.fullName' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="g-email">{{ 'common.email' | translate }}</label>
-        <input pInputText id="g-email" type="email" formControlName="email" autocomplete="off" />
-        <app-field-error [control]="form.controls.email" [label]="'common.email' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="g-phone">{{ 'common.phone' | translate }}</label>
-        <input pInputText id="g-phone" formControlName="phone" autocomplete="off" />
-      </div>
-      <div class="field mb-3">
-        <label for="g-cnic">{{ 'common.cnic' | translate }}</label>
-        <input pInputText id="g-cnic" formControlName="cnic" autocomplete="off" />
-        <app-field-error [control]="form.controls.cnic" [label]="'common.cnic' | translate" />
-      </div>
-      <div class="field mb-3">
-        <label for="g-address">{{ 'common.address' | translate }}</label>
-        <input pInputText id="g-address" formControlName="address" autocomplete="off" />
-      </div>
-      <app-country-state-fields idPrefix="g" [countryControl]="form.controls.country" [stateControl]="form.controls.state" />
-      <div class="field mb-3">
-        <label for="g-dob">{{ 'common.dob' | translate }}</label>
-        <p-datepicker id="g-dob" formControlName="dateOfBirth" [showIcon]="true" dateFormat="yy-mm-dd" [maxDate]="today"
-          appendTo="body" />
-      </div>
-      <div class="field mb-3">
-        <label for="g-notes">{{ 'common.notes' | translate }}</label>
-        <textarea pTextarea id="g-notes" formControlName="notes" rows="3" style="width: 100%"></textarea>
-      </div>
-      <div class="form-actions">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true"
-          (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
-        <p-button type="submit" [label]="editVisible() ? ('common.saveChanges' | translate) : ('guests.createGuest' | translate)" [loading]="saving()" />
-      </div>
-    </p-fluid>
+<p-drawer
+  [header]="editVisible() ? ('guests.editHeader' | translate) : ('guests.newHeader' | translate)"
+  [visible]="createVisible() || editVisible()"
+  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(46rem, 100vw)' }"
+  styleClass="gl-drawer"
+>
+  <form class="gl-form" [formGroup]="form" (ngSubmit)="submit()">
+    <app-guest-form [form]="form" idPrefix="g" />
+    <!-- lets Enter submit; the visible buttons live in the fixed footer below -->
+    <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
   </form>
+  <ng-template #footer>
+    <div class="dr-footer">
+      <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
+      <p-button type="button" icon="pi pi-check" [label]="editVisible() ? ('common.saveChanges' | translate) : ('guests.createGuest' | translate)" [loading]="saving()" (onClick)="submit()" />
+    </div>
+  </ng-template>
 </p-drawer>
 
 <!-- View drawer -->
-<p-drawer [header]="'guests.profileHeader' | translate" [(visible)]="viewVisible" position="right" [style]="{ width: 'min(30rem, 100vw)' }">
+<p-drawer [header]="'guests.profileHeader' | translate" [(visible)]="viewVisible" position="right" [style]="{ width: 'min(36rem, 100vw)' }">
   @if (viewTarget(); as g) {
-    <div class="view-grid">
+    <div class="gv-hero">
+      <span class="gl-avatar gl-avatar--lg">{{ initials(g) }}</span>
       <div>
-        <span class="detail-label">{{ 'common.fullName' | translate }}</span>
-        <p>{{ g.fullName }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.email' | translate }}</span>
-        <p>{{ g.email ?? '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.phone' | translate }}</span>
-        <p>{{ g.phone ?? '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.cnic' | translate }}</span>
-        <p>{{ g.cnic ?? '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.address' | translate }}</span>
-        <p>{{ g.address ?? '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.country' | translate }} / {{ 'common.state' | translate }}</span>
-        <p>{{ g.country || '—' }}{{ g.state ? ' · ' + g.state : '' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.dob' | translate }}</span>
-        <p>{{ g.dateOfBirth ? (g.dateOfBirth | date: 'mediumDate') : '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'common.notes' | translate }}</span>
-        <p>{{ g.notes ?? '—' }}</p>
-      </div>
-      <div>
-        <span class="detail-label">{{ 'guests.guestSince' | translate }}</span>
-        <p>{{ g.createdAt ? (g.createdAt | date: 'medium') : '—' }}</p>
+        <strong>{{ g.fullName }}</strong>
+        <small>{{ 'guests.guestSince' | translate }} {{ g.createdAt ? (g.createdAt | date: 'mediumDate') : '—' }}</small>
       </div>
     </div>
-    <div class="form-actions">
-      <p-button [label]="'common.close' | translate" [outlined]="true" (onClick)="viewVisible.set(false)" />
-      <p-button *appCan="'guests.edit'" [label]="'common.edit' | translate" (onClick)="editFromView()" />
-    </div>
+    <dl class="gv-list">
+      <div><dt><i class="pi pi-mobile"></i> {{ 'common.phone' | translate }}</dt><dd>{{ g.phone || '—' }}</dd></div>
+      <div><dt><i class="pi pi-envelope"></i> {{ 'common.email' | translate }}</dt><dd>{{ g.email || '—' }}</dd></div>
+      <div><dt><i class="pi pi-id-card"></i> {{ 'common.cnic' | translate }}</dt><dd class="gl-mono">{{ g.cnic || '—' }}</dd></div>
+      <div><dt><i class="pi pi-map-marker"></i> {{ 'common.address' | translate }}</dt><dd>{{ g.address || '—' }}</dd></div>
+      <div><dt><i class="pi pi-globe"></i> {{ 'common.country' | translate }} / {{ 'common.state' | translate }}</dt><dd>{{ g.country || '—' }}{{ g.state ? ' · ' + g.state : '' }}</dd></div>
+      <div><dt><i class="pi pi-comment"></i> {{ 'common.notes' | translate }}</dt><dd>{{ g.notes || '—' }}</dd></div>
+    </dl>
   }
+  <ng-template #footer>
+    <div class="dr-footer">
+      <p-button [label]="'common.close' | translate" [text]="true" severity="secondary" (onClick)="viewVisible.set(false)" />
+      <p-button *appCan="'guests.edit'" icon="pi pi-pencil" [label]="'common.edit' | translate" (onClick)="editFromView()" />
+    </div>
+  </ng-template>
 </p-drawer>

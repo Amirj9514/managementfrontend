@@ -11,24 +11,24 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subject, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
-import { Card } from 'primeng/card';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';
 import { Fluid } from 'primeng/fluid';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { MultiSelect } from 'primeng/multiselect';
 import { Paginator, type PaginatorState } from 'primeng/paginator';
 import { Password } from 'primeng/password';
 import { Menu } from 'primeng/menu';
 import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
-import { Tag } from 'primeng/tag';
-import { Toolbar } from 'primeng/toolbar';
 import type { Branch } from '../../../../core/models/entity-stubs.model';
 import { buildingRowId } from '../../../../core/models/building-admin.model';
 import { hasFullAccess, type PermissionCatalog } from '../../../../core/models/permissions.model';
@@ -63,21 +63,21 @@ import { USERS_DICTIONARY } from '../../users.dictionary';
     FormsModule,
     ReactiveFormsModule,
     TableModule,
-    Card,
     PageHeaderComponent,
     EmptyStateComponent,
-    Toolbar,
     Button,
     Paginator,
     Dialog,
     Fluid,
+    IconField,
+    InputIcon,
     InputText,
     Password,
     Select,
+    SelectButton,
     MultiSelect,
     Checkbox,
     Drawer,
-    Tag,
     Menu,
     NgIcon,
     TableSkeletonComponent,
@@ -114,6 +114,23 @@ export class UsersListComponent {
   readonly page = signal(1);
   readonly pageSize = signal(20);
   readonly status = signal<string>('active');
+  readonly search = signal('');
+  readonly roleFilter = signal<string | null>(null);
+  private readonly search$ = new Subject<string>();
+
+  readonly statusOptions = computed(() => {
+    this.i18n.currentLang();
+    return [
+      { label: this.i18n.t('users.filter.active'), value: 'active' },
+      { label: this.i18n.t('users.filter.inactiveDeleted'), value: 'inactive' },
+      { label: this.i18n.t('users.filter.all'), value: 'all' },
+    ];
+  });
+  readonly roleFilterOptions = computed(() => [
+    { label: this.i18n.t('users.allRoles'), value: null as string | null },
+    ...this.staffRoleOptions(),
+  ]);
+  readonly hasFilters = computed(() => !!this.search().trim() || !!this.roleFilter() || this.status() !== 'active');
 
   readonly first = computed(() => (this.page() - 1) * this.pageSize());
 
@@ -159,6 +176,10 @@ export class UsersListComponent {
 
   constructor() {
     this.i18n.register(USERS_DICTIONARY);
+    this.search$.pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed()).subscribe(() => {
+      this.page.set(1);
+      this.reload();
+    });
     this.assignForm.controls.updateScopes.valueChanges.subscribe(() => this.cdr.markForCheck());
     this.permissionsApi.getCatalog().subscribe({ next: (cat) => this.catalog.set(cat) });
     // Picking a role pre-fills that role's default permissions; the admin can then tweak them.
@@ -253,7 +274,7 @@ export class UsersListComponent {
 
   reload(): void {
     this.loading.set(true);
-    this.api.list(this.page(), this.pageSize(), this.status()).subscribe({
+    this.api.list(this.page(), this.pageSize(), this.status(), this.search().trim() || undefined, this.roleFilter()).subscribe({
       next: ({ items, pagination }) => {
         this.rows.set(items);
         this.totalRecords.set(pagination.total);
@@ -263,6 +284,70 @@ export class UsersListComponent {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  onSearch(value: string): void {
+    this.search.set(value);
+    this.search$.next(value.trim());
+  }
+
+  onRoleFilter(value: string | null): void {
+    this.roleFilter.set(value ?? null);
+    this.page.set(1);
+    this.reload();
+  }
+
+  clearFilters(): void {
+    this.search.set('');
+    this.roleFilter.set(null);
+    this.status.set('active');
+    this.page.set(1);
+    this.reload();
+  }
+
+  initials(row: AdminUserListRow): string {
+    const base = (row.name || row.email).trim();
+    const parts = base.split(/[\s@.]+/).filter(Boolean);
+    return ((parts[0]?.[0] ?? '?') + (parts.length > 1 ? parts[1][0] : '')).toUpperCase();
+  }
+
+  /** Colour family of a role chip. */
+  roleTone(role: string): string {
+    if (role === 'super_admin' || role === 'admin') return 'admin';
+    if (role === 'branch_admin' || role === 'building_admin') return 'manager';
+    if (role === 'booking_admin' || role === 'front_desk' || role === 'employee_admin') return 'desk';
+    if (role === 'housekeeping') return 'house';
+    return 'staff';
+  }
+
+  isInactive(row: AdminUserListRow): boolean {
+    return !!row.deletedAt || row.status === 'inactive';
+  }
+
+  /** "All branches" for admins, else "Main · 2 buildings". */
+  scopeText(row: AdminUserListRow): string {
+    if (hasFullAccess(row.role)) return this.i18n.t('users.scope.everything');
+    const sc = row.scope;
+    if (!sc || sc.branches.length === 0) return this.i18n.t('users.scope.none');
+    const branch = sc.branches.length === 1 ? sc.branches[0] : this.i18n.t('users.scope.branches', { n: sc.branches.length });
+    if (sc.floorCount > 0) return branch + ' · ' + this.i18n.t('users.scope.floors', { n: sc.floorCount });
+    if (sc.buildings.length > 0) {
+      return branch + ' · ' + (sc.buildings.length === 1 ? sc.buildings[0] : this.i18n.t('users.scope.buildings', { n: sc.buildings.length }));
+    }
+    return branch + ' · ' + this.i18n.t('users.scope.allBuildings');
+  }
+
+  lastSeen(row: AdminUserListRow): string {
+    if (!row.lastLoginAt) return this.i18n.t('users.neverSignedIn');
+    const diff = new Date(row.lastLoginAt).getTime() - Date.now();
+    const fmt = new Intl.RelativeTimeFormat(this.i18n.currentLang(), { numeric: 'auto' });
+    const mins = Math.round(diff / 60000);
+    if (Math.abs(mins) < 60) return fmt.format(mins, 'minute');
+    const hours = Math.round(mins / 60);
+    if (Math.abs(hours) < 24) return fmt.format(hours, 'hour');
+    const days = Math.round(hours / 24);
+    if (Math.abs(days) < 60) return fmt.format(days, 'day');
+    return fmt.format(Math.round(days / 30), 'month');
   }
 
   onStatusChange(value: string | null): void {

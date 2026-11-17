@@ -8,7 +8,10 @@ export interface TransferRoom {
   code: string;
   status: string;
   capacity: { adults: number; children: number; total: number };
+  roomTypeId: string;
   roomTypeName: string | null;
+  amenityIds: string[];
+  amenityNames: string[];
   floorId: string;
   floorLabel: string | null;
   floorOrder: number;

@@ -21,6 +21,7 @@ export const PERMISSION_MATRIX_DICTIONARY: Record<string, DictionaryEntry> = {
   'perm.module.bookings': { en: 'Bookings', ur: 'بکنگز' },
   'perm.module.guests': { en: 'Guests', ur: 'مہمان' },
   'perm.module.checkout': { en: 'Stays', ur: 'قیام' },
+  'perm.module.housekeeping': { en: 'Housekeeping (cleaning)', ur: 'ہاؤس کیپنگ (صفائی)' },
   'perm.module.rooms': { en: 'Rooms', ur: 'کمرے' },
   'perm.module.halls': { en: 'Halls', ur: 'ہالز' },
   'perm.module.branches': { en: 'Branches', ur: 'برانچیں' },
@@ -40,5 +41,8 @@ export const PERMISSION_MATRIX_DICTIONARY: Record<string, DictionaryEntry> = {
   'perm.action.checkout': { en: 'Check-out', ur: 'چیک آؤٹ' },
   'perm.action.extend': { en: 'Extend', ur: 'توسیع' },
   'perm.action.transfer': { en: 'Transfer', ur: 'منتقلی' },
+  'perm.action.assign': { en: 'Assign cleaners', ur: 'صفائی والے مقرر کریں' },
+  'perm.action.clean': { en: 'Do cleaning', ur: 'صفائی کریں' },
+  'perm.action.verify': { en: 'Verify rooms', ur: 'کمرے کی تصدیق' },
   'perm.action.leaveReview': { en: 'Approve leave', ur: 'چھٹی منظور کریں' },
 };

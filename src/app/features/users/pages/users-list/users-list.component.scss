@@ -92,3 +92,136 @@
     }
   }
 }
+
+// ---- list (modern)
+$border: var(--p-content-border-color, rgba(127, 127, 127, 0.25));
+$muted: var(--p-text-muted-color, #64748b);
+
+.u-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+
+  &__search {
+    flex: 1 1 16rem;
+    max-width: 22rem;
+
+    input {
+      width: 100%;
+    }
+  }
+
+  &__count {
+    margin-inline-start: auto;
+    font-size: 0.85rem;
+    color: $muted;
+  }
+}
+
+.u-panel {
+  border-radius: 16px;
+  border: 1px solid $border;
+  background: var(--p-content-background, #fff);
+  overflow: hidden;
+}
+
+.u-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: $muted;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.u-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+
+  &[data-tone='admin'] { --tone: #7c3aed; }
+  &[data-tone='manager'] { --tone: #2563eb; }
+  &[data-tone='desk'] { --tone: #059669; }
+  &[data-tone='house'] { --tone: #d97706; }
+  &[data-tone='staff'] { --tone: #64748b; }
+}
+
+.u-role {
+  display: inline-block;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 999px;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+
+  &[data-tone='admin'] { --tone: #7c3aed; }
+  &[data-tone='manager'] { --tone: #2563eb; }
+  &[data-tone='desk'] { --tone: #059669; }
+  &[data-tone='house'] { --tone: #d97706; }
+  &[data-tone='staff'] { --tone: #64748b; }
+}
+
+.u-access {
+  font-size: 0.875rem;
+}
+
+.u-muted {
+  font-size: 0.85rem;
+  color: $muted;
+  white-space: nowrap;
+}
+
+.u-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+
+  i {
+    font-size: 0.45rem;
+  }
+
+  &--on { color: var(--p-green-600, #16a34a); }
+  &--off { color: $muted; }
+}
+
+.u-row--off td {
+  opacity: 0.72;
+}
+
+.u-actions {
+  width: 9.5rem;
+  text-align: end;
+  white-space: nowrap;
+}

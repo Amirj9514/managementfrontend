@@ -10,6 +10,9 @@ export interface AdminUserListRow {
   permissions?: string[];
   createdAt: string;
   deletedAt?: string | null;
+  lastLoginAt?: string | null;
+  /** Where the person works (names), for the list. */
+  scope?: { branches: string[]; buildings: string[]; floorCount: number };
 }
 
 export interface UserUpdateRequest {

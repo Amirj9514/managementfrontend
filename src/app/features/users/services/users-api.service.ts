@@ -19,9 +19,13 @@ export class UsersApiService {
     page = 1,
     limit = 20,
     status?: string,
+    search?: string,
+    role?: string | null,
   ): Observable<PaginatedListPayload<AdminUserListRow>> {
     let params = new HttpParams().set('page', String(page)).set('limit', String(limit));
     if (status) params = params.set('status', status);
+    if (search) params = params.set('search', search);
+    if (role) params = params.set('role', role);
     return this.api.getPaginatedList<AdminUserListRow>('users', params);
   }
 

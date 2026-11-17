@@ -1,69 +1,110 @@
-<app-page-header
-  [title]="'nav.users' | translate"
-  [subtitle]="'users.subtitle' | translate"
-/>
-<p-toolbar styleClass="users-toolbar">
-  <ng-template #start>
-    <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button type="button" [label]="'users.newUser' | translate" (onClick)="goNew()" />
-      <p-select
-        [options]="[
-          { label: ('users.filter.active' | translate), value: 'active' },
-          { label: ('users.filter.inactiveDeleted' | translate), value: 'inactive' },
-          { label: ('users.filter.all' | translate), value: 'all' }
-        ]"
-        [ngModel]="status()"
-        (ngModelChange)="onStatusChange($event)"
-        [placeholder]="'users.filterByStatus' | translate"
-        styleClass="w-12rem"
-      />
-    </div>
-  </ng-template>
-</p-toolbar>
-<p-card>
-  @if (loading()) {
-    <app-table-skeleton [columns]="5" [rows]="10" />
-  } @else if (rows().length === 0 && totalRecords() === 0) {
-    <app-empty-state
-      [title]="'users.emptyTitle' | translate"
-      [description]="'users.emptyDescription' | translate"
-      icon="lucideUsers"
-      [actionLabel]="'users.createUser' | translate"
-      (actionClick)="goNew()"
+<app-page-header [title]="'nav.users' | translate" [subtitle]="'users.subtitle' | translate">
+  <p-button actions type="button" icon="pi pi-user-plus" [label]="'users.newUser' | translate" (onClick)="goNew()" />
+</app-page-header>
+
+<div class="u-toolbar">
+  <p-iconfield class="u-toolbar__search">
+    <p-inputicon class="pi pi-search" />
+    <input
+      pInputText
+      type="search"
+      autocomplete="off"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+      [placeholder]="'users.searchPlaceholder' | translate"
+      [attr.aria-label]="'users.searchPlaceholder' | translate"
     />
+  </p-iconfield>
+  <p-select
+    [options]="roleFilterOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="roleFilter()"
+    (ngModelChange)="onRoleFilter($event)"
+    styleClass="w-12rem"
+  />
+  <p-selectbutton
+    [options]="statusOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="status()"
+    (ngModelChange)="onStatusChange($event)"
+    [allowEmpty]="false"
+    size="small"
+  />
+  @if (hasFilters()) {
+    <p-button type="button" [text]="true" size="small" icon="pi pi-filter-slash" [label]="'users.clearFilters' | translate" (onClick)="clearFilters()" />
+  }
+  <span class="u-toolbar__count">{{ 'users.count' | translate: { n: totalRecords() } }}</span>
+</div>
+
+<section class="u-panel">
+  @if (loading()) {
+    <app-table-skeleton [columns]="5" [rows]="8" />
+  } @else if (rows().length === 0) {
+    @if (hasFilters()) {
+      <app-empty-state
+        [title]="'users.noMatchTitle' | translate"
+        [description]="'users.noMatchDescription' | translate"
+        icon="lucideUsers"
+        [actionLabel]="'users.clearFilters' | translate"
+        (actionClick)="clearFilters()"
+      />
+    } @else {
+      <app-empty-state
+        [title]="'users.emptyTitle' | translate"
+        [description]="'users.emptyDescription' | translate"
+        icon="lucideUsers"
+        [actionLabel]="'users.createUser' | translate"
+        (actionClick)="goNew()"
+      />
+    }
   } @else {
-    <p-table [value]="rows()" [loading]="false" [tableStyle]="{ 'min-width': '48rem' }">
+    <p-table [value]="rows()" [rowHover]="true" dataKey="_id" [tableStyle]="{ 'min-width': '50rem' }">
       <ng-template #header>
         <tr>
-          <th>{{ 'common.name' | translate }}</th>
-          <th>{{ 'common.email' | translate }}</th>
+          <th>{{ 'users.col.user' | translate }}</th>
           <th>{{ 'common.role' | translate }}</th>
+          <th>{{ 'users.col.access' | translate }}</th>
+          <th>{{ 'users.col.lastSignIn' | translate }}</th>
           <th>{{ 'common.status' | translate }}</th>
-          <th>{{ 'common.created' | translate }}</th>
-          <th style="width: 11rem"></th>
+          <th class="u-actions"></th>
         </tr>
       </ng-template>
       <ng-template #body let-row>
-        <tr>
-          <td>{{ row.name || '—' }}</td>
-          <td>{{ row.email }}</td>
-          <td>{{ 'role.' + row.role | translate }}</td>
+        <tr [class.u-row--off]="isInactive(row)">
           <td>
-            @if (row.deletedAt || row.status === 'inactive') {
-              <p-tag [value]="'status.inactive' | translate" severity="danger" />
+            <div class="u-user">
+              <span class="u-avatar" [attr.data-tone]="roleTone(row.role)">{{ initials(row) }}</span>
+              <div class="u-user__text">
+                <strong>{{ row.name || row.email }}</strong>
+                @if (row.name) {
+                  <small>{{ row.email }}</small>
+                }
+              </div>
+            </div>
+          </td>
+          <td><span class="u-role" [attr.data-tone]="roleTone(row.role)">{{ 'role.' + row.role | translate }}</span></td>
+          <td class="u-access">{{ scopeText(row) }}</td>
+          <td class="u-muted">{{ lastSeen(row) }}</td>
+          <td>
+            @if (isInactive(row)) {
+              <span class="u-status u-status--off"><i class="pi pi-circle-fill"></i> {{ 'status.inactive' | translate }}</span>
             } @else {
-              <p-tag [value]="'status.active' | translate" severity="success" />
+              <span class="u-status u-status--on"><i class="pi pi-circle-fill"></i> {{ 'status.active' | translate }}</span>
             }
           </td>
-          <td>{{ row.createdAt ? (row.createdAt | date: 'medium') : '—' }}</td>
-          <td style="text-align: right">
+          <td class="u-actions">
+            <p-button type="button" size="small" [text]="true" icon="pi pi-pencil" [label]="'common.edit' | translate" (onClick)="openEdit(row)" />
             <p-button
               type="button"
               [text]="true"
               [rounded]="true"
+              severity="secondary"
+              [ariaLabel]="'users.moreActions' | translate"
               (onClick)="prepareActions($event, row, rowMenu)"
             >
-              <ng-icon name="lucideMoreVertical" size="1.25rem" />
+              <ng-icon name="lucideMoreVertical" size="1.15rem" />
             </p-button>
           </td>
         </tr>
@@ -81,7 +122,7 @@
       (onPageChange)="onPaginatorChange($event)"
     />
   }
-</p-card>
+</section>
 
 <p-drawer
   [header]="'users.editUserHeader' | translate"

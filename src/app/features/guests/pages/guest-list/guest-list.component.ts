@@ -2,30 +2,28 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { MessageService } from 'primeng/api';
+import { MessageService, type MenuItem } from 'primeng/api';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
-import { Card } from 'primeng/card';
-import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
-import { Fluid } from 'primeng/fluid';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
+import { Menu } from 'primeng/menu';
 import { Paginator } from 'primeng/paginator';
 import type { PaginatorState } from 'primeng/paginator';
-import { Select } from 'primeng/select';
-import { CountryStateFieldsComponent } from '../../../../shared/country-state-fields/country-state-fields.component';
+import { SelectButton } from 'primeng/selectbutton';
+import { GuestFormComponent } from '../../../../shared/guest-form/guest-form.component';
 import { DEFAULT_COUNTRY } from '../../../../core/data/countries';
-import { Tag } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
-import { Textarea } from 'primeng/textarea';
-import { Toolbar } from 'primeng/toolbar';
 import { CanDirective } from '../../../../core/directives/can.directive';
 import { guestRowId, type Guest } from '../../../../core/models/guest.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
 import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
-import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
 import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
 import { applyApiFieldErrors, clearServerFieldErrors } from '../../../../core/http/api-error.util';
 import { GuestApiService } from '../../services/guest-api.service';
@@ -39,21 +37,17 @@ import { GUESTS_DICTIONARY } from '../../guests.dictionary';
     ReactiveFormsModule,
     RouterLink,
     Button,
-    Card,
+    IconField,
+    InputIcon,
     InputText,
+    Menu,
     TableModule,
-    Toolbar,
     Drawer,
-    Fluid,
-    DatePicker,
-    Textarea,
-    Select,
-    CountryStateFieldsComponent,
-    Tag,
+    SelectButton,
+    GuestFormComponent,
     Paginator,
     EmptyStateComponent,
     PageHeaderComponent,
-    FieldErrorComponent,
     TranslatePipe,
     CanDirective,
   ],
@@ -70,8 +64,6 @@ export class GuestListComponent {
   private readonly router = inject(Router);
   readonly i18n = inject(TranslationService);
 
-  readonly today = new Date();
-
   readonly statusOptions = computed(() => {
     this.i18n.currentLang();
     return [
@@ -84,6 +76,9 @@ export class GuestListComponent {
   readonly rows = signal<Guest[]>([]);
   readonly loading = signal(true);
   readonly search = signal('');
+  private readonly search$ = new Subject<string>();
+  readonly hasFilters = computed(() => !!this.search().trim() || this.status() !== 'active');
+  readonly menuItems = signal<MenuItem[]>([]);
   readonly status = signal('active');
 
   readonly totalRecords = signal(0);
@@ -111,12 +106,12 @@ export class GuestListComponent {
     address: ['', [Validators.maxLength(500)]],
     country: [DEFAULT_COUNTRY, [Validators.maxLength(80)]],
     state: ['', [Validators.maxLength(80)]],
-    dateOfBirth: [null as Date | null],
     notes: ['', [Validators.maxLength(2000)]],
   });
 
   constructor() {
     this.i18n.register(GUESTS_DICTIONARY);
+    this.search$.pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed()).subscribe(() => this.applySearch());
     this.reload();
   }
 
@@ -132,6 +127,38 @@ export class GuestListComponent {
         },
         error: () => this.loading.set(false),
       });
+  }
+
+  onSearch(value: string): void {
+    this.search.set(value);
+    this.search$.next(value.trim());
+  }
+
+  clearFilters(): void {
+    this.search.set('');
+    this.status.set('active');
+    this.page.set(1);
+    this.reload();
+  }
+
+  initials(g: Guest): string {
+    const parts = (g.fullName ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] ?? '?') + (parts.length > 1 ? parts[1][0] : '')).toUpperCase();
+  }
+
+  /** The "…" menu: the less common actions, so each row stays calm. */
+  prepareActions(event: Event, row: Guest, menu: { toggle: (e: Event) => void }): void {
+    const items: MenuItem[] = [];
+    if (this.auth.can('guests.detail')) items.push({ label: this.i18n.t('common.view'), icon: 'pi pi-eye', command: () => this.openView(row) });
+    if (this.auth.can('guests.delete')) {
+      items.push(
+        row.deletedAt
+          ? { label: this.i18n.t('common.restore'), icon: 'pi pi-refresh', command: () => this.onRestore(row) }
+          : { label: this.i18n.t('guests.deactivate'), icon: 'pi pi-ban', command: () => this.onDelete(row) },
+      );
+    }
+    this.menuItems.set(items);
+    menu.toggle(event);
   }
 
   applySearch(): void {
@@ -154,13 +181,9 @@ export class GuestListComponent {
     this.reload();
   }
 
-  private dobToDate(dob: string | null | undefined): Date | null {
-    return dob ? new Date(dob) : null;
-  }
-
   openCreate(): void {
     this.editTarget.set(null);
-    this.form.reset({ fullName: '', email: '', phone: '', cnic: '', address: '', country: DEFAULT_COUNTRY, state: '', dateOfBirth: null, notes: '' });
+    this.form.reset({ fullName: '', email: '', phone: '', cnic: '', address: '', country: DEFAULT_COUNTRY, state: '', notes: '' });
     this.createVisible.set(true);
   }
 
@@ -174,7 +197,6 @@ export class GuestListComponent {
       address: row.address ?? '',
       country: row.country ?? '',
       state: row.state ?? '',
-      dateOfBirth: this.dobToDate(row.dateOfBirth),
       notes: row.notes ?? '',
     });
     this.editVisible.set(true);
@@ -206,7 +228,6 @@ export class GuestListComponent {
       address: v.address || undefined,
       country: v.country || undefined,
       state: v.state?.trim() || undefined,
-      dateOfBirth: v.dateOfBirth ? v.dateOfBirth.toISOString() : undefined,
       notes: v.notes || undefined,
     };
     const target = this.editTarget();

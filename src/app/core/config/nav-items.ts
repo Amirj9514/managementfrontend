@@ -51,6 +51,12 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         icon: 'lucideBedDouble',
         permissions: ['checkout.view'],
       },
+      {
+        label: 'nav.housekeeping',
+        routerLink: '/housekeeping',
+        icon: 'lucideSparkles',
+        permissions: ['housekeeping.view', 'housekeeping.assign', 'housekeeping.clean', 'housekeeping.verify'],
+      },
     ],
   },
   {

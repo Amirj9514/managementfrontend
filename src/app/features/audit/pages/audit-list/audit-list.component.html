@@ -1,25 +1,135 @@
 <app-page-header [title]="'nav.auditLog' | translate" [subtitle]="'audit.subtitle' | translate" />
-<p-card>
-  @if (!loading() && rows().length === 0) {
-    <app-empty-state [title]="'audit.emptyTitle' | translate" [description]="'audit.emptyDescription' | translate" />
+
+<!-- Pulse -->
+@if (facets(); as f) {
+  <div class="au-pulse">
+    <div class="au-tile">
+      <span class="au-tile__icon"><i class="pi pi-bolt"></i></span>
+      <div><strong>{{ f.last24h.events }}</strong><small>{{ 'audit.pulse.events' | translate }}</small></div>
+    </div>
+    <div class="au-tile">
+      <span class="au-tile__icon au-tile__icon--people"><i class="pi pi-users"></i></span>
+      <div><strong>{{ f.last24h.people }}</strong><small>{{ 'audit.pulse.people' | translate }}</small></div>
+    </div>
+    <div class="au-tile">
+      <span class="au-tile__icon au-tile__icon--list"><i class="pi pi-list"></i></span>
+      <div><strong>{{ total() }}</strong><small>{{ 'audit.pulse.showing' | translate }}</small></div>
+    </div>
+  </div>
+}
+
+<!-- Filters -->
+<div class="au-filters">
+  <p-iconfield class="au-filters__search">
+    <p-inputicon class="pi pi-search" />
+    <input
+      pInputText
+      type="search"
+      autocomplete="off"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+      [placeholder]="'audit.searchPlaceholder' | translate"
+      [attr.aria-label]="'audit.searchPlaceholder' | translate"
+    />
+  </p-iconfield>
+  <p-select [options]="moduleOptions()" optionLabel="label" optionValue="value" [ngModel]="module()" (ngModelChange)="setModule($event)" styleClass="w-12rem" />
+  <p-select [options]="actorOptions()" optionLabel="label" optionValue="value" [ngModel]="actorId()" (ngModelChange)="setActor($event)" [filter]="actorOptions().length > 8" styleClass="w-12rem" />
+  @if (hasFilters()) {
+    <p-button type="button" [text]="true" size="small" icon="pi pi-filter-slash" [label]="'audit.clearFilters' | translate" (onClick)="clearFilters()" />
+  }
+</div>
+<div class="au-filters au-filters--row2">
+  <p-selectbutton [options]="kindOptions()" optionLabel="label" optionValue="value" [ngModel]="kind()" (ngModelChange)="setKind($event)" [allowEmpty]="false" size="small" />
+  <p-selectbutton [options]="periodOptions()" optionLabel="label" optionValue="value" [ngModel]="period()" (ngModelChange)="setPeriod($event)" [allowEmpty]="false" size="small" />
+</div>
+
+<section class="au-panel">
+  @if (loading() && rows().length === 0) {
+    <app-table-skeleton [columns]="4" [rows]="8" />
+  } @else if (rows().length === 0) {
+    @if (hasFilters()) {
+      <app-empty-state
+        icon="lucideScrollText"
+        [title]="'audit.noMatchTitle' | translate"
+        [description]="'audit.noMatchDescription' | translate"
+        [actionLabel]="'audit.clearFilters' | translate"
+        (actionClick)="clearFilters()"
+      />
+    } @else {
+      <app-empty-state icon="lucideScrollText" [title]="'audit.emptyTitle' | translate" [description]="'audit.emptyDescription' | translate" />
+    }
   } @else {
-    <p-table [value]="rows()" [loading]="loading()" [tableStyle]="{ 'min-width': '44rem' }">
+    <p-table [value]="rows()" [rowHover]="true" [loading]="loading()" dataKey="_id" [tableStyle]="{ 'min-width': '46rem' }">
       <ng-template #header>
         <tr>
-          <th>{{ 'audit.when' | translate }}</th>
-          <th>{{ 'audit.action' | translate }}</th>
-          <th>{{ 'audit.resource' | translate }}</th>
-          <th>{{ 'audit.user' | translate }}</th>
+          <th class="au-col-when">{{ 'audit.col.when' | translate }}</th>
+          <th>{{ 'audit.col.what' | translate }}</th>
+          <th>{{ 'audit.col.who' | translate }}</th>
+          <th>{{ 'audit.col.area' | translate }}</th>
+          <th class="au-col-go"></th>
         </tr>
       </ng-template>
-      <ng-template #body let-row>
-        <tr>
-          <td>{{ row.createdAt }}</td>
-          <td>{{ row.action }}</td>
-          <td>{{ row.resource ?? '—' }}</td>
-          <td>{{ row.userId ?? '—' }}</td>
+      <ng-template #body let-row let-i="rowIndex">
+        <tr
+          class="au-row"
+          tabindex="0"
+          role="button"
+          [class.au-row--active]="selectedIndex() === i"
+          (click)="open(i)"
+          (keydown.enter)="open(i)"
+          (keydown.space)="open(i); $event.preventDefault()"
+        >
+          <td class="au-when">
+            <span>{{ p.when(row.createdAt) }}</span>
+            <small>{{ p.relative(row.createdAt) }}</small>
+          </td>
+          <td>
+            <div class="au-what" [attr.data-tone]="p.meta(row.action).tone">
+              <span class="au-what__icon"><i [class]="'pi ' + p.meta(row.action).icon"></i></span>
+              <div class="au-what__text">
+                <strong>{{ p.label(row) }}</strong>
+                @if (row.targetLabel) {
+                  <small>{{ row.targetLabel }}</small>
+                }
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (row.actor; as a) {
+              <div class="au-who">
+                <span class="au-avatar">{{ initials(a.name) }}</span>
+                <div>
+                  <strong>{{ a.name }}</strong>
+                  <small>{{ 'role.' + a.role | translate }}</small>
+                </div>
+              </div>
+            } @else {
+              <span class="au-muted"><i class="pi pi-cog"></i> {{ 'audit.system' | translate }}</span>
+            }
+          </td>
+          <td><span class="au-area">{{ p.moduleLabel(row.module) }}</span></td>
+          <td class="au-col-go"><i class="pi pi-angle-right"></i></td>
         </tr>
       </ng-template>
     </p-table>
+
+    <p-paginator
+      [rows]="pageSize()"
+      [totalRecords]="total()"
+      [first]="first()"
+      [rowsPerPageOptions]="[25, 50, 100]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}"
+      (onPageChange)="onPage($event)"
+    />
   }
-</p-card>
+</section>
+
+<app-audit-detail
+  [row]="selected()"
+  [hasNewer]="selectedIndex() !== null && selectedIndex()! > 0"
+  [hasOlder]="selectedIndex() !== null && selectedIndex()! < rows().length - 1"
+  (closed)="closeDetail()"
+  (newer)="newer()"
+  (older)="older()"
+/>

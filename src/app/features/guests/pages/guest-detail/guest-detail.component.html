@@ -30,10 +30,6 @@
         <p>{{ g.country || '—' }}{{ g.state ? ' · ' + g.state : '' }}</p>
       </div>
       <div>
-        <span class="detail-label">{{ 'common.dob' | translate }}</span>
-        <p>{{ g.dateOfBirth ? (g.dateOfBirth | date: 'mediumDate') : '—' }}</p>
-      </div>
-      <div>
         <span class="detail-label">{{ 'guests.notesCreation' | translate }}</span>
         <p>{{ g.notes ?? '—' }}</p>
       </div>

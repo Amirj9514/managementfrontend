@@ -222,6 +222,27 @@ export const BOOKINGS_DICTIONARY: Record<string, DictionaryEntry> = {
     ur: 'اس وقت کوئی چیک اِن نہیں ہے۔ دوسری بکنگز دیکھنے کے لیے حالت کا فلٹر ہٹائیں۔',
   },
   'bookings.showAll': { en: 'Show all bookings', ur: 'تمام بکنگز دکھائیں' },
+  // ---- room step: building › floor › refine
+  'bookings.pick.freeOfTotal': { en: '{{free}} of {{total}} available', ur: '{{total}} میں سے {{free}} دستیاب' },
+  'bookings.pick.chooseBuilding': { en: 'Choose a building to see its {{unitWord}}', ur: 'اس کے {{unitWord}} دیکھنے کے لیے عمارت منتخب کریں' },
+  'bookings.pick.chooseBuildingHint': {
+    en: 'Pick a building above, then a floor — only those are listed, and you can change them any time.',
+    ur: 'اوپر سے عمارت اور پھر منزل منتخب کریں — صرف وہی دکھائے جائیں گے، اور آپ کسی بھی وقت بدل سکتے ہیں۔',
+  },
+  'bookings.pick.allFloors': { en: 'All floors', ur: 'تمام منزلیں' },
+  'bookings.pick.search': { en: 'Search by code…', ur: 'کوڈ سے تلاش کریں…' },
+  'bookings.pick.anyType': { en: 'Any room type', ur: 'کمرے کی کوئی بھی قسم' },
+  'bookings.pick.amenities': { en: 'Amenities', ur: 'سہولیات' },
+  'bookings.pick.availableOnly': { en: 'Available only', ur: 'صرف دستیاب' },
+  'bookings.pick.fitsParty': { en: 'Fits my party ({{count}})', ur: 'میری پارٹی کے لیے موزوں ({{count}})' },
+  'bookings.pick.clearFilters': { en: 'Clear filters', ur: 'فلٹر ہٹائیں' },
+  'bookings.pick.selected': { en: 'Selected', ur: 'منتخب' },
+  'bookings.pick.hiddenByFilters': { en: 'Hidden by the current filters — still selected.', ur: 'موجودہ فلٹرز سے چھپا ہوا — اب بھی منتخب ہے۔' },
+  'bookings.pick.clearSelection': { en: 'Clear', ur: 'ہٹائیں' },
+  'bookings.pick.nothingHere': {
+    en: 'No matching {{unitWord}} here — try another floor or loosen the filters.',
+    ur: 'یہاں کوئی مماثل {{unitWord}} نہیں — کوئی اور منزل آزمائیں یا فلٹر ہلکے کریں۔',
+  },
   'bookings.action.checkIn': { en: 'Check in', ur: 'چیک ان' },
   'bookings.action.checkOut': { en: 'Check out', ur: 'چیک آؤٹ' },
   // ---- transfer screen
