@@ -15,18 +15,8 @@ export const routes: Routes = [
       },
     ],
   },
-  {
-    path: 'register',
-    loadComponent: () =>
-      import('./layout/auth-layout/auth-layout.component').then((m) => m.AuthLayoutComponent),
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
-      },
-    ],
-  },
+  // Self sign-up is switched off: accounts are created by an admin under Users. The register page code is kept.
+  { path: 'register', redirectTo: 'login', pathMatch: 'full' },
   {
     path: '',
     loadComponent: () => import('./layout/shell/shell.component').then((m) => m.ShellComponent),
