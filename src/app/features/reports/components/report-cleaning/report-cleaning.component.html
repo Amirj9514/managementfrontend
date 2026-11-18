@@ -1,0 +1,139 @@
+@if (loading() && !data()) {
+  <div class="rp-tiles">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton width="100%" height="5rem" borderRadius="16px" />
+    }
+  </div>
+  <p-skeleton width="100%" height="18rem" borderRadius="16px" />
+} @else if (failed()) {
+  <app-empty-state icon="lucideChartBar" [title]="'rp.failed.title' | translate" [description]="'rp.failed.description' | translate" />
+} @else if (data(); as d) {
+  <div class="rp-tiles" [class.rp-loading]="loading()">
+    <div class="rp-tile" data-tone="slate">
+      <span class="rp-tile__label">{{ 'rp.cl.requested' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.requested }}</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.requestedHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="blue">
+      <span class="rp-tile__label">{{ 'rp.cl.completed' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.completed }}</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.completedHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" [attr.data-tone]="d.totals.open > 0 ? 'amber' : 'green'">
+      <span class="rp-tile__label">{{ 'rp.cl.open' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.open }}</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.openHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="indigo">
+      <span class="rp-tile__label">{{ 'rp.cl.turnaround' | translate }}</span>
+      <span class="rp-tile__value">{{ minutesText(d.totals.avgTurnaroundMinutes) }}</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.turnaroundHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="teal">
+      <span class="rp-tile__label">{{ 'rp.cl.cleaningTime' | translate }}</span>
+      <span class="rp-tile__value">{{ minutesText(d.totals.avgCleaningMinutes) }}</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.cleaningTimeHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" [attr.data-tone]="d.totals.redoRatePct > 15 ? 'red' : 'slate'">
+      <span class="rp-tile__label">{{ 'rp.cl.redo' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.redoRatePct }}%</span>
+      <span class="rp-tile__sub">{{ 'rp.cl.redoHint' | translate: { n: d.totals.redoJobs } }}</span>
+    </div>
+  </div>
+
+  @if (d.rows.length === 0) {
+    <app-empty-state icon="lucideSparkles" [title]="'rp.cl.empty' | translate" [description]="'rp.cl.emptyHint' | translate" />
+  } @else {
+    <div class="rp-grid-2">
+      <section class="rp-panel">
+        <header class="rp-panel__head">
+          <h2>{{ 'rp.cl.trend' | translate }}</h2>
+          <small>{{ 'rp.groupedBy.' + d.range.groupBy | translate }}</small>
+        </header>
+        <div class="rp-panel__body">
+          <div class="rp-chart"><p-chart type="bar" [data]="chartData()" [options]="chartOptions" /></div>
+        </div>
+      </section>
+
+      <section class="rp-panel">
+        <header class="rp-panel__head"><h2>{{ 'rp.cl.byCleaner' | translate }}</h2></header>
+        <div class="rp-panel__body">
+          @if (d.byCleaner.length === 0) {
+            <p class="rp-muted">{{ 'rp.cl.noCleaners' | translate }}</p>
+          } @else {
+            <p-table [value]="d.byCleaner" styleClass="p-datatable-sm">
+              <ng-template #header>
+                <tr>
+                  <th>{{ 'hk.cleaner' | translate }}</th>
+                  <th class="rp-num">{{ 'rp.cl.jobs' | translate }}</th>
+                  <th class="rp-num">{{ 'rp.cl.avgTime' | translate }}</th>
+                  <th class="rp-num">{{ 'rp.cl.redos' | translate }}</th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-c>
+                <tr>
+                  <td><strong>{{ c.name }}</strong>@if (c.open > 0) { <small class="rp-muted"> · {{ 'rp.cl.openN' | translate: { n: c.open } }}</small> }</td>
+                  <td class="rp-num">{{ c.jobs }}</td>
+                  <td class="rp-num">{{ minutesText(c.avgCleaningMinutes) }}</td>
+                  <td class="rp-num">{{ c.redos }}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section class="rp-panel">
+      <header class="rp-panel__head">
+        <h2>{{ 'rp.cl.jobsTitle' | translate }}</h2>
+        <small>{{ 'rp.rowsCount' | translate: { n: rows().length } }}</small>
+        <span class="rp-panel__spacer"></span>
+        <p-iconfield class="rp-search">
+          <p-inputicon class="pi pi-search" />
+          <input pInputText type="search" autocomplete="off" [ngModel]="search()" (ngModelChange)="search.set($event)" [placeholder]="'rp.cl.search' | translate" />
+        </p-iconfield>
+        <p-button size="small" [outlined]="true" icon="pi pi-download" [label]="'rp.export' | translate" (onClick)="export()" />
+      </header>
+      @if (d.truncated) {
+        <p class="rp-note"><i class="pi pi-info-circle"></i> {{ 'rp.truncated' | translate }}</p>
+      }
+      <div class="rp-panel__body">
+        <p-table [value]="rows()" dataKey="taskId" [rowHover]="true" [paginator]="rows().length > 15" [rows]="15" [rowsPerPageOptions]="[15, 30, 50]" [tableStyle]="{ 'min-width': '56rem' }" styleClass="p-datatable-sm">
+          <ng-template #header>
+            <tr>
+              <th>{{ 'rp.col.room' | translate }}</th>
+              <th>{{ 'rp.col.requested' | translate }}</th>
+              <th>{{ 'hk.cleaner' | translate }}</th>
+              <th class="rp-num">{{ 'rp.cl.cleaningTime' | translate }}</th>
+              <th class="rp-num">{{ 'rp.cl.turnaround' | translate }}</th>
+              <th>{{ 'rp.cl.verifiedBy' | translate }}</th>
+              <th>{{ 'common.status' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-r>
+            <tr>
+              <td><div class="rp-stack"><strong>{{ r.unitCode ?? '—' }}</strong><small>{{ placeOf(r) }}</small></div></td>
+              <td><div class="rp-stack"><span>{{ r.createdAt | date: 'd MMM, h:mm a' }}</span><small>{{ 'hk.source.' + r.source | translate }}</small></div></td>
+              <td>{{ r.cleanerName ?? '—' }}</td>
+              <td class="rp-num">{{ minutesText(r.cleaningMinutes) }}</td>
+              <td class="rp-num">{{ minutesText(r.turnaroundMinutes) }}</td>
+              <td>
+                <div class="rp-stack">
+                  <span>{{ r.verifiedBy ?? '—' }}</span>
+                  @if (r.redoCount > 0) {
+                    <small class="rp-redo"><i class="pi pi-replay"></i> {{ 'hk.redo' | translate: { count: r.redoCount } }}</small>
+                  }
+                </div>
+              </td>
+              <td><span class="rp-chip" [attr.data-tone]="statusTone(r.status)">{{ 'hk.status.' + r.status | translate }}</span></td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td colspan="7" class="rp-muted">{{ 'rp.noMatch' | translate }}</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </section>
+  }
+}

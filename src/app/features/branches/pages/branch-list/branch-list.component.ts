@@ -1,71 +1,69 @@
-import { DatePipe } from '@angular/common';
-import { NgIcon } from '@ng-icons/core';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MenuItem, MessageService } from 'primeng/api';
-import { ConfirmService } from '../../../../core/services/confirm.service';
 import { Button } from 'primeng/button';
-import { Card } from 'primeng/card';
+import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
-import { Fluid } from 'primeng/fluid';
 import { InputText } from 'primeng/inputtext';
 import { Menu } from 'primeng/menu';
-import { Paginator, type PaginatorState } from 'primeng/paginator';
 import { Select } from 'primeng/select';
-import { TableModule } from 'primeng/table';
-import { Tag } from 'primeng/tag';
-import { Toolbar } from 'primeng/toolbar';
-import {
-  branchRowId,
-  type BranchCreateRequest,
-  type BranchListRow,
-  type BranchUpdateRequest,
-} from '../../../../core/models/branch-admin.model';
-import { AuthService } from '../../../../core/services/auth.service';
-import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
-import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
-import { BranchesApiService } from '../../services/branches-api.service';
-import { BuildingsApiService } from '../../../property/services/buildings-api.service';
-import { Router } from '@angular/router';
-import { Ripple } from 'primeng/ripple';
-import { BuildingListRow, buildingRowId } from '../../../../core/models/building-admin.model';
-import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
-import { TableSkeletonComponent } from '../../../../shared/table-skeleton/table-skeleton.component';
+import { SelectButton } from 'primeng/selectbutton';
+import { Skeleton } from 'primeng/skeleton';
+import { ToggleSwitch } from 'primeng/toggleswitch';
 import { CanDirective } from '../../../../core/directives/can.directive';
+import { COUNTRIES, DEFAULT_COUNTRY } from '../../../../core/data/countries';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TranslationService } from '../../../../core/i18n/translation.service';
+import { branchRowId, type BranchListRow, type BranchUpdateRequest } from '../../../../core/models/branch-admin.model';
+import { buildingRowId, type BuildingListRow } from '../../../../core/models/building-admin.model';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ConfirmService } from '../../../../core/services/confirm.service';
+import { EmptyStateComponent } from '../../../../shared/empty-state/empty-state.component';
+import { FieldErrorComponent } from '../../../../shared/field-error/field-error.component';
+import { PageHeaderComponent } from '../../../../shared/page-header/page-header.component';
+import { BuildingsApiService } from '../../../property/services/buildings-api.service';
 import { BRANCHES_DICTIONARY } from '../../branches.dictionary';
+import { FloorsDrawerComponent } from '../../components/floors-drawer/floors-drawer.component';
+import { BranchesApiService } from '../../services/branches-api.service';
 
+const SELECTED_KEY = 'branches.selected';
+
+const FALLBACK_ZONES = ['Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka', 'Europe/London', 'Europe/Istanbul', 'America/New_York', 'UTC'];
+
+function timeZones(): string[] {
+  try {
+    const list = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone');
+    if (list?.length) return list;
+  } catch {
+    /* older browser */
+  }
+  return FALLBACK_ZONES;
+}
+
+/**
+ * Branch management on one screen: pick a branch, see what it holds (buildings, floors, rooms, halls), and manage
+ * its buildings and their floors right there — no hopping between pages. Deactivating something that still has
+ * things inside is explained up front instead of failing at the end.
+ */
 @Component({
   selector: 'app-branch-list',
   imports: [
-    DatePipe,
     FormsModule,
     ReactiveFormsModule,
-    TableModule,
-    Card,
-    PageHeaderComponent,
-    EmptyStateComponent,
-    Toolbar,
     Button,
-    Paginator,
-    Fluid,
-    InputText,
-    Select,
+    Checkbox,
     Drawer,
-    Tag,
+    InputText,
     Menu,
-    NgIcon,
-    Ripple,
     Select,
-    TableSkeletonComponent,
+    SelectButton,
+    Skeleton,
+    ToggleSwitch,
+    EmptyStateComponent,
     FieldErrorComponent,
+    PageHeaderComponent,
+    FloorsDrawerComponent,
     TranslatePipe,
     CanDirective,
   ],
@@ -83,382 +81,350 @@ export class BranchListComponent {
   private readonly router = inject(Router);
   readonly i18n = inject(TranslationService);
 
+  readonly countries = COUNTRIES.map((c) => ({ label: c, value: c }));
+  readonly zones = timeZones().map((z) => ({ label: z.replace(/_/g, ' '), value: z }));
+
+  // --- data
   readonly rows = signal<BranchListRow[]>([]);
   readonly loading = signal(true);
-  readonly totalRecords = signal(0);
-  readonly page = signal(1);
-  readonly pageSize = signal(20);
-  readonly status = signal<string>('active');
+  readonly status = signal<'active' | 'inactive' | 'all'>('active');
+  readonly selectedId = signal<string | null>(null);
+  readonly buildings = signal<BuildingListRow[]>([]);
+  readonly loadingBuildings = signal(false);
+  readonly showInactiveBuildings = signal(false);
 
-  readonly first = computed(() => (this.page() - 1) * this.pageSize());
-
-  readonly createVisible = signal(false);
-  readonly editVisible = signal(false);
-  readonly editTarget = signal<BranchListRow | null>(null);
-  readonly savingCreate = signal(false);
-  readonly savingEdit = signal(false);
+  readonly selected = computed(() => this.rows().find((r) => r._id === this.selectedId()) ?? null);
+  readonly statusOptions = computed(() => {
+    this.i18n.currentLang();
+    return [
+      { label: this.i18n.t('branches.filter.active'), value: 'active' },
+      { label: this.i18n.t('branches.filter.inactiveDeleted'), value: 'inactive' },
+      { label: this.i18n.t('branches.filter.all'), value: 'all' },
+    ];
+  });
 
   readonly canCreateBranch = computed(() => this.auth.can('branches.create'));
+  readonly canEditBranch = computed(() => this.auth.can('branches.edit'));
+  readonly canCreateBuilding = computed(() => this.auth.can('buildings.create'));
+  readonly canEditFloors = computed(() => this.auth.can('buildings.edit'));
   readonly menuItems = signal<MenuItem[]>([]);
 
-  readonly branchForm = this.fb.group({
-    name: ['', Validators.required],
+  // --- branch form
+  readonly branchFormVisible = signal(false);
+  readonly branchEditTarget = signal<BranchListRow | null>(null);
+  readonly savingBranch = signal(false);
+  readonly branchForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.maxLength(80)]],
     code: [''],
-    city: ['', Validators.required],
-    country: ['', Validators.required],
+    city: ['', [Validators.required, Validators.maxLength(80)]],
+    country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(80)]],
     timezone: ['Asia/Karachi', Validators.required],
     active: [true],
   });
 
-  // Building Management
-  readonly buildingCreateVisible = signal(false);
-  readonly buildingEditVisible = signal(false);
+  // --- building form
+  readonly buildingFormVisible = signal(false);
   readonly buildingEditTarget = signal<BuildingListRow | null>(null);
-  readonly buildingTargetBranch = signal<BranchListRow | null>(null);
   readonly savingBuilding = signal(false);
-  readonly buildingMenuItems = signal<MenuItem[]>([]);
-
-  readonly buildingForm = this.fb.group({
-    name: ['', Validators.required],
+  readonly buildingForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.maxLength(80)]],
   });
+
+  // --- floors drawer
+  readonly floorsFor = signal<BuildingListRow | null>(null);
 
   constructor() {
     this.i18n.register(BRANCHES_DICTIONARY);
-    this.reload();
+    this.loadBranches();
   }
 
-  reload(): void {
-    this.loading.set(true);
-    this.api.list(this.page(), this.pageSize(), this.status()).subscribe({
-      next: ({ items, pagination }) => {
+  // ---------------------------------------------------------------- loading
+  loadBranches(keepSelection = false): void {
+    if (!keepSelection) this.loading.set(true);
+    this.api.list(1, 100, this.status()).subscribe({
+      next: ({ items }) => {
         this.rows.set(items);
-        this.totalRecords.set(pagination.total);
-        this.page.set(pagination.page);
-        this.pageSize.set(pagination.limit);
         this.loading.set(false);
+        const ids = new Set(items.map((r) => r._id));
+        let pick = this.selectedId();
+        if (!pick || !ids.has(pick)) {
+          let remembered: string | null = null;
+          try {
+            remembered = localStorage.getItem(SELECTED_KEY);
+          } catch {
+            /* private mode */
+          }
+          pick = remembered && ids.has(remembered) ? remembered : (items[0]?._id ?? null);
+        }
+        if (pick !== this.selectedId() || !keepSelection) this.select(pick, !keepSelection);
       },
       error: () => this.loading.set(false),
     });
   }
 
-  onRowExpand(event: { data: BranchListRow }): void {
-    const branch = event.data;
-    if (branch.buildings) return;
+  select(id: string | null, reloadBuildings = true): void {
+    this.selectedId.set(id);
+    try {
+      if (id) localStorage.setItem(SELECTED_KEY, id);
+    } catch {
+      /* private mode */
+    }
+    if (reloadBuildings) {
+      this.buildings.set([]);
+      if (id) this.loadBuildings(id);
+    }
+  }
 
-    this.buildingsApi.list(1, 100, this.status(), branch._id).subscribe({
+  loadBuildings(branchId = this.selectedId()): void {
+    if (!branchId) return;
+    this.loadingBuildings.set(true);
+    this.buildingsApi.list(1, 100, this.showInactiveBuildings() ? 'all' : 'active', branchId).subscribe({
       next: ({ items }) => {
-        this.rows.update((rows) =>
-          rows.map((r) => (r._id === branch._id ? { ...r, buildings: items } : r))
-        );
+        this.buildings.set(items);
+        this.loadingBuildings.set(false);
       },
+      error: () => this.loadingBuildings.set(false),
     });
   }
 
-  onStatusChange(value: string | null): void {
-    if (value) {
-      this.status.set(value);
-      this.page.set(1);
-      this.reload();
-    }
+  /** After a building or floor changes: refresh the cards and the branch counts, keeping the selection. */
+  refreshAll(): void {
+    this.loadBuildings();
+    this.loadBranches(true);
   }
 
-  onPaginatorChange(event: PaginatorState): void {
-    const rows = event.rows ?? this.pageSize();
-    const first = event.first ?? 0;
-    const nextPage = Math.floor(first / rows) + 1;
-    this.page.set(nextPage);
-    this.pageSize.set(rows);
-    this.reload();
+  onStatusChange(v: 'active' | 'inactive' | 'all' | null): void {
+    if (!v) return;
+    this.status.set(v);
+    this.selectedId.set(null);
+    this.loadBranches();
   }
 
-  openCreate(): void {
-    this.branchForm.reset({
-      name: '',
-      code: '',
-      city: '',
-      country: '',
-      timezone: 'Asia/Karachi',
-      active: true,
-    });
-    this.createVisible.set(true);
+  setShowInactiveBuildings(on: boolean): void {
+    this.showInactiveBuildings.set(on);
+    this.loadBuildings();
   }
 
-  submitCreate(): void {
+  isInactive(x: { deletedAt?: string | null; status: string }): boolean {
+    return !!x.deletedAt || x.status === 'inactive';
+  }
+
+  initials(name: string): string {
+    const p = name.trim().split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] ?? '?') + (p.length > 1 ? p[1][0] : '')).toUpperCase();
+  }
+
+  // ---------------------------------------------------------------- branch form
+  openCreateBranch(): void {
+    this.branchEditTarget.set(null);
+    this.branchForm.reset({ name: '', code: '', city: '', country: DEFAULT_COUNTRY, timezone: 'Asia/Karachi', active: true });
+    this.branchForm.controls.code.disable();
+    this.branchFormVisible.set(true);
+  }
+
+  openEditBranch(row: BranchListRow): void {
+    this.branchEditTarget.set(row);
+    this.branchForm.controls.code.disable();
+    this.branchForm.reset({ name: row.name, code: row.code, city: row.city ?? '', country: row.country ?? '', timezone: row.timezone || 'Asia/Karachi', active: row.active });
+    this.branchFormVisible.set(true);
+  }
+
+  submitBranch(): void {
     if (this.branchForm.invalid) {
       this.branchForm.markAllAsTouched();
       return;
     }
-    const body = this.branchForm.getRawValue();
-    // Delete code from body if it's empty (backend will generate)
-    if (!body.code) delete (body as any).code;
-
-    this.savingCreate.set(true);
-    this.api.create(body as any).subscribe({
-      next: (res) => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.branchCreated'), detail: res.name });
-        this.createVisible.set(false);
-        this.reload();
-      },
-      error: () => this.savingCreate.set(false),
-      complete: () => this.savingCreate.set(false),
-    });
-  }
-
-  openEdit(row: BranchListRow): void {
-    this.editTarget.set(row);
-    this.branchForm.reset({
-      name: row.name,
-      code: row.code,
-      city: row.city,
-      country: row.country,
-      timezone: row.timezone,
-      active: row.active,
-    });
-    this.editVisible.set(true);
-  }
-
-  submitEdit(): void {
-    const row = this.editTarget();
-    if (!row) return;
-    if (this.branchForm.invalid) {
-      this.branchForm.markAllAsTouched();
-      return;
+    const v = this.branchForm.getRawValue();
+    const target = this.branchEditTarget();
+    this.savingBranch.set(true);
+    const done = (detail: string, summary: string) => {
+      this.messages.add({ severity: 'success', summary, detail });
+      this.savingBranch.set(false);
+      this.branchFormVisible.set(false);
+      this.loadBranches(true);
+    };
+    if (target) {
+      const body: BranchUpdateRequest = { name: v.name.trim(), city: v.city.trim(), country: v.country.trim(), timezone: v.timezone };
+      this.api.update(branchRowId(target), body).subscribe({
+        next: () => done(v.name, this.i18n.t('common.updated')),
+        error: () => this.savingBranch.set(false),
+      });
+    } else {
+      this.api.create({ name: v.name.trim(), city: v.city.trim(), country: v.country.trim(), timezone: v.timezone, active: true }).subscribe({
+        next: (res) => {
+          // jump straight to the new branch so its first building can be added
+          this.selectedId.set(res._id);
+          done(res.name, this.i18n.t('branches.toast.branchCreated'));
+        },
+        error: () => this.savingBranch.set(false),
+      });
     }
-    const body = this.branchForm.getRawValue() as BranchUpdateRequest;
-    this.savingEdit.set(true);
-    this.api.update(branchRowId(row), body).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('branches.toast.branchDetailsSaved') });
-        this.editVisible.set(false);
-        this.editTarget.set(null);
-        this.reload();
-      },
-      error: () => this.savingEdit.set(false),
-      complete: () => this.savingEdit.set(false),
-    });
   }
 
-  onDelete(row: BranchListRow): void {
-    this.confirmation.confirm({
-      message: this.i18n.t('branches.confirmDeactivateBranchMessage', { name: row.name }),
-      header: this.i18n.t('branches.confirmDeactivateHeader'),
-      icon: 'pi pi-exclamation-triangle',
-      accept: () => {
-        this.api.delete(branchRowId(row)).subscribe({
-          next: () => {
-            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.branchDeactivated') });
-            this.reload();
-          },
-          error: () => undefined
-        });
-      },
-    });
-  }
-
-  onRestore(row: BranchListRow): void {
-    this.api.restore(branchRowId(row)).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.branchRestored') });
-        this.reload();
-      },
-    });
-  }
-
-  onPermanentDelete(row: BranchListRow): void {
-    this.confirmation.confirm({
-      message: this.i18n.t('branches.confirmPermanentDeleteBranchMessage', { name: row.name }),
-      header: this.i18n.t('branches.confirmPermanentDeleteHeader'),
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.api.deletePermanent(branchRowId(row)).subscribe({
-          next: () => {
-            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.permanentlyDeleted'), detail: this.i18n.t('branches.toast.branchPermanentlyDeleted') });
-            this.reload();
-          },
-          error: () => undefined
-        });
-      },
-    });
-  }
-
-  isAuthorizedForPermanentDelete(): boolean {
-    return this.auth.hasAnyRole(['super_admin', 'admin']);
-  }
-
-  prepareActions(event: Event, row: BranchListRow, menu: any): void {
+  // ---------------------------------------------------------------- branch actions
+  branchMenu(event: Event, row: BranchListRow, menu: { toggle: (e: Event) => void }): void {
     const items: MenuItem[] = [];
-    if (this.auth.can('branches.edit')) {
-      items.push({
-        label: this.i18n.t('common.edit'),
-        icon: 'pi pi-pencil',
-        command: () => this.openEdit(row),
-      });
-    }
     const canDelete = this.auth.can('branches.delete');
-
-    if (row.deletedAt || !row.active) {
-      if (canDelete) {
+    if (this.auth.can('branches.edit')) items.push({ label: this.i18n.t('common.edit'), icon: 'pi pi-pencil', command: () => this.openEditBranch(row) });
+    if (canDelete) {
+      if (this.isInactive(row)) {
+        items.push({ label: this.i18n.t('common.restore'), icon: 'pi pi-refresh', command: () => this.restoreBranch(row) });
+        if (this.auth.hasAnyRole(['super_admin', 'admin'])) {
+          items.push({ separator: true }, { label: this.i18n.t('branches.deleteForever'), icon: 'pi pi-trash', command: () => this.deleteForever(row) });
+        }
+      } else {
+        const blocked = (row.stats?.buildings ?? 0) > 0;
         items.push({
-          label: this.i18n.t('common.restore'),
-          icon: 'pi pi-refresh',
-          command: () => this.onRestore(row),
+          label: blocked ? this.i18n.t('branches.deactivateBlocked') : this.i18n.t('branches.deactivate'),
+          icon: 'pi pi-ban',
+          disabled: blocked,
+          command: () => this.deactivateBranch(row),
         });
       }
-
-      if (canDelete && this.isAuthorizedForPermanentDelete()) {
-        items.push({
-          label: this.i18n.t('branches.deleteForever'),
-          icon: 'pi pi-trash',
-          command: () => this.onPermanentDelete(row),
-        });
-      }
-    } else if (canDelete) {
-      items.push({
-        label: this.i18n.t('branches.deactivate'),
-        icon: 'pi pi-trash',
-        command: () => this.onDelete(row),
-      });
     }
-
-    if (items.length === 0) {
-      return;
-    }
-
+    if (!items.length) return;
     this.menuItems.set(items);
     menu.toggle(event);
   }
 
-  // --- Building Methods ---
-  openCreateBuilding(branch: BranchListRow): void {
-    this.buildingTargetBranch.set(branch);
-    this.buildingForm.reset({ name: '' });
-    this.buildingCreateVisible.set(true);
-  }
-
-  submitCreateBuilding(): void {
-    const branch = this.buildingTargetBranch();
-    if (!branch || this.buildingForm.invalid) {
-      if (this.buildingForm.invalid) this.buildingForm.markAllAsTouched();
-      return;
-    }
-
-    this.savingBuilding.set(true);
-    this.buildingsApi.create({
-      branchId: branch._id,
-      name: this.buildingForm.getRawValue().name!,
-    }).subscribe({
-      next: (res) => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.buildingCreated'), detail: res.name });
-        this.buildingCreateVisible.set(false);
-        this.reloadBuildings(branch._id);
-      },
-      error: () => this.savingBuilding.set(false),
-      complete: () => this.savingBuilding.set(false),
-    });
-  }
-
-  openEditBuilding(building: BuildingListRow, branch: BranchListRow): void {
-    this.buildingEditTarget.set(building);
-    this.buildingTargetBranch.set(branch);
-    this.buildingForm.reset({ name: building.name });
-    this.buildingEditVisible.set(true);
-  }
-
-  submitEditBuilding(): void {
-    const building = this.buildingEditTarget();
-    const branch = this.buildingTargetBranch();
-    if (!building || !branch || this.buildingForm.invalid) {
-      if (this.buildingForm.invalid) this.buildingForm.markAllAsTouched();
-      return;
-    }
-
-    this.savingBuilding.set(true);
-    this.buildingsApi.update(buildingRowId(building), {
-      name: this.buildingForm.getRawValue().name!,
-    }).subscribe({
-      next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('common.updated'), detail: this.i18n.t('branches.toast.buildingUpdated') });
-        this.buildingEditVisible.set(false);
-        this.reloadBuildings(branch._id);
-      },
-      error: () => this.savingBuilding.set(false),
-      complete: () => this.savingBuilding.set(false),
-    });
-  }
-
-  onDeleteBuilding(building: BuildingListRow, branchId: string): void {
+  private deactivateBranch(row: BranchListRow): void {
     this.confirmation.confirm({
-      message: this.i18n.t('branches.confirmDeactivateBuildingMessage', { name: building.name }),
       header: this.i18n.t('branches.confirmDeactivateHeader'),
-      icon: 'pi pi-exclamation-triangle',
-      accept: () => {
-        this.buildingsApi.delete(buildingRowId(building)).subscribe({
+      message: this.i18n.t('branches.confirmDeactivateBranchMessage', { name: row.name }),
+      icon: 'pi pi-ban',
+      variant: 'danger',
+      accept: () =>
+        this.api.delete(branchRowId(row)).subscribe({
           next: () => {
-            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.buildingDeactivated') });
-            this.reloadBuildings(branchId);
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.branchDeactivated') });
+            this.selectedId.set(null);
+            this.loadBranches();
           },
-          error: () => undefined,
-        });
-      },
+        }),
     });
   }
 
-  onRestoreBuilding(building: BuildingListRow, branchId: string): void {
-    this.buildingsApi.restore(buildingRowId(building)).subscribe({
+  private restoreBranch(row: BranchListRow): void {
+    this.api.restore(branchRowId(row)).subscribe({
       next: () => {
-        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.buildingRestored') });
-        this.reloadBuildings(branchId);
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.branchRestored') });
+        this.loadBranches(true);
       },
     });
   }
 
-  reloadBuildings(branchId: string): void {
-    this.buildingsApi.list(1, 100, this.status(), branchId).subscribe({
-      next: ({ items }) => {
-        this.rows.update((rows) =>
-          rows.map((r) => (r._id === branchId ? { ...r, buildings: items } : r))
-        );
-      },
+  private deleteForever(row: BranchListRow): void {
+    this.confirmation.confirm({
+      header: this.i18n.t('branches.confirmPermanentDeleteHeader'),
+      message: this.i18n.t('branches.confirmPermanentDeleteBranchMessage', { name: row.name }),
+      icon: 'pi pi-trash',
+      variant: 'danger',
+      accept: () =>
+        this.api.deletePermanent(branchRowId(row)).subscribe({
+          next: () => {
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.toast.permanentlyDeleted'), detail: this.i18n.t('branches.toast.branchPermanentlyDeleted') });
+            this.selectedId.set(null);
+            this.loadBranches();
+          },
+        }),
     });
   }
 
-  navigateToFloors(buildingId: string): void {
-    this.router.navigate(['/property/buildings', buildingId, 'floors']);
+  // ---------------------------------------------------------------- buildings
+  openCreateBuilding(): void {
+    this.buildingEditTarget.set(null);
+    this.buildingForm.reset({ name: '' });
+    this.buildingFormVisible.set(true);
   }
 
-  prepareBuildingActions(event: Event, building: BuildingListRow, branch: BranchListRow, menu: any): void {
-    const items: MenuItem[] = [];
-    if (this.auth.can('buildings.edit')) {
-      items.push({
-        label: this.i18n.t('common.edit'),
-        icon: 'pi pi-pencil',
-        command: () => this.openEditBuilding(building, branch),
+  openEditBuilding(b: BuildingListRow): void {
+    this.buildingEditTarget.set(b);
+    this.buildingForm.reset({ name: b.name });
+    this.buildingFormVisible.set(true);
+  }
+
+  submitBuilding(): void {
+    const branch = this.selected();
+    if (!branch || this.buildingForm.invalid) {
+      this.buildingForm.markAllAsTouched();
+      return;
+    }
+    const name = this.buildingForm.getRawValue().name.trim();
+    const target = this.buildingEditTarget();
+    this.savingBuilding.set(true);
+    const ok = (summary: string) => {
+      this.messages.add({ severity: 'success', summary, detail: name });
+      this.savingBuilding.set(false);
+      this.buildingFormVisible.set(false);
+      this.refreshAll();
+    };
+    if (target) {
+      this.buildingsApi.update(buildingRowId(target), { name }).subscribe({ next: () => ok(this.i18n.t('common.updated')), error: () => this.savingBuilding.set(false) });
+    } else {
+      this.buildingsApi.create({ branchId: branch._id, name }).subscribe({
+        next: (created) => {
+          ok(this.i18n.t('branches.toast.buildingCreated'));
+          // a new building has no floors: take the user straight to adding them
+          this.floorsFor.set(created);
+        },
+        error: () => this.savingBuilding.set(false),
       });
     }
-    const canDelete = this.auth.can('buildings.delete');
+  }
 
-    if (building.deletedAt || building.status === 'inactive') {
-      if (canDelete) {
+  buildingMenu(event: Event, b: BuildingListRow, menu: { toggle: (e: Event) => void }): void {
+    const items: MenuItem[] = [];
+    const canDelete = this.auth.can('buildings.delete');
+    if (this.auth.can('buildings.edit')) items.push({ label: this.i18n.t('common.edit'), icon: 'pi pi-pencil', command: () => this.openEditBuilding(b) });
+    if (canDelete) {
+      if (this.isInactive(b)) {
+        items.push({ label: this.i18n.t('common.restore'), icon: 'pi pi-refresh', command: () => this.restoreBuilding(b) });
+      } else {
+        const blocked = (b.stats?.floors ?? 0) > 0;
         items.push({
-          label: this.i18n.t('common.restore'),
-          icon: 'pi pi-refresh',
-          command: () => this.onRestoreBuilding(building, branch._id),
+          label: blocked ? this.i18n.t('branches.deactivateBuildingBlocked') : this.i18n.t('branches.deactivate'),
+          icon: 'pi pi-ban',
+          disabled: blocked,
+          command: () => this.deactivateBuilding(b),
         });
       }
-    } else if (canDelete) {
-      items.push({
-        label: this.i18n.t('branches.deactivate'),
-        icon: 'pi pi-trash',
-        command: () => this.onDeleteBuilding(building, branch._id),
-      });
     }
-
-    if (items.length === 0) {
-      return;
-    }
-
-    this.buildingMenuItems.set(items);
+    if (!items.length) return;
+    this.menuItems.set(items);
     menu.toggle(event);
+  }
+
+  private deactivateBuilding(b: BuildingListRow): void {
+    this.confirmation.confirm({
+      header: this.i18n.t('branches.confirmDeactivateHeader'),
+      message: this.i18n.t('branches.confirmDeactivateBuildingMessage', { name: b.name }),
+      icon: 'pi pi-ban',
+      variant: 'danger',
+      accept: () =>
+        this.buildingsApi.delete(buildingRowId(b)).subscribe({
+          next: () => {
+            this.messages.add({ severity: 'success', summary: this.i18n.t('branches.deactivate'), detail: this.i18n.t('branches.toast.buildingDeactivated') });
+            this.refreshAll();
+          },
+        }),
+    });
+  }
+
+  private restoreBuilding(b: BuildingListRow): void {
+    this.buildingsApi.restore(buildingRowId(b)).subscribe({
+      next: () => {
+        this.messages.add({ severity: 'success', summary: this.i18n.t('common.restore'), detail: this.i18n.t('branches.toast.buildingRestored') });
+        this.refreshAll();
+      },
+    });
+  }
+
+  openFloors(b: BuildingListRow): void {
+    this.floorsFor.set(b);
+  }
+
+  /** Rooms of this building live on the Rooms screen — jump there with the building preselected. */
+  openRooms(b: BuildingListRow): void {
+    void this.router.navigate(['/rooms'], { queryParams: { branchId: b.branchId, buildingId: buildingRowId(b) } });
   }
 }

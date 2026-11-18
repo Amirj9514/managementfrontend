@@ -1,0 +1,137 @@
+@if (loading() && !data()) {
+  <div class="rp-tiles">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton width="100%" height="5rem" borderRadius="16px" />
+    }
+  </div>
+  <p-skeleton width="100%" height="18rem" borderRadius="16px" />
+} @else if (failed()) {
+  <app-empty-state icon="lucideChartBar" [title]="'rp.failed.title' | translate" [description]="'rp.failed.description' | translate" />
+} @else if (data(); as d) {
+  <div class="rp-tiles" [class.rp-loading]="loading()">
+    <div class="rp-tile" data-tone="teal">
+      <span class="rp-tile__label">{{ 'rp.gu.unique' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.uniqueGuests }}</span>
+      <span class="rp-tile__sub">{{ 'rp.gu.uniqueHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="violet">
+      <span class="rp-tile__label">{{ 'rp.gu.new' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.newGuests }}</span>
+      <span class="rp-tile__sub">{{ 'rp.gu.newHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="green">
+      <span class="rp-tile__label">{{ 'rp.gu.returning' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.returningGuests }}</span>
+      <span class="rp-tile__sub">{{ 'rp.gu.returningHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="indigo">
+      <span class="rp-tile__label">{{ 'rp.gu.repeatRate' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.repeatRatePct }}%</span>
+      <span class="rp-tile__sub">{{ 'rp.gu.repeatHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="blue">
+      <span class="rp-tile__label">{{ 'rp.gu.stays' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.stays }}</span>
+      <span class="rp-tile__sub">{{ 'rp.gu.staysHint' | translate: { n: d.totals.people } }}</span>
+    </div>
+    <div class="rp-tile" data-tone="slate">
+      <span class="rp-tile__label">{{ 'rp.mv.avgStayed' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.avgNights }}</span>
+      <span class="rp-tile__sub">{{ 'rp.nights' | translate }}</span>
+    </div>
+  </div>
+
+  @if (d.rows.length === 0) {
+    <app-empty-state icon="lucideUsers" [title]="'rp.gu.empty' | translate" [description]="'rp.empty.description' | translate" />
+  } @else {
+    <div class="rp-grid-2">
+      <section class="rp-panel">
+        <header class="rp-panel__head">
+          <h2>{{ 'rp.gu.trend' | translate }}</h2>
+          <small>{{ 'rp.groupedBy.' + d.range.groupBy | translate }}</small>
+        </header>
+        <div class="rp-panel__body">
+          <div class="rp-chart"><p-chart type="bar" [data]="chartData()" [options]="chartOptions" /></div>
+        </div>
+      </section>
+
+      <section class="rp-panel">
+        <header class="rp-panel__head"><h2>{{ 'rp.gu.byCountry' | translate }}</h2></header>
+        <div class="rp-panel__body">
+          <ul class="rp-bars">
+            @for (c of d.byCountry; track c.name) {
+              <li>
+                <span class="rp-bars__name" [attr.title]="c.name">{{ c.name }}</span>
+                <span class="rp-bars__track"><i [style.width.%]="(c.count / maxCountry()) * 100"></i></span>
+                <strong>{{ c.count }}</strong>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="rp-panel">
+      <header class="rp-panel__head">
+        <h2>{{ 'rp.gu.list' | translate }}</h2>
+        <small>{{ 'rp.rowsCount' | translate: { n: rows().length } }}</small>
+        <span class="rp-panel__spacer"></span>
+        <div class="gu-filter" role="radiogroup">
+          @for (f of filters; track f) {
+            <button type="button" class="gu-filter__btn" role="radio" [class.gu-filter__btn--on]="filter() === f" [attr.aria-checked]="filter() === f" (click)="filter.set(f)">
+              {{ 'rp.gu.filter.' + f | translate }}
+            </button>
+          }
+        </div>
+        <p-iconfield class="rp-search">
+          <p-inputicon class="pi pi-search" />
+          <input pInputText type="search" autocomplete="off" [ngModel]="search()" (ngModelChange)="search.set($event)" [placeholder]="'rp.searchGuests' | translate" />
+        </p-iconfield>
+        <p-button size="small" [outlined]="true" icon="pi pi-download" [label]="'rp.export' | translate" (onClick)="export()" />
+      </header>
+      @if (d.truncated) {
+        <p class="rp-note"><i class="pi pi-info-circle"></i> {{ 'rp.truncated' | translate }}</p>
+      }
+      <div class="rp-panel__body">
+        <p-table [value]="rows()" dataKey="guestId" [rowHover]="true" [paginator]="rows().length > 15" [rows]="15" [rowsPerPageOptions]="[15, 30, 50]" [tableStyle]="{ 'min-width': '52rem' }" styleClass="p-datatable-sm">
+          <ng-template #header>
+            <tr>
+              <th>{{ 'rp.col.guest' | translate }}</th>
+              <th>{{ 'common.cnic' | translate }}</th>
+              <th>{{ 'common.country' | translate }}</th>
+              <th class="rp-num">{{ 'rp.gu.stays' | translate }}</th>
+              <th class="rp-num">{{ 'rp.col.nights' | translate }}</th>
+              <th>{{ 'rp.gu.lastVisit' | translate }}</th>
+              <th></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-r>
+            <tr>
+              <td>
+                <div class="rp-stack">
+                  <a class="gu-name" [routerLink]="['/guests', r.guestId]">{{ r.name }}</a>
+                  <small>{{ r.phone ?? '' }}</small>
+                </div>
+              </td>
+              <td class="rp-mono">{{ r.cnic ?? '—' }}</td>
+              <td class="rp-muted">{{ r.country ?? '—' }}</td>
+              <td class="rp-num"><strong>{{ r.stays }}</strong></td>
+              <td class="rp-num">{{ r.nights }}</td>
+              <td>{{ r.lastVisit | date: 'd MMM y' }}</td>
+              <td class="rp-num">
+                @if (r.returning) {
+                  <span class="rp-chip" data-tone="green">{{ 'rp.gu.returningTag' | translate }}</span>
+                } @else if (r.newlyRegistered) {
+                  <span class="rp-chip" data-tone="violet">{{ 'rp.gu.newTag' | translate }}</span>
+                }
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td colspan="7" class="rp-muted">{{ 'rp.noMatch' | translate }}</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </section>
+  }
+}

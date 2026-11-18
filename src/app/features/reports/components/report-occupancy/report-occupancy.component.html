@@ -1,0 +1,116 @@
+@if (loading() && !data()) {
+  <div class="rp-tiles">
+    @for (i of [1, 2, 3, 4]; track i) {
+      <p-skeleton width="100%" height="5rem" borderRadius="16px" />
+    }
+  </div>
+  <p-skeleton width="100%" height="18rem" borderRadius="16px" />
+} @else if (failed()) {
+  <app-empty-state icon="lucideChartBar" [title]="'rp.failed.title' | translate" [description]="'rp.failed.description' | translate" />
+} @else if (data(); as d) {
+  <div class="rp-tiles" [class.rp-loading]="loading()">
+    <div class="rp-tile" data-tone="indigo">
+      <span class="rp-tile__label">{{ 'reports.stat.avgOccupancy' | translate }}</span>
+      <span class="rp-tile__value">{{ avgPct() }}%</span>
+    </div>
+    <div class="rp-tile" data-tone="green">
+      <span class="rp-tile__label">{{ 'reports.stat.nightsSold' | translate }}</span>
+      <span class="rp-tile__value">{{ d.utilization.roomNightsSold }}</span>
+      <span class="rp-tile__sub">{{ 'rp.oc.ofAvailable' | translate: { n: d.utilization.roomNightsAvailable } }}</span>
+    </div>
+    <div class="rp-tile" data-tone="slate">
+      <span class="rp-tile__label">{{ 'reports.stat.avgLengthOfStay' | translate }}</span>
+      <span class="rp-tile__value">{{ d.utilization.averageLengthOfStayNights }}</span>
+      <span class="rp-tile__sub">{{ 'rp.nights' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="amber">
+      <span class="rp-tile__label">{{ 'reports.stat.peak' | translate }}</span>
+      <span class="rp-tile__value">{{ peakPct() }}%</span>
+    </div>
+  </div>
+
+  <section class="rp-panel">
+    <header class="rp-panel__head">
+      <h2>{{ 'reports.occupancyTrend' | translate }}</h2>
+      <small>{{ 'reports.daysCount' | translate: { count: d.occupancy.length } }}</small>
+      <span class="rp-panel__spacer"></span>
+      <p-button size="small" [outlined]="true" icon="pi pi-download" [label]="'rp.export' | translate" [disabled]="d.occupancy.length === 0" (onClick)="exportOccupancy()" />
+    </header>
+    <div class="rp-panel__body">
+      <div class="rp-chart"><p-chart type="line" [data]="chartData()" [options]="chartOptions" /></div>
+    </div>
+  </section>
+
+  <section class="rp-panel">
+    <header class="rp-panel__head">
+      <div>
+        <h2>{{ 'reports.hallOccupancy' | translate }}</h2>
+        <small>{{ 'reports.hallOnlyDays' | translate }}</small>
+      </div>
+      <span class="rp-panel__spacer"></span>
+      <p-button size="small" icon="pi pi-download" [outlined]="true" [label]="'reports.exportHalls' | translate" [disabled]="d.halls.length === 0" (onClick)="exportHalls()" />
+    </header>
+    <div class="rp-panel__body">
+      @if (d.halls.length === 0) {
+        <app-empty-state [title]="'reports.noHallStaysTitle' | translate" [description]="'reports.noHallStaysDesc' | translate" />
+      } @else {
+        @for (hall of d.halls; track hall.hallId) {
+          <article class="hall">
+            <header class="hall__head">
+              <div class="hall__title">
+                <span class="hall__icon"><i class="pi pi-building"></i></span>
+                <div>
+                  <h3>{{ hall.code }}</h3>
+                  <span class="hall__cap">{{ 'reports.hallCapacityLabel' | translate: { capacity: hall.maxCapacity } }}</span>
+                </div>
+                <p-tag [value]="'hall.audience.' + hall.audience | translate" severity="secondary" [rounded]="true" />
+              </div>
+              <div class="hall__stats">
+                <span class="pill"><strong>{{ hall.daysWithStays }}</strong> {{ 'reports.daysUsed' | translate }}</span>
+                <span class="pill"><strong>{{ hall.peakOccupied }}</strong> / {{ hall.maxCapacity }} {{ 'reports.peakGuests' | translate }}</span>
+              </div>
+            </header>
+
+            <p-table [value]="hall.perDay" dataKey="date" styleClass="hall-table" [tableStyle]="{ 'min-width': '40rem' }">
+              <ng-template #header>
+                <tr>
+                  <th style="width: 11rem">{{ 'common.date' | translate }}</th>
+                  <th>{{ 'reports.whoStayed' | translate }}</th>
+                  <th class="rp-num">{{ 'reports.occupied' | translate }}</th>
+                  <th class="rp-num">{{ 'reports.remaining' | translate }}</th>
+                  <th style="width: 10rem">{{ 'reports.usage' | translate }}</th>
+                </tr>
+              </ng-template>
+              <ng-template #body let-day>
+                <tr>
+                  <td class="date">{{ day.date | date: 'EEE, d MMM y' }}</td>
+                  <td>
+                    <ul class="parties">
+                      @for (p of day.parties; track p.bookingId) {
+                        <li>
+                          <span class="parties__name">{{ p.guestName ?? '—' }}</span>
+                          <span class="parties__meta">{{ p.bookingNumber }} · {{ 'reports.partyOf' | translate: { count: p.partySize } }}</span>
+                          <app-status-badge [status]="p.status" [severityMap]="statusSeverityMap" />
+                        </li>
+                      }
+                    </ul>
+                  </td>
+                  <td class="rp-num">{{ day.occupied }}</td>
+                  <td class="rp-num">{{ day.remaining }}</td>
+                  <td>
+                    <div class="usage" [attr.data-tone]="meterTone(day.utilizationPct)">
+                      <div class="meter" role="progressbar" [attr.aria-valuenow]="day.utilizationPct" aria-valuemin="0" aria-valuemax="100">
+                        <span class="meter__fill" [style.width.%]="day.utilizationPct"></span>
+                      </div>
+                      <span class="usage__pct">{{ day.utilizationPct }}%</span>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </article>
+        }
+      }
+    </div>
+  </section>
+}

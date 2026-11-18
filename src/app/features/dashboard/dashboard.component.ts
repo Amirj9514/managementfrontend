@@ -1,83 +1,74 @@
 import { AsyncPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Card } from 'primeng/card';
+import { RouterLink } from '@angular/router';
 import { UIChart as Chart } from 'primeng/chart';
 import { Select } from 'primeng/select';
-import { TableModule } from 'primeng/table';
-import type { BranchListRow } from '../../core/models/branch-admin.model';
-import type { ReportLineRow } from '../../core/models/report.model';
-import { AuthService } from '../../core/services/auth.service';
+import { Skeleton } from 'primeng/skeleton';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TranslationService } from '../../core/i18n/translation.service';
-import { BranchesApiService } from '../branches/services/branches-api.service';
-import { HallsApiService } from '../halls/services/halls-api.service';
-import { ReportsApiService } from '../reports/services/reports-api.service';
-import { RoomsApiService } from '../rooms/services/rooms-api.service';
-import { toDateKey } from '../../core/utils/date-key';
+import type { BranchListRow } from '../../core/models/branch-admin.model';
+import type { DashboardSnapshot, ReportLineRow } from '../../core/models/report.model';
+import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/stat-card/stat-card.component';
+import { BranchesApiService } from '../branches/services/branches-api.service';
+import { REPORTS_DICTIONARY } from '../reports/reports.dictionary';
+import { ReportsApiService } from '../reports/services/reports-api.service';
+import { REPORT_COLORS, barOptions, bucketLabel } from '../reports/reports.util';
 import { DASHBOARD_DICTIONARY } from './dashboard.dictionary';
 
+/**
+ * Front desk home: how full we are right now, what is left to do today, what needs attention (late
+ * check-outs, cleaning waiting on someone) and how the week looks. All numbers come from one
+ * `/reports/dashboard` call so they match the Reports page; arrivals and departures lists come from the
+ * existing daily endpoints.
+ */
 @Component({
   selector: 'app-dashboard',
-  imports: [
-    AsyncPipe,
-    DatePipe,
-    FormsModule,
-    Card,
-    Select,
-    Chart,
-    TableModule,
-    PageHeaderComponent,
-    StatCardComponent,
-    TranslatePipe,
-  ],
+  imports: [AsyncPipe, DatePipe, FormsModule, RouterLink, Chart, Select, Skeleton, PageHeaderComponent, StatCardComponent, TranslatePipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
   private readonly branchesApi = inject(BranchesApiService);
-  private readonly roomsApi = inject(RoomsApiService);
-  private readonly hallsApi = inject(HallsApiService);
   private readonly reportsApi = inject(ReportsApiService);
-  private readonly router = inject(Router);
   readonly i18n = inject(TranslationService);
-
   readonly user$ = inject(AuthService).user$;
 
   readonly branches = signal<BranchListRow[]>([]);
   readonly branchId = signal<string | undefined>(undefined);
-
-  readonly occupancyPct = signal(0);
-  readonly availableRooms = signal(0);
-  readonly hallCapacity = signal({ occupied: 0, total: 0 });
+  readonly snapshot = signal<DashboardSnapshot | null>(null);
   readonly arrivals = signal<ReportLineRow[]>([]);
   readonly departures = signal<ReportLineRow[]>([]);
-  readonly occupancyTrend = signal<{ date: string; occupancyPct: number }[]>([]);
+  readonly loading = signal(false);
+  readonly failed = signal(false);
 
-  readonly hallRemaining = computed(() => Math.max(this.hallCapacity().total - this.hallCapacity().occupied, 0));
+  /** Cleaning jobs that still need a person to act (everything but "done"). */
+  readonly cleaningOpen = computed(() => {
+    const a = this.snapshot()?.attention;
+    return a ? a.pending + a.assigned + a.inProgress + a.awaitingVerification : 0;
+  });
+  readonly needsAttention = computed(() => (this.snapshot()?.attention.overdueCheckouts ?? 0) + this.cleaningOpen() > 0);
 
-  readonly occupancyChartData = computed(() => ({
-    labels: this.occupancyTrend().map((d) => d.date),
-    datasets: [
-      {
-        label: this.i18n.t('dashboard.chartLabel'),
-        data: this.occupancyTrend().map((d) => d.occupancyPct),
-        borderColor: '#6366f1',
-        backgroundColor: 'rgba(99,102,241,0.15)',
-        tension: 0.35,
-        fill: true,
-      },
-    ],
-  }));
-
-  readonly chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+  readonly weekChart = computed(() => {
+    const s = this.snapshot();
+    const locale = this.i18n.currentLang() === 'ur' ? 'ur-PK' : 'en-GB';
+    const week = this.i18n.t('rp.week');
+    return {
+      labels: (s?.week ?? []).map((d) => bucketLabel(d.key, 'day', locale, week)),
+      datasets: [
+        { label: this.i18n.t('rp.kpi.checkIns'), data: (s?.week ?? []).map((d) => d.checkIns), backgroundColor: REPORT_COLORS.checkIns, borderRadius: 4 },
+        { label: this.i18n.t('rp.kpi.checkOuts'), data: (s?.week ?? []).map((d) => d.checkOuts), backgroundColor: REPORT_COLORS.checkOuts, borderRadius: 4 },
+      ],
+    };
+  });
+  readonly chartOptions = barOptions();
 
   constructor() {
     this.i18n.register(DASHBOARD_DICTIONARY);
+    this.i18n.register(REPORTS_DICTIONARY);
     this.branchesApi.list(1, 100, 'active').subscribe({
       next: ({ items }) => {
         this.branches.set(items);
@@ -97,37 +88,19 @@ export class DashboardComponent {
   reload(): void {
     const branchId = this.branchId();
     if (!branchId) return;
-
-    const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    this.reportsApi.occupancy(branchId, { from: toDateKey(todayStart), to: toDateKey(todayStart) }).subscribe({
-      next: (rows) => this.occupancyPct.set(rows[0]?.occupancyPct ?? 0),
-    });
-
-    this.reportsApi.occupancy(branchId, { from: toDateKey(thirtyDaysAgo), to: toDateKey(now) }).subscribe({
-      next: (rows) => this.occupancyTrend.set(rows),
-    });
-
-    this.roomsApi.list({ branchId, status: 'available' }).subscribe({
-      next: ({ pagination }) => this.availableRooms.set(pagination.total),
-    });
-
-    this.hallsApi.list({ branchId }).subscribe({
-      next: ({ items }) => {
-        const total = items.reduce((s, h) => s + h.maxCapacity, 0);
-        const occupied = items.reduce((s, h) => s + (h.occupancy?.occupied ?? 0), 0);
-        this.hallCapacity.set({ occupied, total });
+    this.loading.set(true);
+    this.failed.set(false);
+    this.reportsApi.dashboard(branchId).subscribe({
+      next: (s) => {
+        this.snapshot.set(s);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.failed.set(true);
+        this.loading.set(false);
       },
     });
-
     this.reportsApi.arrivals(branchId).subscribe({ next: (rows) => this.arrivals.set(rows) });
     this.reportsApi.departures(branchId).subscribe({ next: (rows) => this.departures.set(rows) });
-  }
-
-  goNewBooking(): void {
-    void this.router.navigate(['/bookings/new']);
   }
 }

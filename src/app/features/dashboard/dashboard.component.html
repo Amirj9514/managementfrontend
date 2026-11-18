@@ -1,70 +1,141 @@
-@let u = user$ | async;
 <app-page-header [title]="'nav.dashboard' | translate" [subtitle]="'dashboard.subtitle' | translate" />
 
-@if (u; as user) {
-  <p class="dash__greeting mb-4">{{ 'dashboard.greeting' | translate: { name: user.name, role: ('role.' + user.role | translate) } }}</p>
-}
-
-<div class="mb-4">
-  @if (branches().length > 1) {
-    <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()"
-      (ngModelChange)="onBranchChange($event)" [placeholder]="'dashboard.selectBranch' | translate" styleClass="w-14rem" />
+<div class="dash-top">
+  @let u = user$ | async;
+  @if (u; as user) {
+    <p class="dash__greeting">{{ 'dashboard.greeting' | translate: { name: user.name, role: ('role.' + user.role | translate) } }}</p>
   }
+  <span class="dash-top__spacer"></span>
+  @if (branches().length > 1) {
+    <p-select [options]="branches()" optionLabel="name" optionValue="_id" [ngModel]="branchId()" (ngModelChange)="onBranchChange($event)" [placeholder]="'dashboard.selectBranch' | translate" styleClass="w-14rem" />
+  }
+  <a routerLink="/reports" class="dash-link"><i class="pi pi-chart-bar"></i> {{ 'dashboard.openReports' | translate }}</a>
 </div>
 
 @if (branchId()) {
-  <div class="stat-grid mb-4">
-    <app-stat-card [label]="'dashboard.stat.occupancyToday' | translate" [value]="occupancyPct() + '%'" icon="lucideBedDouble" />
-    <app-stat-card [label]="'dashboard.stat.checkIns' | translate" [value]="arrivals().length" icon="lucideLogIn" tone="success" />
-    <app-stat-card [label]="'dashboard.stat.checkOuts' | translate" [value]="departures().length" icon="lucideLogOut" tone="warn" />
-    <app-stat-card [label]="'dashboard.stat.availableRooms' | translate" [value]="availableRooms()" icon="lucideDoorOpen" />
-    <app-stat-card [label]="'dashboard.stat.availableHallCapacity' | translate" [value]="hallRemaining() + ' / ' + hallCapacity().total" icon="lucideUsers" />
-  </div>
-
-  <div class="dash-grid mb-4">
-    <p-card [header]="'dashboard.occupancyTrend' | translate">
-      <div class="chart-wrap"><p-chart type="line" [data]="occupancyChartData()" [options]="chartOptions" /></div>
-    </p-card>
-
-    <div class="dash-grid__side">
-      <p-card [header]="'dashboard.arrivalsToday' | translate">
-        @if (arrivals().length === 0) {
-          <p class="text-color-secondary">{{ 'dashboard.noArrivals' | translate }}</p>
-        } @else {
-          <p-table [value]="arrivals().slice(0, 6)">
-            <ng-template #body let-line>
-              <tr>
-                <td>
-                  <div class="flex flex-column">
-                    <span class="font-medium">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
-                    <small class="text-color-secondary">{{ line.primaryGuestName ?? '' }}</small>
-                  </div>
-                </td>
-                <td>{{ line.checkInDate | date: 'shortTime' }}</td>
-              </tr>
-            </ng-template>
-          </p-table>
-        }
-      </p-card>
-      <p-card [header]="'dashboard.departuresToday' | translate">
-        @if (departures().length === 0) {
-          <p class="text-color-secondary">{{ 'dashboard.noDepartures' | translate }}</p>
-        } @else {
-          <p-table [value]="departures().slice(0, 6)">
-            <ng-template #body let-line>
-              <tr>
-                <td>
-                  <div class="flex flex-column">
-                    <span class="font-medium">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
-                    <small class="text-color-secondary">{{ line.primaryGuestName ?? '' }}</small>
-                  </div>
-                </td>
-                <td>{{ line.expectedCheckOut | date: 'shortTime' }}</td>
-              </tr>
-            </ng-template>
-          </p-table>
-        }
-      </p-card>
+  @if (failed()) {
+    <p class="dash-error"><i class="pi pi-exclamation-triangle"></i> {{ 'rp.failed.title' | translate }}</p>
+  } @else if (loading() && !snapshot()) {
+    <div class="stat-grid">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <p-skeleton width="100%" height="5.5rem" borderRadius="16px" />
+      }
     </div>
-  </div>
+  } @else if (snapshot(); as s) {
+    <div class="stat-grid">
+      <app-stat-card [label]="'dashboard.stat.occupancyToday' | translate" [value]="s.rooms.occupancyPct + '%'" [hint]="s.rooms.occupied + ' / ' + s.rooms.total" icon="lucideBedDouble" />
+      <app-stat-card [label]="'dashboard.stat.availableRooms' | translate" [value]="s.rooms.available" icon="lucideDoorOpen" tone="success" />
+      <app-stat-card [label]="'dashboard.stat.checkIns' | translate" [value]="s.today.checkIns" [hint]="('dashboard.left' | translate: { n: s.today.arrivalsLeft })" icon="lucideLogIn" tone="success" />
+      <app-stat-card [label]="'dashboard.stat.checkOuts' | translate" [value]="s.today.checkOuts" [hint]="('dashboard.left' | translate: { n: s.today.departuresLeft })" icon="lucideLogOut" tone="warn" />
+      <app-stat-card [label]="'dashboard.stat.hallsInUse' | translate" [value]="s.today.hallsInUse" icon="lucideUsers" />
+    </div>
+
+    <div class="dash-grid">
+      <section class="dash-card">
+        <header class="dash-card__head">
+          <h2>{{ 'dashboard.needsAttention' | translate }}</h2>
+        </header>
+        @if (!needsAttention()) {
+          <p class="dash-ok"><i class="pi pi-check-circle"></i> {{ 'dashboard.allClear' | translate }}</p>
+        } @else {
+          <ul class="dash-attn">
+            @if (s.attention.overdueCheckouts > 0) {
+              <li>
+                <a routerLink="/bookings" class="dash-attn__row" data-tone="danger">
+                  <i class="pi pi-clock"></i>
+                  <span>{{ 'dashboard.overdue' | translate }}</span>
+                  <strong>{{ s.attention.overdueCheckouts }}</strong>
+                </a>
+              </li>
+            }
+            @if (s.attention.pending + s.attention.assigned > 0) {
+              <li>
+                <a routerLink="/housekeeping" class="dash-attn__row" data-tone="warn">
+                  <i class="pi pi-sparkles"></i>
+                  <span>{{ 'dashboard.toClean' | translate }}</span>
+                  <strong>{{ s.attention.pending + s.attention.assigned }}</strong>
+                </a>
+              </li>
+            }
+            @if (s.attention.inProgress > 0) {
+              <li>
+                <a routerLink="/housekeeping" class="dash-attn__row" data-tone="info">
+                  <i class="pi pi-spinner"></i>
+                  <span>{{ 'dashboard.beingCleaned' | translate }}</span>
+                  <strong>{{ s.attention.inProgress }}</strong>
+                </a>
+              </li>
+            }
+            @if (s.attention.awaitingVerification > 0) {
+              <li>
+                <a routerLink="/housekeeping" class="dash-attn__row" data-tone="warn">
+                  <i class="pi pi-verified"></i>
+                  <span>{{ 'dashboard.toVerify' | translate }}</span>
+                  <strong>{{ s.attention.awaitingVerification }}</strong>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+        <div class="dash-rooms" [attr.aria-label]="'dashboard.roomsNow' | translate">
+          <span><b>{{ s.rooms.available }}</b> {{ 'dashboard.rs.available' | translate }}</span>
+          <span><b>{{ s.rooms.occupied }}</b> {{ 'dashboard.rs.occupied' | translate }}</span>
+          <span><b>{{ s.rooms.cleaning }}</b> {{ 'dashboard.rs.cleaning' | translate }}</span>
+          <span><b>{{ s.rooms.maintenance }}</b> {{ 'dashboard.rs.maintenance' | translate }}</span>
+        </div>
+      </section>
+
+      <section class="dash-card">
+        <header class="dash-card__head">
+          <h2>{{ 'dashboard.week' | translate }}</h2>
+          <a routerLink="/reports" [queryParams]="{ tab: 'summary', preset: '7d' }" class="dash-link">{{ 'dashboard.details' | translate }}</a>
+        </header>
+        <div class="chart-wrap"><p-chart type="bar" [data]="weekChart()" [options]="chartOptions" /></div>
+      </section>
+
+      <section class="dash-card">
+        <header class="dash-card__head">
+          <h2>{{ 'dashboard.arrivalsToday' | translate }}</h2>
+          <span class="dash-count">{{ arrivals().length }}</span>
+        </header>
+        @if (arrivals().length === 0) {
+          <p class="dash-empty">{{ 'dashboard.noArrivals' | translate }}</p>
+        } @else {
+          <ul class="dash-list">
+            @for (line of arrivals().slice(0, 8); track $index) {
+              <li>
+                <div>
+                  <span class="dash-list__main">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
+                  <small>{{ line.primaryGuestName ?? '' }}</small>
+                </div>
+                <span class="dash-list__time">{{ line.checkInDate | date: 'shortTime' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="dash-card">
+        <header class="dash-card__head">
+          <h2>{{ 'dashboard.departuresToday' | translate }}</h2>
+          <span class="dash-count">{{ departures().length }}</span>
+        </header>
+        @if (departures().length === 0) {
+          <p class="dash-empty">{{ 'dashboard.noDepartures' | translate }}</p>
+        } @else {
+          <ul class="dash-list">
+            @for (line of departures().slice(0, 8); track $index) {
+              <li>
+                <div>
+                  <span class="dash-list__main">{{ line.unitCode ?? ((line.unitType === 'private_room' ? 'common.room' : 'common.hall') | translate) }}</span>
+                  <small>{{ line.primaryGuestName ?? '' }}</small>
+                </div>
+                <span class="dash-list__time">{{ line.expectedCheckOut | date: 'shortTime' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+  }
 }

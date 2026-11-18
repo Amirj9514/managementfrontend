@@ -1,0 +1,68 @@
+@if (loading() && !data()) {
+  <div class="rp-tiles">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton width="100%" height="5.4rem" borderRadius="16px" />
+    }
+  </div>
+  <p-skeleton width="100%" height="18rem" borderRadius="16px" />
+} @else if (failed()) {
+  <app-empty-state icon="lucideChartBar" [title]="'rp.failed.title' | translate" [description]="'rp.failed.description' | translate" />
+} @else if (data(); as d) {
+  <div class="rp-tiles" [class.rp-loading]="loading()">
+    @for (t of tiles(); track t.key) {
+      <div class="rp-tile" [attr.data-tone]="t.tone">
+        <span class="rp-tile__label">{{ t.label }}</span>
+        <span class="rp-tile__value">{{ t.value }}</span>
+        <span class="rp-delta" [class]="'rp-delta ' + deltaClass(t.delta)" [attr.title]="('rp.vsPrev' | translate) + ': ' + t.prev">
+          <i class="pi" [class.pi-arrow-up-right]="(t.delta ?? 1) > 0" [class.pi-arrow-down-right]="(t.delta ?? 0) < 0" [class.pi-minus]="t.delta === 0"></i>
+          {{ deltaText(t.delta) }}
+        </span>
+        <span class="rp-tile__sub">{{ 'rp.vsPrevValue' | translate: { value: t.prev } }}</span>
+      </div>
+    }
+  </div>
+
+  @if (empty()) {
+    <app-empty-state icon="lucideChartBar" [title]="'rp.empty.title' | translate" [description]="'rp.empty.description' | translate" />
+  } @else {
+    <section class="rp-panel">
+      <header class="rp-panel__head">
+        <h2>{{ 'rp.trend' | translate }}</h2>
+        <small>{{ 'rp.groupedBy.' + d.range.groupBy | translate }}</small>
+      </header>
+      <div class="rp-panel__body">
+        <div class="rp-chart"><p-chart type="bar" [data]="chartData()" [options]="chartOptions" /></div>
+      </div>
+    </section>
+
+    <section class="rp-panel">
+      <header class="rp-panel__head">
+        <h2>{{ 'rp.breakdown' | translate }}</h2>
+        <span class="rp-panel__spacer"></span>
+        <p-button size="small" [outlined]="true" icon="pi pi-download" [label]="'rp.export' | translate" (onClick)="export()" />
+      </header>
+      <div class="rp-panel__body">
+        <p-table [value]="d.series" [tableStyle]="{ 'min-width': '34rem' }" styleClass="p-datatable-sm" [paginator]="d.series.length > 15" [rows]="15">
+          <ng-template #header>
+            <tr>
+              <th>{{ 'rp.col.period' | translate }}</th>
+              <th class="rp-num">{{ 'rp.kpi.checkIns' | translate }}</th>
+              <th class="rp-num">{{ 'rp.kpi.checkOuts' | translate }}</th>
+              <th class="rp-num">{{ 'rp.kpi.cleaned' | translate }}</th>
+              <th class="rp-num">{{ 'rp.kpi.occupancy' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-s>
+            <tr>
+              <td class="rp-mono">{{ labelOf(s.key) }}</td>
+              <td class="rp-num">{{ s.checkIns }}</td>
+              <td class="rp-num">{{ s.checkOuts }}</td>
+              <td class="rp-num">{{ s.cleaned }}</td>
+              <td class="rp-num">{{ s.occupancyPct }}%</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </section>
+  }
+}

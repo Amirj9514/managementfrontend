@@ -1,0 +1,125 @@
+@if (loading() && !data()) {
+  <div class="rp-tiles">
+    @for (i of [1, 2, 3, 4]; track i) {
+      <p-skeleton width="100%" height="5rem" borderRadius="16px" />
+    }
+  </div>
+  <p-skeleton width="100%" height="18rem" borderRadius="16px" />
+} @else if (failed()) {
+  <app-empty-state icon="lucideChartBar" [title]="'rp.failed.title' | translate" [description]="'rp.failed.description' | translate" />
+} @else if (data(); as d) {
+  <div class="rp-tiles" [class.rp-loading]="loading()">
+    <div class="rp-tile" [attr.data-tone]="isIn() ? 'green' : 'amber'">
+      <span class="rp-tile__label">{{ (isIn() ? 'rp.kpi.checkIns' : 'rp.kpi.checkOuts') | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.count }}</span>
+      <span class="rp-tile__sub">{{ 'rp.mv.split' | translate: { rooms: d.totals.rooms, halls: d.totals.halls } }}</span>
+    </div>
+    <div class="rp-tile" data-tone="teal">
+      <span class="rp-tile__label">{{ 'rp.mv.people' | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.guests }}</span>
+      <span class="rp-tile__sub">{{ 'rp.mv.peopleHint' | translate }}</span>
+    </div>
+    <div class="rp-tile" data-tone="indigo">
+      <span class="rp-tile__label">{{ (isIn() ? 'rp.mv.avgPlanned' : 'rp.mv.avgStayed') | translate }}</span>
+      <span class="rp-tile__value">{{ d.totals.avgNights }}</span>
+      <span class="rp-tile__sub">{{ 'rp.nights' | translate }}</span>
+    </div>
+    @if (!isIn()) {
+      <div class="rp-tile" [attr.data-tone]="d.totals.late > 0 ? 'red' : 'slate'">
+        <span class="rp-tile__label">{{ 'rp.mv.late' | translate }}</span>
+        <span class="rp-tile__value">{{ d.totals.late }}</span>
+        <span class="rp-tile__sub">{{ 'rp.mv.lateHint' | translate }}</span>
+      </div>
+    }
+  </div>
+
+  @if (d.totals.count === 0) {
+    <app-empty-state
+      icon="lucideChartBar"
+      [title]="(isIn() ? 'rp.mv.emptyIn' : 'rp.mv.emptyOut') | translate"
+      [description]="'rp.empty.description' | translate"
+    />
+  } @else {
+    <div class="rp-grid-2">
+      <section class="rp-panel">
+        <header class="rp-panel__head">
+          <h2>{{ 'rp.trend' | translate }}</h2>
+          <small>{{ 'rp.groupedBy.' + d.range.groupBy | translate }}</small>
+        </header>
+        <div class="rp-panel__body">
+          <div class="rp-chart"><p-chart type="bar" [data]="chartData()" [options]="chartOptions" /></div>
+        </div>
+      </section>
+
+      <section class="rp-panel">
+        <header class="rp-panel__head"><h2>{{ 'rp.byBuilding' | translate }}</h2></header>
+        <div class="rp-panel__body">
+          <ul class="rp-bars">
+            @for (b of d.byBuilding; track b.name) {
+              <li>
+                <span class="rp-bars__name" [attr.title]="b.name">{{ b.name }}</span>
+                <span class="rp-bars__track"><i [style.width.%]="(b.count / maxBuilding()) * 100"></i></span>
+                <strong>{{ b.count }}</strong>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="rp-panel">
+      <header class="rp-panel__head">
+        <h2>{{ 'rp.details' | translate }}</h2>
+        <small>{{ 'rp.rowsCount' | translate: { n: rows().length } }}</small>
+        <span class="rp-panel__spacer"></span>
+        <p-iconfield class="rp-search">
+          <p-inputicon class="pi pi-search" />
+          <input pInputText type="search" autocomplete="off" [ngModel]="search()" (ngModelChange)="search.set($event)" [placeholder]="'rp.searchGuests' | translate" />
+        </p-iconfield>
+        <p-button size="small" [outlined]="true" icon="pi pi-download" [label]="'rp.export' | translate" (onClick)="export()" />
+      </header>
+      @if (d.truncated) {
+        <p class="rp-note"><i class="pi pi-info-circle"></i> {{ 'rp.truncated' | translate }}</p>
+      }
+      <div class="rp-panel__body">
+        <p-table [value]="rows()" dataKey="lineId" [rowHover]="true" [paginator]="rows().length > 15" [rows]="15" [rowsPerPageOptions]="[15, 30, 50]" [tableStyle]="{ 'min-width': '52rem' }" styleClass="p-datatable-sm">
+          <ng-template #header>
+            <tr>
+              <th>{{ (isIn() ? 'rp.col.checkedInAt' : 'rp.col.checkedOutAt') | translate }}</th>
+              <th>{{ 'rp.col.guest' | translate }}</th>
+              <th>{{ 'rp.col.room' | translate }}</th>
+              <th>{{ 'rp.col.place' | translate }}</th>
+              <th class="rp-num">{{ (isIn() ? 'rp.col.plannedNights' : 'rp.col.stayedNights') | translate }}</th>
+              <th class="rp-num">{{ 'rp.col.people' | translate }}</th>
+              @if (!isIn()) {
+                <th>{{ 'rp.col.onTime' | translate }}</th>
+              }
+            </tr>
+          </ng-template>
+          <ng-template #body let-r>
+            <tr>
+              <td><div class="rp-stack"><span>{{ r.at | date: 'd MMM, h:mm a' }}</span><small class="rp-mono">{{ r.bookingNumber ?? '—' }}</small></div></td>
+              <td><div class="rp-stack"><strong>{{ r.guestName ?? '—' }}</strong><small>{{ r.guestPhone ?? '' }}</small></div></td>
+              <td><div class="rp-stack"><strong>{{ r.unitCode ?? '—' }}</strong><small>{{ (r.unitType === 'public_hall' ? 'common.hall' : 'common.room') | translate }}</small></div></td>
+              <td class="rp-muted">{{ placeOf(r) }}</td>
+              <td class="rp-num">{{ isIn() ? r.plannedNights : (r.stayNights ?? r.plannedNights) }}</td>
+              <td class="rp-num">{{ r.guests }}</td>
+              @if (!isIn()) {
+                <td>
+                  @if (r.late) {
+                    <span class="rp-chip" data-tone="red">{{ 'rp.mv.lateBy' | translate: { time: minutesText(r.lateMinutes) } }}</span>
+                  } @else {
+                    <span class="rp-chip" data-tone="green">{{ 'rp.mv.onTime' | translate }}</span>
+                  }
+                </td>
+              }
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr><td [attr.colspan]="isIn() ? 6 : 7" class="rp-muted">{{ 'rp.noMatch' | translate }}</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </section>
+  }
+}

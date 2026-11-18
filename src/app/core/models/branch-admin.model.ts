@@ -11,7 +11,8 @@ export interface BranchListRow {
   active: boolean;
   createdAt: string;
   deletedAt?: string | null;
-  buildings?: any[]; // For row expansion
+  /** What the branch holds (list endpoint only). */
+  stats?: { buildings: number; floors: number; rooms: number; freeRooms: number; halls: number };
 }
 
 export interface BranchCreateRequest {

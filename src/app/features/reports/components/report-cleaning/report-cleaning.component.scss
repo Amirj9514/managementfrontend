@@ -1,0 +1,12 @@
+@use '../../report-shared' as *;
+
+@include report-styles;
+
+.rp-loading {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.rp-redo {
+  color: #dc2626 !important;
+}

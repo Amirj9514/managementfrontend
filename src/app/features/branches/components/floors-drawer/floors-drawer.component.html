@@ -1,0 +1,125 @@
+<p-drawer
+  [visible]="building() !== null"
+  (visibleChange)="$event || closed.emit()"
+  position="right"
+  [style]="{ width: 'min(34rem, 100vw)' }"
+  styleClass="gl-drawer"
+>
+  <ng-template #header>
+    <div class="fd-title">
+      <strong>{{ 'floors.title' | translate }}</strong>
+      <small>{{ building()?.name }}</small>
+    </div>
+  </ng-template>
+
+  <!-- add -->
+  <section *appCan="'buildings.edit'" class="fd-add">
+    <label for="fd-new">{{ 'floors.addLabel' | translate }}</label>
+    <div class="fd-add__row">
+      <input
+        pInputText
+        id="fd-new"
+        autocomplete="off"
+        [ngModel]="newNames()"
+        (ngModelChange)="newNames.set($event)"
+        (keydown.enter)="addFloors()"
+        [placeholder]="'floors.addPlaceholder' | translate"
+      />
+      <p-button type="button" icon="pi pi-plus" [label]="(plan().fresh.length > 1 ? 'floors.addN' : 'floors.add') | translate: { n: plan().fresh.length }" [disabled]="plan().fresh.length === 0" [loading]="adding()" (onClick)="addFloors()" />
+    </div>
+    @if (plan().fresh.length > 0) {
+      <div class="fd-plan">
+        @for (n of plan().fresh; track n) {
+          <span class="fd-plan__chip">{{ n }}</span>
+        }
+        @if (plan().skipped > 0) {
+          <small class="fd-plan__skip">{{ 'floors.skipped' | translate: { n: plan().skipped } }}</small>
+        }
+      </div>
+    } @else {
+      <button type="button" class="fd-suggest" (click)="useSuggestion()"><i class="pi pi-bolt"></i> {{ 'floors.suggest' | translate: { name: nextSuggestion() } }}</button>
+    }
+  </section>
+
+  <!-- list -->
+  @if (loading() && floors().length === 0) {
+    <div class="fd-list">
+      @for (i of [1, 2, 3]; track i) {
+        <p-skeleton width="100%" height="3.2rem" borderRadius="12px" />
+      }
+    </div>
+  } @else if (visibleFloors().length === 0) {
+    <div class="fd-empty">
+      <i class="pi pi-layers"></i>
+      <strong>{{ 'floors.empty.title' | translate }}</strong>
+      <span>{{ 'floors.empty.description' | translate }}</span>
+    </div>
+  } @else {
+    <ol class="fd-list" [attr.aria-label]="'floors.title' | translate">
+      @for (f of visibleFloors(); track f._id; let i = $index; let last = $last) {
+        <li class="fd-row" [class.fd-row--off]="isInactive(f)" [class.fd-row--busy]="busyId() === f._id">
+          <span class="fd-order">
+            <span class="fd-order__n">{{ i + 1 }}</span>
+            @if (!isInactive(f) && visibleFloors().length > 1) {
+              <span *appCan="'buildings.edit'" class="fd-order__btns">
+                <button type="button" [disabled]="i === 0" (click)="move(f, -1)" [attr.aria-label]="'floors.moveUp' | translate"><i class="pi pi-chevron-up"></i></button>
+                <button type="button" [disabled]="last" (click)="move(f, 1)" [attr.aria-label]="'floors.moveDown' | translate"><i class="pi pi-chevron-down"></i></button>
+              </span>
+            }
+          </span>
+
+          <div class="fd-main">
+            @if (editingId() === f._id) {
+              <input pInputText class="fd-edit" autocomplete="off" [ngModel]="editLabel()" (ngModelChange)="editLabel.set($event)" (keydown.enter)="saveEdit(f)" (keydown.escape)="cancelEdit()" />
+            } @else {
+              <strong>{{ f.label }}</strong>
+              <small>
+                @if (unitsOf(f) > 0) {
+                  <i class="pi pi-door-open"></i> {{ 'floors.units' | translate: { rooms: f.stats?.rooms ?? 0, halls: f.stats?.halls ?? 0 } }}
+                } @else {
+                  {{ 'floors.noUnits' | translate }}
+                }
+                @if (isInactive(f)) {
+                  · <span class="fd-off">{{ 'status.inactive' | translate }}</span>
+                }
+              </small>
+            }
+          </div>
+
+          <div class="fd-actions">
+            @if (editingId() === f._id) {
+              <p-button type="button" size="small" [text]="true" icon="pi pi-check" [ariaLabel]="'common.save' | translate" (onClick)="saveEdit(f)" />
+              <p-button type="button" size="small" [text]="true" severity="secondary" icon="pi pi-times" [ariaLabel]="'common.cancel' | translate" (onClick)="cancelEdit()" />
+            } @else {
+              <ng-container *appCan="'buildings.edit'">
+                @if (!isInactive(f)) {
+                  <p-button type="button" size="small" [text]="true" severity="secondary" icon="pi pi-pencil" [ariaLabel]="'common.edit' | translate" (onClick)="startEdit(f)" />
+                }
+              </ng-container>
+              <ng-container *appCan="'buildings.delete'">
+                @if (isInactive(f)) {
+                  <p-button type="button" size="small" [text]="true" icon="pi pi-refresh" [label]="'common.restore' | translate" (onClick)="restore(f)" />
+                } @else {
+                  <p-button type="button" size="small" [text]="true" severity="danger" icon="pi pi-ban" [ariaLabel]="'branches.deactivate' | translate" [attr.title]="unitsOf(f) > 0 ? ('floors.hasUnits.hint' | translate) : null" (onClick)="deactivate(f)" />
+                }
+              </ng-container>
+            }
+          </div>
+        </li>
+      }
+    </ol>
+  }
+
+  @if (inactiveCount() > 0) {
+    <label class="fd-toggle" for="fd-inactive">
+      <p-checkbox inputId="fd-inactive" [binary]="true" [ngModel]="showInactive()" (ngModelChange)="showInactive.set($event)" />
+      <span>{{ 'floors.showInactive' | translate: { n: inactiveCount() } }}</span>
+    </label>
+  }
+
+  <ng-template #footer>
+    <div class="fd-footer">
+      <p-button type="button" [label]="'common.close' | translate" (onClick)="closed.emit()" />
+    </div>
+  </ng-template>
+</p-drawer>

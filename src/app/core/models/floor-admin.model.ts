@@ -9,6 +9,8 @@ export interface FloorListRow {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
+  /** Rooms and halls on this floor (list endpoint only). */
+  stats?: { rooms: number; halls: number };
 }
 
 export interface FloorCreateRequest {

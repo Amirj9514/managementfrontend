@@ -11,6 +11,10 @@ export interface BuildingListRow {
   updatedAt: string;
   deletedAt?: string | null;
   floors?: FloorListRow[];
+  /** Floors, rooms, halls and free rooms (list endpoint only). */
+  stats?: { floors: number; rooms: number; freeRooms: number; halls: number };
+  /** The first few floor names, for a quick preview on the card. */
+  floorLabels?: string[];
 }
 
 export interface BuildingCreateRequest {

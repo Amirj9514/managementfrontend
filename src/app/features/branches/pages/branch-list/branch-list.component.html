@@ -1,210 +1,240 @@
-<app-page-header [title]="'nav.branches' | translate"
-  [subtitle]="'branches.subtitle' | translate" />
+<app-page-header [title]="'nav.branches' | translate" [subtitle]="'branches.subtitle' | translate">
+  <p-button actions *appCan="'branches.create'" type="button" icon="pi pi-plus" [label]="'branches.newBranch' | translate" (onClick)="openCreateBranch()" />
+</app-page-header>
 
-<p-toolbar styleClass="branches-toolbar">
-  <ng-template #start>
-    <div style="display: flex; gap: 0.75rem; align-items: center">
-      <p-button *appCan="'branches.create'" type="button" [label]="'branches.newBranch' | translate" (onClick)="openCreate()" />
-      <p-select [options]="[
-          { label: ('branches.filter.active' | translate), value: 'active' },
-          { label: ('branches.filter.inactiveDeleted' | translate), value: 'inactive' },
-          { label: ('branches.filter.all' | translate), value: 'all' }
-        ]" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" [placeholder]="'branches.filterByStatus' | translate"
-        styleClass="w-12rem" />
-    </div>
-  </ng-template>
-</p-toolbar>
+<div class="br-bar">
+  <p-selectbutton [options]="statusOptions()" optionLabel="label" optionValue="value" [ngModel]="status()" (ngModelChange)="onStatusChange($event)" [allowEmpty]="false" size="small" />
+  <span class="br-bar__count">{{ 'branches.count' | translate: { n: rows().length } }}</span>
+</div>
 
-<p-card>
-  @if (loading()) {
-    <app-table-skeleton [columns]="7" [rows]="8" />
-  } @else if (rows().length === 0 && totalRecords() === 0) {
-    <app-empty-state
-      [title]="'branches.emptyTitle' | translate"
-      [description]="'branches.emptyDescription' | translate"
-      icon="lucideBuilding"
-      [actionLabel]="canCreateBranch() ? ('branches.createBranch' | translate) : undefined"
-      (actionClick)="openCreate()"
-    />
-  } @else {
-    <p-table [value]="rows()" [loading]="false" dataKey="_id" (onRowExpand)="onRowExpand($event)"
-      [tableStyle]="{ 'min-width': '48rem' }">
-    <ng-template #header>
-      <tr>
-        <th style="width: 3rem"></th>
-        <th>{{ 'common.name' | translate }}</th>
-        <th>{{ 'branches.code' | translate }}</th>
-        <th>{{ 'branches.city' | translate }}</th>
-        <th>{{ 'branches.country' | translate }}</th>
-        <th>{{ 'common.status' | translate }}</th>
-        <th>{{ 'common.created' | translate }}</th>
-        <th *appCan="['branches.edit', 'branches.delete']" style="width: 4rem"></th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-row let-expanded="expanded">
-      <tr>
-        <td>
-          <p-button type="button" pRipple [pRowToggler]="row" [text]="true" [rounded]="true" [plain]="true"
-            [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" />
-        </td>
-        <td class="font-bold">{{ row.name }}</td>
-        <td>{{ row.code }}</td>
-        <td>{{ row.city }}</td>
-        <td>{{ row.country }}</td>
-        <td>
-          @if (row.deletedAt || row.status === 'inactive') {
-          <p-tag [value]="'status.inactive' | translate" severity="danger" />
-          } @else {
-          <p-tag [value]="'status.active' | translate" severity="success" />
-          }
-        </td>
-        <td>{{ row.createdAt ? (row.createdAt | date: 'short') : '—' }}</td>
-        <td *appCan="['branches.edit', 'branches.delete']" style="text-align: right">
-          <p-button type="button" [text]="true" [rounded]="true" (onClick)="prepareActions($event, row, rowMenu)">
-            <ng-icon name="lucideMoreVertical" size="1.25rem" />
-          </p-button>
-        </td>
-      </tr>
-    </ng-template>
-
-    <!-- Row Expansion for Buildings -->
-    <ng-template #expandedrow let-row>
-      <tr>
-        <td colspan="8">
-          <div class="expansion-container p-4 bg-surface-50 border-y border-surface-200">
-            <div class="flex justify-content-between align-items-center mb-4">
-              <h4 class="text-lg font-bold m-0 flex align-items-center gap-2">
-                <span class="p-2 bg-primary-50 text-primary-600 rounded-lg">
-                  <i class="pi pi-building text-xl"></i>
-                </span>
-                {{ 'branches.buildingsIn' | translate: { name: row.name } }}
-              </h4>
-              <p-button *appCan="'buildings.create'" [label]="'branches.addBuilding' | translate" icon="pi pi-plus" size="small" (onClick)="openCreateBuilding(row)" />
-            </div>
-
-            @if (row.buildings && row.buildings.length > 0) {
-            <p-table [value]="row.buildings"
-              styleClass="p-datatable-sm shadow-sm border border-surface-200 rounded-xl overflow-hidden bg-white">
-              <ng-template #header>
-      <tr>
-        <th style="width: 40%">{{ 'common.name' | translate }}</th>
-        <th>{{ 'common.status' | translate }}</th>
-        <th>{{ 'common.created' | translate }}</th>
-        <th *appCan="['buildings.view', 'buildings.edit', 'buildings.delete']" style="width: 4rem"></th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-building>
-      <tr>
-        <td class="font-medium text-surface-900">{{ building.name }}</td>
-        <td>
-          @if (building.deletedAt || building.status === 'inactive') {
-          <p-tag [value]="'status.inactive' | translate" severity="danger" [rounded]="true" />
-          } @else {
-          <p-tag [value]="'status.active' | translate" severity="success" [rounded]="true" />
-          }
-        </td>
-        <td>{{ building.createdAt | date: 'short' }}</td>
-        <td *appCan="['buildings.view', 'buildings.edit', 'buildings.delete']" style="text-align: right; white-space: nowrap">
-          <p-button *appCan="'buildings.view'" [label]="'branches.floors' | translate" icon="pi pi-list" [text]="true" size="small"
-            (onClick)="navigateToFloors(building._id)" />
-          <p-button *appCan="['buildings.edit', 'buildings.delete']" type="button" [text]="true" [rounded]="true"
-            (onClick)="prepareBuildingActions($event, building, row, buildingMenu)">
-            <ng-icon name="lucideMoreVertical" size="1.1rem" />
-          </p-button>
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
-  } @else {
-  <div class="p-8 bg-white border border-dashed border-surface-300 rounded-xl text-center">
-    <i class="pi pi-inbox text-4xl text-surface-300 mb-3"></i>
-    <p class="m-0 text-surface-500 font-medium">{{ 'branches.noBuildingsFound' | translate }}</p>
+@if (loading()) {
+  <div class="br-tiles">
+    @for (i of [1, 2, 3]; track i) {
+      <p-skeleton width="100%" height="6rem" borderRadius="16px" />
+    }
   </div>
-  }
+} @else if (rows().length === 0) {
+  <app-empty-state
+    icon="lucideBuilding2"
+    [title]="(status() === 'active' ? 'branches.emptyTitle' : 'branches.noneHere') | translate"
+    [description]="(status() === 'active' ? 'branches.emptyDescription' : 'branches.noneHereHint') | translate"
+    [actionLabel]="canCreateBranch() && status() === 'active' ? ('branches.createBranch' | translate) : undefined"
+    (actionClick)="openCreateBranch()"
+  />
+} @else {
+  <!-- Branch tiles -->
+  <div class="br-tiles" role="radiogroup" [attr.aria-label]="'nav.branches' | translate">
+    @for (b of rows(); track b._id) {
+      <button type="button" class="br-tile" role="radio" [class.br-tile--on]="selectedId() === b._id" [class.br-tile--off]="isInactive(b)" [attr.aria-checked]="selectedId() === b._id" (click)="select(b._id)">
+        <span class="br-tile__avatar">{{ initials(b.name) }}</span>
+        <span class="br-tile__text">
+          <strong>{{ b.name }}</strong>
+          <small>{{ b.city || '—' }}{{ b.country ? ' · ' + b.country : '' }}</small>
+          <small class="br-tile__stats">{{ 'branches.tile.stats' | translate: { buildings: b.stats?.buildings ?? 0, rooms: b.stats?.rooms ?? 0 } }}</small>
+        </span>
+        @if (isInactive(b)) {
+          <span class="br-pill br-pill--off">{{ 'status.inactive' | translate }}</span>
+        }
+      </button>
+    }
   </div>
-  </td>
-  </tr>
-  </ng-template>
-  </p-table>
 
-  <p-menu #rowMenu [model]="menuItems()" [popup]="true" appendTo="body" />
-  <p-menu #buildingMenu [model]="buildingMenuItems()" [popup]="true" appendTo="body" />
-
-  <p-paginator [rows]="pageSize()" [totalRecords]="totalRecords()" [first]="first()"
-    [rowsPerPageOptions]="[10, 20, 50, 100]" [showCurrentPageReport]="true"
-    currentPageReportTemplate="{first}–{last} of {totalRecords}" (onPageChange)="onPaginatorChange($event)" />
-  }
-</p-card>
-
-<!-- Branch Forms -->
-<p-drawer [header]="(createVisible() ? 'branches.newBranchHeader' : 'branches.editBranchHeader') | translate" [visible]="createVisible() || editVisible()"
-  (visibleChange)="createVisible() ? createVisible.set($event) : editVisible.set($event)" position="right"
-  [style]="{ width: 'min(36rem, 100vw)' }">
-  <form [formGroup]="branchForm" (ngSubmit)="createVisible() ? submitCreate() : submitEdit()">
-    <p-fluid>
-      <div class="form-grid">
-        <div class="field">
-          <label for="b-name">{{ 'common.name' | translate }}</label>
-          <input pInputText id="b-name" formControlName="name" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.name" [label]="'common.name' | translate" />
+  <!-- Selected branch -->
+  @if (selected(); as br) {
+    <section class="br-detail" [class.br-detail--off]="isInactive(br)">
+      <header class="br-hero">
+        <span class="br-hero__avatar">{{ initials(br.name) }}</span>
+        <div class="br-hero__text">
+          <h2>{{ br.name }}</h2>
+          <p>
+            <span class="br-code">{{ br.code }}</span>
+            <span><i class="pi pi-map-marker"></i> {{ br.city || '—' }}{{ br.country ? ', ' + br.country : '' }}</span>
+            <span><i class="pi pi-clock"></i> {{ br.timezone }}</span>
+            @if (isInactive(br)) {
+              <span class="br-pill br-pill--off">{{ 'status.inactive' | translate }}</span>
+            } @else {
+              <span class="br-pill br-pill--on">{{ 'status.active' | translate }}</span>
+            }
+          </p>
         </div>
-        @if (editVisible()) {
+        <div class="br-hero__actions">
+          <p-button *appCan="'branches.edit'" type="button" [outlined]="true" icon="pi pi-pencil" [label]="'common.edit' | translate" (onClick)="openEditBranch(br)" />
+          <p-button *appCan="['branches.edit', 'branches.delete']" type="button" [text]="true" [rounded]="true" severity="secondary" icon="pi pi-ellipsis-v" [ariaLabel]="'users.moreActions' | translate" (onClick)="branchMenu($event, br, menu)" />
+        </div>
+      </header>
+
+      <div class="br-stats">
+        <div class="br-stat"><span class="br-stat__icon"><i class="pi pi-building"></i></span><div><strong>{{ br.stats?.buildings ?? 0 }}</strong><small>{{ 'branches.stat.buildings' | translate }}</small></div></div>
+        <div class="br-stat"><span class="br-stat__icon br-stat__icon--floors"><i class="pi pi-layers"></i></span><div><strong>{{ br.stats?.floors ?? 0 }}</strong><small>{{ 'branches.stat.floors' | translate }}</small></div></div>
+        <div class="br-stat"><span class="br-stat__icon br-stat__icon--rooms"><i class="pi pi-door-open"></i></span><div><strong>{{ br.stats?.rooms ?? 0 }}</strong><small>{{ 'branches.stat.rooms' | translate: { free: br.stats?.freeRooms ?? 0 } }}</small></div></div>
+        <div class="br-stat"><span class="br-stat__icon br-stat__icon--halls"><i class="pi pi-users"></i></span><div><strong>{{ br.stats?.halls ?? 0 }}</strong><small>{{ 'branches.stat.halls' | translate }}</small></div></div>
+      </div>
+
+      <!-- Buildings -->
+      <div class="br-section">
+        <h3>{{ 'branches.buildingsIn' | translate: { name: br.name } }}</h3>
+        <label class="br-toggle" for="br-inactive-b">
+          <p-checkbox inputId="br-inactive-b" [binary]="true" [ngModel]="showInactiveBuildings()" (ngModelChange)="setShowInactiveBuildings($event)" />
+          <span>{{ 'branches.showInactiveBuildings' | translate }}</span>
+        </label>
+        <span class="br-section__spacer"></span>
+        <p-button *appCan="'buildings.create'" type="button" size="small" icon="pi pi-plus" [label]="'branches.addBuilding' | translate" [disabled]="isInactive(br)" (onClick)="openCreateBuilding()" />
+      </div>
+
+      @if (loadingBuildings() && buildings().length === 0) {
+        <div class="br-buildings">
+          @for (i of [1, 2]; track i) {
+            <p-skeleton width="100%" height="9rem" borderRadius="16px" />
+          }
+        </div>
+      } @else if (buildings().length === 0) {
+        <div class="br-empty">
+          <i class="pi pi-building"></i>
+          <strong>{{ 'branches.noBuildingsFound' | translate }}</strong>
+          <span>{{ 'branches.noBuildingsHint' | translate }}</span>
+          @if (canCreateBuilding() && !isInactive(br)) {
+            <p-button type="button" size="small" icon="pi pi-plus" [label]="'branches.addBuilding' | translate" (onClick)="openCreateBuilding()" />
+          }
+        </div>
+      } @else {
+        <div class="br-buildings">
+          @for (b of buildings(); track b._id) {
+            <article class="bc" [class.bc--off]="isInactive(b)">
+              <div class="bc__top">
+                <span class="bc__icon"><i class="pi pi-building"></i></span>
+                <div class="bc__title">
+                  <strong>{{ b.name }}</strong>
+                  <small>{{ b.code }}@if (isInactive(b)) { · <span class="bc__off">{{ 'status.inactive' | translate }}</span> }</small>
+                </div>
+                <p-button *appCan="['buildings.edit', 'buildings.delete']" type="button" size="small" [text]="true" [rounded]="true" severity="secondary" icon="pi pi-ellipsis-v" [ariaLabel]="'users.moreActions' | translate" (onClick)="buildingMenu($event, b, menu)" />
+              </div>
+
+              <div class="bc__stats">
+                <span>{{ 'branches.stat.floors' | translate }} <b>{{ b.stats?.floors ?? 0 }}</b></span>
+                <span>{{ 'branches.stat.roomsShort' | translate }} <b>{{ b.stats?.rooms ?? 0 }}</b></span>
+                @if ((b.stats?.rooms ?? 0) > 0) {
+                  <span class="bc__free">{{ 'branches.free' | translate }} <b>{{ b.stats?.freeRooms ?? 0 }}</b></span>
+                }
+                @if ((b.stats?.halls ?? 0) > 0) {
+                  <span>{{ 'branches.stat.halls' | translate }} <b>{{ b.stats?.halls }}</b></span>
+                }
+              </div>
+
+              <div class="bc__floors">
+                @for (l of b.floorLabels ?? []; track l) {
+                  <span class="bc__chip">{{ l }}</span>
+                } @empty {
+                  <span class="bc__none"><i class="pi pi-info-circle"></i> {{ 'branches.noFloorsYet' | translate }}</span>
+                }
+                @if ((b.stats?.floors ?? 0) > (b.floorLabels?.length ?? 0)) {
+                  <span class="bc__chip bc__chip--more">+{{ (b.stats?.floors ?? 0) - (b.floorLabels?.length ?? 0) }}</span>
+                }
+              </div>
+
+              <div class="bc__foot">
+                <p-button *appCan="'buildings.view'" type="button" size="small" [outlined]="true" icon="pi pi-layers" [label]="'branches.manageFloors' | translate" [disabled]="isInactive(b)" (onClick)="openFloors(b)" />
+                @if ((b.stats?.rooms ?? 0) > 0 || (b.stats?.halls ?? 0) > 0) {
+                  <p-button type="button" size="small" [text]="true" icon="pi pi-door-open" [label]="'branches.viewRooms' | translate" (onClick)="openRooms(b)" />
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+}
+
+<p-menu #menu [model]="menuItems()" [popup]="true" appendTo="body" />
+
+<!-- Branch form -->
+<p-drawer
+  [header]="(branchEditTarget() ? 'branches.editBranchHeader' : 'branches.newBranchHeader') | translate"
+  [visible]="branchFormVisible()"
+  (visibleChange)="branchFormVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(36rem, 100vw)' }"
+  styleClass="gl-drawer"
+>
+  <form class="bf" [formGroup]="branchForm" (ngSubmit)="submitBranch()" novalidate>
+    <section class="bf-sec">
+      <header class="bf-head"><i class="pi pi-building"></i><h3>{{ 'branches.form.identity' | translate }}</h3></header>
+      <div class="field">
+        <label for="b-name">{{ 'common.name' | translate }} <span class="req">*</span></label>
+        <input pInputText id="b-name" formControlName="name" maxlength="80" autocomplete="off" [placeholder]="'branches.form.namePlaceholder' | translate" />
+        <app-field-error [control]="branchForm.controls.name" [label]="'common.name' | translate" />
+      </div>
+      @if (branchEditTarget()) {
         <div class="field">
           <label for="b-code">{{ 'branches.code' | translate }}</label>
-          <input pInputText id="b-code" formControlName="code" autocomplete="off" [readonly]="true" />
+          <input pInputText id="b-code" formControlName="code" readonly />
+          <small class="hint"><i class="pi pi-lock"></i> {{ 'branches.form.codeHint' | translate }}</small>
         </div>
-        }
+      } @else {
+        <small class="hint"><i class="pi pi-lightbulb"></i> {{ 'branches.form.codeAuto' | translate }}</small>
+      }
+    </section>
+
+    <section class="bf-sec">
+      <header class="bf-head"><i class="pi pi-map-marker"></i><h3>{{ 'branches.form.location' | translate }}</h3></header>
+      <div class="bf-grid">
         <div class="field">
-          <label for="b-city">{{ 'branches.city' | translate }}</label>
-          <input pInputText id="b-city" formControlName="city" autocomplete="off" />
+          <label for="b-city">{{ 'branches.city' | translate }} <span class="req">*</span></label>
+          <input pInputText id="b-city" formControlName="city" maxlength="80" autocomplete="off" />
           <app-field-error [control]="branchForm.controls.city" [label]="'branches.city' | translate" />
         </div>
         <div class="field">
-          <label for="b-country">{{ 'branches.country' | translate }}</label>
-          <input pInputText id="b-country" formControlName="country" autocomplete="off" />
+          <label for="b-country">{{ 'branches.country' | translate }} <span class="req">*</span></label>
+          <p-select inputId="b-country" formControlName="country" [options]="countries" optionLabel="label" optionValue="value" [filter]="true" [editable]="true" appendTo="body" styleClass="w-full" />
           <app-field-error [control]="branchForm.controls.country" [label]="'branches.country' | translate" />
         </div>
-        <div class="field field--full disabledSections">
-          <label for="b-timezone">{{ 'branches.timezone' | translate }}</label>
-          <input pInputText id="b-timezone" formControlName="timezone" autocomplete="off" />
-          <app-field-error [control]="branchForm.controls.timezone" [label]="'branches.timezone' | translate" />
-        </div>
       </div>
-      <div class="form-actions">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true"
-          (onClick)="createVisible() ? createVisible.set(false) : editVisible.set(false)" />
-        <p-button type="submit" [label]="(createVisible() ? 'branches.createBranchBtn' : 'common.saveChanges') | translate"
-          [loading]="createVisible() ? savingCreate() : savingEdit()" />
+      <div class="field">
+        <label for="b-tz">{{ 'branches.timezone' | translate }} <span class="req">*</span></label>
+        <p-select inputId="b-tz" formControlName="timezone" [options]="zones" optionLabel="label" optionValue="value" [filter]="true" appendTo="body" styleClass="w-full" />
+        <small class="hint">{{ 'branches.form.timezoneHint' | translate }}</small>
       </div>
-    </p-fluid>
+    </section>
+    <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
   </form>
+  <ng-template #footer>
+    <div class="dr-footer">
+      <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="branchFormVisible.set(false)" />
+      <p-button type="button" icon="pi pi-check" [label]="(branchEditTarget() ? 'common.saveChanges' : 'branches.createBranchBtn') | translate" [loading]="savingBranch()" (onClick)="submitBranch()" />
+    </div>
+  </ng-template>
 </p-drawer>
 
-<!-- Building Forms -->
-<p-drawer [header]="(buildingCreateVisible() ? 'branches.newBuildingHeader' : 'branches.editBuildingHeader') | translate"
-  [visible]="buildingCreateVisible() || buildingEditVisible()"
-  (visibleChange)="buildingCreateVisible() ? buildingCreateVisible.set($event) : buildingEditVisible.set($event)"
-  position="right" [style]="{ width: 'min(32rem, 100vw)' }">
-  <form [formGroup]="buildingForm" (ngSubmit)="buildingCreateVisible() ? submitCreateBuilding() : submitEditBuilding()">
-    <p-fluid>
-      <div class="p-3 bg-surface-50 border border-surface-200 rounded mb-4">
-        <p class="m-0 text-sm text-surface-600">
-          {{ 'branches.branchLabel' | translate }}: <span class="font-bold text-surface-900">{{ buildingTargetBranch()?.name }}</span>
-        </p>
+<!-- Building form -->
+<p-drawer
+  [header]="(buildingEditTarget() ? 'branches.editBuildingHeader' : 'branches.newBuildingHeader') | translate"
+  [visible]="buildingFormVisible()"
+  (visibleChange)="buildingFormVisible.set($event)"
+  position="right"
+  [style]="{ width: 'min(28rem, 100vw)' }"
+  styleClass="gl-drawer"
+>
+  <form class="bf" [formGroup]="buildingForm" (ngSubmit)="submitBuilding()" novalidate>
+    <div class="bf-branch"><i class="pi pi-sitemap"></i> {{ 'branches.branchLabel' | translate }}: <strong>{{ selected()?.name }}</strong></div>
+    <section class="bf-sec">
+      <div class="field">
+        <label for="bu-name">{{ 'branches.buildingName' | translate }} <span class="req">*</span></label>
+        <input pInputText id="bu-name" formControlName="name" maxlength="80" autocomplete="off" [placeholder]="'branches.buildingNamePlaceholder' | translate" />
+        <app-field-error [control]="buildingForm.controls.name" [label]="'branches.buildingName' | translate" />
+        @if (!buildingEditTarget()) {
+          <small class="hint"><i class="pi pi-lightbulb"></i> {{ 'branches.form.floorsNext' | translate }}</small>
+        }
       </div>
-      <div class="form-grid">
-        <div class="field">
-          <label for="bu-name">{{ 'branches.buildingName' | translate }}</label>
-          <input pInputText id="bu-name" formControlName="name" [placeholder]="'branches.buildingNamePlaceholder' | translate" autocomplete="off" />
-          <app-field-error [control]="buildingForm.controls.name" [label]="'branches.buildingName' | translate" />
-        </div>
-      </div>
-      <div class="form-actions">
-        <p-button type="button" [label]="'common.cancel' | translate" [outlined]="true"
-          (onClick)="buildingCreateVisible() ? buildingCreateVisible.set(false) : buildingEditVisible.set(false)" />
-        <p-button type="submit" [label]="(buildingCreateVisible() ? 'branches.createBuildingBtn' : 'common.saveChanges') | translate"
-          [loading]="savingBuilding()" />
-      </div>
-    </p-fluid>
+    </section>
+    <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
   </form>
+  <ng-template #footer>
+    <div class="dr-footer">
+      <p-button type="button" [label]="'common.cancel' | translate" [text]="true" severity="secondary" (onClick)="buildingFormVisible.set(false)" />
+      <p-button type="button" icon="pi pi-check" [label]="(buildingEditTarget() ? 'common.saveChanges' : 'branches.createBuildingBtn') | translate" [loading]="savingBuilding()" (onClick)="submitBuilding()" />
+    </div>
+  </ng-template>
 </p-drawer>
+
+<!-- Floors -->
+<app-floors-drawer [building]="floorsFor()" (changed)="refreshAll()" (closed)="floorsFor.set(null)" />
