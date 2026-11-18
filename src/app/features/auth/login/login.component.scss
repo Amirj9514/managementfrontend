@@ -35,3 +35,54 @@
     font-weight: 500;
   }
 }
+
+.login__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.login__subtitle {
+  margin-bottom: 1.75rem;
+}
+
+.login__form .field input {
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+}
+
+.login__pw {
+  position: relative;
+
+  input {
+    padding-inline-end: 2.75rem;
+  }
+}
+
+.login__eye {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+
+  &:hover {
+    color: var(--p-text-color);
+    background: var(--p-content-hover-background, rgba(127, 127, 127, 0.1));
+  }
+}
+
+:host ::ng-deep .login__form .p-button {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+}

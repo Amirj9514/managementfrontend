@@ -1,8 +1,15 @@
 import type { DictionaryEntry } from '../../core/i18n/translation.service';
 
 export const AUTH_DICTIONARY: Record<string, DictionaryEntry> = {
+  'auth.hero.title': { en: 'Welcome to Dar ul Ziafat', ur: 'دار الضیافت میں خوش آمدید' },
+  'auth.hero.text': {
+    en: 'Rooms, halls, guests, housekeeping and reports — everything for running the guest house, in one place.',
+    ur: 'کمرے، ہال، مہمان، صفائی اور رپورٹس — گیسٹ ہاؤس چلانے کی ہر چیز ایک جگہ۔',
+  },
+  'auth.login.showPassword': { en: 'Show password', ur: 'پاس ورڈ دکھائیں' },
+  'auth.login.hidePassword': { en: 'Hide password', ur: 'پاس ورڈ چھپائیں' },
   'auth.login.title': { en: 'Welcome back', ur: 'خوش آمدید' },
-  'auth.login.subtitle': { en: 'Sign in to continue to Management.', ur: 'انتظام جاری رکھنے کے لیے سائن ان کریں۔' },
+  'auth.login.subtitle': { en: 'Sign in to continue to Dar ul Ziafat.', ur: 'دار الضیافت میں جاری رکھنے کے لیے سائن ان کریں۔' },
   'auth.login.submit': { en: 'Sign in', ur: 'سائن ان کریں' },
   'auth.login.noAccount': { en: 'Need an account?', ur: 'اکاؤنٹ درکار ہے؟' },
   'auth.login.registerLink': { en: 'Register', ur: 'رجسٹر کریں' },

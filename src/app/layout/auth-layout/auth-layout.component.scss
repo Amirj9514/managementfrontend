@@ -1,3 +1,142 @@
 :host {
   display: block;
 }
+
+.auth {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--p-content-background, #fff);
+}
+
+// ---- photo side
+.auth__hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2.5rem;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(8, 15, 30, 0.55) 0%, rgba(8, 15, 30, 0.1) 40%, rgba(8, 15, 30, 0.8) 100%),
+    url('/login-bg.jpg') center / cover no-repeat;
+}
+
+.auth__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.auth__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #111;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.auth__name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.auth__pitch {
+  max-width: 30rem;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+// ---- form side
+.auth__panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.5rem 2rem 2rem;
+}
+
+.auth__lang {
+  position: absolute;
+  z-index: 2;
+  top: 1.25rem;
+  inset-inline-end: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+  cursor: pointer;
+  border: 1px solid var(--p-content-border-color, rgba(127, 127, 127, 0.3));
+  border-radius: 999px;
+  background: transparent;
+
+  &:hover {
+    background: var(--p-content-hover-background, rgba(127, 127, 127, 0.08));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.auth__card {
+  width: 100%;
+  max-width: 24rem;
+}
+
+// ---- narrow screens: the photo becomes a banner above the form
+@media (max-width: 899px) {
+  .auth {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .auth__hero {
+    min-height: 11rem;
+    padding: 1.25rem 1.25rem 1.5rem;
+  }
+
+  .auth__pitch {
+    display: none;
+  }
+
+  .auth__panel {
+    align-items: flex-start;
+    padding: 2rem 1.25rem 2rem;
+  }
+
+  .auth__lang {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.55);
+    background: rgba(8, 15, 30, 0.35);
+
+    &:hover {
+      background: rgba(8, 15, 30, 0.55);
+    }
+  }
+}

@@ -1,7 +1,21 @@
-<div class="auth-layout">
-  <div class="auth-layout__card">
-    <p-card>
+<div class="auth">
+  <button type="button" class="auth__lang" (click)="i18n.toggleLang()" [attr.aria-label]="'shell.language' | translate">
+    <i class="pi pi-globe"></i> {{ i18n.currentLang() === 'en' ? 'اردو' : 'English' }}
+  </button>
+  <aside class="auth__hero" aria-hidden="true">
+    <div class="auth__brand">
+      <span class="auth__logo">D</span>
+      <span class="auth__name">{{ 'shell.brand' | translate }}</span>
+    </div>
+    <div class="auth__pitch">
+      <h2>{{ 'auth.hero.title' | translate }}</h2>
+      <p>{{ 'auth.hero.text' | translate }}</p>
+    </div>
+  </aside>
+
+  <main class="auth__panel">
+    <div class="auth__card">
       <router-outlet />
-    </p-card>
-  </div>
+    </div>
+  </main>
 </div>

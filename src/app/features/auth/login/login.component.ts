@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -36,6 +36,7 @@ export class LoginComponent {
   });
 
   submitting = false;
+  readonly showPassword = signal(false);
 
   submit(): void {
     if (this.form.invalid || this.submitting) {

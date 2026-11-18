@@ -91,12 +91,13 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'nav.group.people',
     items: [
-      {
-        label: 'nav.hr',
-        routerLink: '/hr/employees',
-        icon: 'lucideBriefcase',
-        permissions: ['hr.view'],
-      },
+      // HR module is hidden until v2 — re-enable this item and the `hr` route in app.routes.ts.
+      // {
+      //   label: 'nav.hr',
+      //   routerLink: '/hr/employees',
+      //   icon: 'lucideBriefcase',
+      //   permissions: ['hr.view'],
+      // },
       {
         label: 'nav.users',
         routerLink: '/users',

@@ -93,10 +93,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/housekeeping/housekeeping.routes').then((m) => m.housekeepingRoutes),
       },
-      {
-        path: 'hr',
-        loadChildren: () => import('./features/hr/hr.routes').then((m) => m.hrRoutes),
-      },
+      // HR module hidden until v2 — uncomment to re-enable (and the nav item in nav-items.ts).
+      // {
+      //   path: 'hr',
+      //   loadChildren: () => import('./features/hr/hr.routes').then((m) => m.hrRoutes),
+      // },
       {
         path: 'audit',
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.auditRoutes),

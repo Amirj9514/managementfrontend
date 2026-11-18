@@ -166,7 +166,7 @@ export const COMMON_DICTIONARY: Record<string, DictionaryEntry> = {
   'validation.defaultLabel': { en: 'This field', ur: 'یہ خانہ' },
 
   // Shell chrome
-  'shell.brand': { en: 'Management', ur: 'انتظام' },
+  'shell.brand': { en: 'Dar ul Ziafat', ur: 'دار الضیافت' },
   'shell.logout': { en: 'Log out', ur: 'لاگ آؤٹ' },
   'shell.language': { en: 'Language', ur: 'زبان' },
   'shell.toggleSidebar': { en: 'Toggle sidebar', ur: 'سائیڈ بار ٹوگل کریں' },
